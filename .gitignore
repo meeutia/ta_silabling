@@ -1,0 +1,28 @@
+# archive / generated files
+*.zip
+*.rar
+*.7z
+
+# binary tunnel tools
+ngrok.exe
+cloudflared.exe
+
+# dependencies / build
+node_modules/
+dist/
+build/
+
+# env
+.env
+.env.local
+
+# runtime generated files
+backend/public/invoices/*
+backend/public/lhu/*
+backend/public/worksheets/*
+backend/uploads/*
+!backend/public/invoices/.gitkeep
+!backend/public/lhu/.gitkeep
+!backend/public/worksheets/.gitkeep
+!backend/uploads/.gitkeep
+!backend/uploads/worksheets/.gitkeep

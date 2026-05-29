@@ -1,0 +1,41 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "check:syntax": "node scripts/check-syntax.js",
+    "check:workflow": "node scripts/verify-workflow-cleanup.js",
+    "check": "npm run check:syntax && npm run check:imports && npm run check:workflow && npm run check:structure && npm run check:package && npm audit --audit-level=moderate",
+    "smoke": "node scripts/smoke-api.js",
+    "check:imports": "node scripts/check-imports.js",
+    "check:package": "node scripts/check-final-package.js",
+    "check:structure": "node scripts/check-structure.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
+    "ejs": "^4.0.1",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.12.0",
+    "multer": "^2.1.1",
+    "mysql2": "^3.14.0",
+    "nodemailer": "^8.0.7",
+    "pdfkit": "^0.18.0",
+    "sequelize": "^6.37.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "umzug": "^3.8.0"
+  }
+}
