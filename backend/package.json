@@ -12,7 +12,11 @@
     "smoke": "node scripts/smoke-api.js",
     "check:imports": "node scripts/check-imports.js",
     "check:package": "node scripts/check-final-package.js",
-    "check:structure": "node scripts/check-structure.js"
+    "check:structure": "node scripts/check-structure.js",
+    "test": "cross-env NODE_ENV=test jest --runInBand",
+    "test:unit": "cross-env NODE_ENV=test jest tests/unit --runInBand",
+    "test:integration": "cross-env NODE_ENV=test jest tests/integration --runInBand",
+    "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand"
   },
   "keywords": [],
   "author": "",
@@ -35,7 +39,10 @@
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
+    "jest": "^30.4.2",
     "nodemon": "^3.1.14",
+    "supertest": "^7.2.2",
     "umzug": "^3.8.0"
   }
 }
