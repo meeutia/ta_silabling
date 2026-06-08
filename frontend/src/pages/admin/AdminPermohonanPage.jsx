@@ -135,7 +135,11 @@ export function AdminPermohonanPage({ initialRegistrationId = '', onDetailRouteC
   });
 
   const clearPickupRoute = useCallback(({ resetSearch = false } = {}) => {
-    directPickupHandledRef.current = '';
+    const currentPickupRouteKey = directPickupRegistrationId && location.search
+      ? `${directPickupRegistrationId}|${location.search}`
+      : '';
+
+    directPickupHandledRef.current = currentPickupRouteKey;
 
     if (resetSearch) {
       setSearchQuery('');
@@ -143,7 +147,7 @@ export function AdminPermohonanPage({ initialRegistrationId = '', onDetailRouteC
     }
 
     navigate(ADMIN_PERMOHONAN_PATH, { replace: true });
-  }, [navigate]);
+  }, [directPickupRegistrationId, location.search, navigate]);
 
   const openSchedulePickupModalWithRoute = useCallback((row) => {
     openSchedulePickupModal(row);
@@ -227,6 +231,12 @@ export function AdminPermohonanPage({ initialRegistrationId = '', onDetailRouteC
     if (directPickupRegistrationId) setSearchQuery(directPickupRegistrationId);
     fetchPickupQueue();
   }, [directPickupRegistrationId, directTab, fetchPickupQueue]);
+
+  useEffect(() => {
+    if (directTab !== 'Pengambilan') {
+      directPickupHandledRef.current = '';
+    }
+  }, [directTab]);
 
   useEffect(() => {
     if (directTab !== 'Pengambilan' || !directPickupRegistrationId || pickupLoading) return;

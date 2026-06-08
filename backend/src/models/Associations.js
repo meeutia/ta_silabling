@@ -16,8 +16,9 @@ const ParameterMetode = require('./ParameterMetode');
 const FpplParameterMetode = require('./FpplParameterMetode');
 const RegBm = require('./RegBm');
 const PktBm = require('./PktBm');
+const PktBmKelompok = require('./PktBmKelompok');
 const PktBmParam = require('./PktBmParam');
-const PktBmPm = require('./PktBmPm');
+const PktBmNilai = require('./PktBmNilai');
 const Sampel = require('./Sampel');
 const SampelParameter = require('./SampelParameter');
 const Penugasan = require('./Penugasan');
@@ -26,7 +27,6 @@ const PenugasanItem = require('./PenugasanItem');
 const Lka = require('./Lka');
 const LkaHasil = require('./LkaHasil');
 const LkaRevisi = require('./LkaRevisi');
-const LkaRevisiItem = require('./LkaRevisiItem');
 const Lhu = require('./Lhu');
 const LhuSampel = require('./LhuSampel');
 const DetailLhu = require('./DetailLhu');
@@ -35,7 +35,6 @@ const InvoiceItem = require('./InvoiceItem');
 const Payment = require('./Payment');
 const JadwalPengambilanLhu = require('./JadwalPengambilanLhu');
 const PengajuanPerubahanJadwal = require('./PengajuanPerubahanJadwal');
-const TipeNotifikasi = require('./TipeNotifikasi');
 const NotifikasiEmail = require('./NotifikasiEmail');
 const AktivitasSistemLog = require('./AktivitasSistemLog');
 
@@ -62,32 +61,50 @@ JenisSampel.hasMany(FpplSampel, { foreignKey: 'id_jenis_sampel' });
 FpplSampel.belongsTo(JenisSampel, { foreignKey: 'id_jenis_sampel' });
 RegBm.hasMany(FpplSampel, { foreignKey: 'id_reg_bm' });
 FpplSampel.belongsTo(RegBm, { foreignKey: 'id_reg_bm' });
-FpplSampel.hasMany(Sampel, { foreignKey: 'id_fppl_sampel', as: 'sampels' });
-Sampel.belongsTo(FpplSampel, { foreignKey: 'id_fppl_sampel', as: 'fppl_sampel' });
+FpplSampel.hasMany(Sampel, { foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'sampels', constraints: false });
+Sampel.belongsTo(FpplSampel, { foreignKey: 'id_registrasi', targetKey: 'id_registrasi', as: 'fppl_sampel', constraints: false });
+Fppl.hasMany(Sampel, { foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'sampels_direct' });
+Sampel.belongsTo(Fppl, { foreignKey: 'id_registrasi', targetKey: 'id_registrasi', as: 'fppl' });
+JenisSampel.hasMany(Sampel, { foreignKey: 'id_jenis_sampel', as: 'sampel_rows' });
+Sampel.belongsTo(JenisSampel, { foreignKey: 'id_jenis_sampel', as: 'jenis_sampel' });
+RegBm.hasMany(Sampel, { foreignKey: 'id_reg_bm', as: 'sampel_rows' });
+Sampel.belongsTo(RegBm, { foreignKey: 'id_reg_bm', as: 'reg_bm' });
 User.hasMany(Sampel, { foreignKey: 'diterima_oleh', as: 'SampelDiterima' });
 Sampel.belongsTo(User, { foreignKey: 'diterima_oleh', as: 'PenerimaSampel' });
 
 // PARAMETER, METODE, BAKU MUTU
+RegBm.hasMany(PktBmKelompok, { foreignKey: 'id_reg_bm' });
+PktBmKelompok.belongsTo(RegBm, { foreignKey: 'id_reg_bm' });
+JenisSampel.hasMany(PktBmKelompok, { foreignKey: 'id_jenis_sampel' });
+PktBmKelompok.belongsTo(JenisSampel, { foreignKey: 'id_jenis_sampel' });
 RegBm.hasMany(PktBm, { foreignKey: 'id_reg_bm' });
 PktBm.belongsTo(RegBm, { foreignKey: 'id_reg_bm' });
 JenisSampel.hasMany(PktBm, { foreignKey: 'id_jenis_sampel' });
 PktBm.belongsTo(JenisSampel, { foreignKey: 'id_jenis_sampel' });
-PktBm.hasMany(PktBmParam, { foreignKey: 'id_pkt_bm' });
-PktBmParam.belongsTo(PktBm, { foreignKey: 'id_pkt_bm' });
+RegBm.hasMany(PktBmParam, { foreignKey: 'id_reg_bm' });
+PktBmParam.belongsTo(RegBm, { foreignKey: 'id_reg_bm' });
+JenisSampel.hasMany(PktBmParam, { foreignKey: 'id_jenis_sampel' });
+PktBmParam.belongsTo(JenisSampel, { foreignKey: 'id_jenis_sampel' });
 Parameter.hasMany(PktBmParam, { foreignKey: 'id_parameter' });
 PktBmParam.belongsTo(Parameter, { foreignKey: 'id_parameter' });
-PktBmParam.hasMany(PktBmPm, { foreignKey: 'id_pkt_bm_param' });
-PktBmPm.belongsTo(PktBmParam, { foreignKey: 'id_pkt_bm_param' });
-ParameterMetode.hasMany(PktBmPm, { foreignKey: 'id_metode_parameter' });
-PktBmPm.belongsTo(ParameterMetode, { foreignKey: 'id_metode_parameter' });
+PktBm.hasMany(PktBmNilai, { foreignKey: 'id_pkt_bm' });
+PktBmNilai.belongsTo(PktBm, { foreignKey: 'id_pkt_bm' });
+Parameter.hasMany(PktBmNilai, { foreignKey: 'id_parameter' });
+PktBmNilai.belongsTo(Parameter, { foreignKey: 'id_parameter' });
 KategoriParameter.hasMany(Parameter, { foreignKey: 'id_kategori_parameter', as: 'parameters' });
 Parameter.belongsTo(KategoriParameter, { foreignKey: 'id_kategori_parameter', as: 'kategori' });
 Parameter.hasMany(ParameterMetode, { foreignKey: 'id_parameter' });
 ParameterMetode.belongsTo(Parameter, { foreignKey: 'id_parameter' });
 Metode.hasMany(ParameterMetode, { foreignKey: 'id_metode' });
 ParameterMetode.belongsTo(Metode, { foreignKey: 'id_metode' });
-FpplSampel.hasMany(FpplParameterMetode, { foreignKey: 'id_fppl_sampel' });
-FpplParameterMetode.belongsTo(FpplSampel, { foreignKey: 'id_fppl_sampel' });
+FpplSampel.hasMany(FpplParameterMetode, { foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', constraints: false });
+FpplParameterMetode.belongsTo(FpplSampel, { foreignKey: 'id_registrasi', targetKey: 'id_registrasi', constraints: false });
+Fppl.hasMany(FpplParameterMetode, { foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'fppl_parameter_metodes_direct' });
+FpplParameterMetode.belongsTo(Fppl, { foreignKey: 'id_registrasi', targetKey: 'id_registrasi', as: 'fppl' });
+JenisSampel.hasMany(FpplParameterMetode, { foreignKey: 'id_jenis_sampel', as: 'fppl_parameter_metodes' });
+FpplParameterMetode.belongsTo(JenisSampel, { foreignKey: 'id_jenis_sampel', as: 'jenis_sampel' });
+RegBm.hasMany(FpplParameterMetode, { foreignKey: 'id_reg_bm', as: 'fppl_parameter_metodes' });
+FpplParameterMetode.belongsTo(RegBm, { foreignKey: 'id_reg_bm', as: 'reg_bm' });
 Parameter.hasMany(FpplParameterMetode, { foreignKey: 'id_parameter' });
 FpplParameterMetode.belongsTo(Parameter, { foreignKey: 'id_parameter' });
 ParameterMetode.hasMany(FpplParameterMetode, { foreignKey: 'id_metode_parameter' });
@@ -129,16 +146,14 @@ LkaHasil.belongsTo(Sampel, { foreignKey: 'no_sampel' });
 // RIWAYAT REVISI LKA
 Lka.hasMany(LkaRevisi, { foreignKey: 'kode_lka', as: 'revisi_lka' });
 LkaRevisi.belongsTo(Lka, { foreignKey: 'kode_lka', as: 'lka' });
+LkaRevisi.belongsTo(LkaRevisi, { foreignKey: 'id_revisi_sebelumnya', as: 'RevisiSebelumnya' });
+LkaRevisi.hasMany(LkaRevisi, { foreignKey: 'id_revisi_sebelumnya', as: 'RevisiBerikutnya' });
 User.hasMany(LkaRevisi, { foreignKey: 'diajukan_oleh', as: 'RevisiLkaDiajukan' });
 LkaRevisi.belongsTo(User, { foreignKey: 'diajukan_oleh', as: 'PengajuRevisi' });
 User.hasMany(LkaRevisi, { foreignKey: 'ditinjau_oleh', as: 'RevisiLkaDitinjau' });
 LkaRevisi.belongsTo(User, { foreignKey: 'ditinjau_oleh', as: 'PeninjauRevisi' });
-LkaRevisi.hasMany(LkaRevisiItem, { foreignKey: 'id_revisi_lka', as: 'items' });
-LkaRevisiItem.belongsTo(LkaRevisi, { foreignKey: 'id_revisi_lka', as: 'revisi' });
-Lka.hasMany(LkaRevisiItem, { foreignKey: 'kode_lka', as: 'revisi_items' });
-LkaRevisiItem.belongsTo(Lka, { foreignKey: 'kode_lka', as: 'lka_hasil_lka' });
-Sampel.hasMany(LkaRevisiItem, { foreignKey: 'no_sampel', as: 'revisi_items' });
-LkaRevisiItem.belongsTo(Sampel, { foreignKey: 'no_sampel', as: 'hasil_sampel' });
+Sampel.hasMany(LkaRevisi, { foreignKey: 'no_sampel', as: 'revisi_lka_sampel' });
+LkaRevisi.belongsTo(Sampel, { foreignKey: 'no_sampel', as: 'sampel' });
 
 // LHU
 Fppl.hasMany(Lhu, { foreignKey: 'id_registrasi', as: 'lhus' });
@@ -217,76 +232,12 @@ PengajuanPerubahanJadwal.belongsTo(JadwalPengambilanLhu, {
   as: 'jadwal_pengambilan_lhu',
 });
 
-TipeNotifikasi.hasMany(NotifikasiEmail, {
-  foreignKey: 'id_tipe_notifikasi',
-  as: 'notifikasi_email',
-});
 
-NotifikasiEmail.belongsTo(TipeNotifikasi, {
-  foreignKey: 'id_tipe_notifikasi',
-  as: 'tipe_notifikasi',
-});
-
-User.hasMany(NotifikasiEmail, {
-  foreignKey: 'penerima_user_nik',
-  as: 'notifikasi_email_user',
-});
-
-NotifikasiEmail.belongsTo(User, {
-  foreignKey: 'penerima_user_nik',
-  as: 'penerima_user',
-});
-
-Pelanggan.hasMany(NotifikasiEmail, {
-  foreignKey: 'penerima_pelanggan_id',
-  as: 'notifikasi_email_pelanggan',
-});
-
-NotifikasiEmail.belongsTo(Pelanggan, {
-  foreignKey: 'penerima_pelanggan_id',
-  as: 'penerima_pelanggan',
-});
-
-Fppl.hasMany(NotifikasiEmail, {
-  foreignKey: 'id_registrasi',
-  as: 'notifikasi_email',
-});
-
-NotifikasiEmail.belongsTo(Fppl, {
-  foreignKey: 'id_registrasi',
-  as: 'fppl',
-});
-
-JadwalPengambilanLhu.hasMany(NotifikasiEmail, {
-  foreignKey: 'id_jadwal_lhu',
-  as: 'notifikasi_email',
-});
-
-NotifikasiEmail.belongsTo(JadwalPengambilanLhu, {
-  foreignKey: 'id_jadwal_lhu',
-  as: 'jadwal_pengambilan_lhu',
-});
-
-Lhu.hasMany(NotifikasiEmail, {
-  foreignKey: 'nomor_lhu',
-  as: 'notifikasi_email',
-});
-
-NotifikasiEmail.belongsTo(Lhu, {
-  foreignKey: 'nomor_lhu',
-  as: 'lhu',
-});
-
-Penugasan.hasMany(NotifikasiEmail, {
-  foreignKey: 'id_penugasan',
-  as: 'notifikasi_email',
-});
-
-NotifikasiEmail.belongsTo(Penugasan, {
-  foreignKey: 'id_penugasan',
-  as: 'penugasan',
-});
-
+// notifikasi_email memakai pola polymorphic untuk penerima dan referensi.
+// Penerima disimpan pada penerima_tipe + penerima_id.
+// Referensi objek disimpan pada referensi_tipe + referensi_id.
+// Karena target tabelnya bisa berbeda-beda, relasi FK langsung ke user, pelanggan,
+// fppl, jadwal_lhu, lhu, dan penugasan tidak dibuat di Sequelize.
 
 User.hasMany(AktivitasSistemLog, {
   foreignKey: 'dibuat_oleh',
@@ -298,4 +249,4 @@ AktivitasSistemLog.belongsTo(User, {
   as: 'pembuat_aktivitas',
 });
 
-module.exports = { sequelize, Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, RegBm, PktBm, PktBmParam, PktBmPm, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, LkaRevisiItem, Lhu, LhuSampel, DetailLhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, TipeNotifikasi, NotifikasiEmail, AktivitasSistemLog };
+module.exports = { sequelize, Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, RegBm, PktBm, PktBmKelompok, PktBmParam, PktBmNilai, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, Lhu, LhuSampel, DetailLhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, NotifikasiEmail, AktivitasSistemLog };

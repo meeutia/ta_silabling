@@ -1,15 +1,40 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
+const LKA_REVISION_STATUSES = [
+  'Diajukan',
+  'Menunggu Persetujuan Penyelia',
+  'Menunggu Review Penyelia',
+  'Disetujui Penyelia',
+  'Ditolak Penyelia',
+  'Disetujui untuk Analis',
+  'Dikirim ke Analis',
+  'Diperbaiki Analis',
+  'Disetujui Kasi',
+  'Selesai',
+];
+
 const LkaRevisi = sequelize.define('lka_revisi', {
   id_revisi_lka: {
     type: DataTypes.STRING(10),
     primaryKey: true,
     allowNull: false,
   },
+  id_revisi_sebelumnya: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+  },
   kode_lka: {
     type: DataTypes.STRING(20),
     allowNull: false,
+  },
+  no_sampel: {
+    type: DataTypes.STRING(25),
+    allowNull: true,
+  },
+  catatan_revisi: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
   sumber_revisi: {
     type: DataTypes.ENUM('PENYELIA', 'KASI_PENGUJIAN'),
@@ -18,10 +43,6 @@ const LkaRevisi = sequelize.define('lka_revisi', {
   level_revisi: {
     type: DataTypes.ENUM('LKA', 'HASIL'),
     allowNull: false,
-  },
-  catatan_umum: {
-    type: DataTypes.TEXT,
-    allowNull: true,
   },
   diajukan_oleh: {
     type: DataTypes.STRING(16),
@@ -33,14 +54,7 @@ const LkaRevisi = sequelize.define('lka_revisi', {
     defaultValue: DataTypes.NOW,
   },
   status_revisi: {
-    type: DataTypes.ENUM(
-      'Diajukan',
-      'Menunggu Persetujuan Penyelia',
-      'Disetujui Penyelia',
-      'Ditolak Penyelia',
-      'Dikirim ke Analis',
-      'Selesai'
-    ),
+    type: DataTypes.ENUM(...LKA_REVISION_STATUSES),
     allowNull: false,
     defaultValue: 'Diajukan',
   },
@@ -71,3 +85,4 @@ const LkaRevisi = sequelize.define('lka_revisi', {
 });
 
 module.exports = LkaRevisi;
+module.exports.LKA_REVISION_STATUSES = LKA_REVISION_STATUSES;

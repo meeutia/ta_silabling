@@ -7,6 +7,7 @@ import {
   getSubkontrakLabel,
 } from '../../lhu/lhuReviewUtils';
 import {
+  dedupeTextList,
   getDisplayNoSampel,
   isRowInsitu,
   isRowSubkontrak,
@@ -101,12 +102,10 @@ function DetailLhuTable({
     String(value).trim() !== '';
 
   const orderedSampleNos = Array.isArray(sampleNos) && sampleNos.length
-    ? sampleNos.filter(Boolean)
-    : Array.from(
-        new Set(
-          details.flatMap((row) => row.samples || row.sampels || Object.keys(row.hasil_by_sample || row.hasilBySample || {}))
-        )
-      ).filter(Boolean);
+    ? dedupeTextList(sampleNos.filter(Boolean))
+    : dedupeTextList(
+        details.flatMap((row) => row.samples || row.sampels || Object.keys(row.hasil_by_sample || row.hasilBySample || {}))
+      );
 
   const displayedSampleNos = orderedSampleNos.length ? orderedSampleNos : ['-'];
   const hasilMinWidth = Math.max(110, displayedSampleNos.length * 92);
@@ -232,10 +231,10 @@ function DetailLhuTable({
                     <p>{metode}</p>
                     {acuan && <p className="mt-1 text-xs text-gray-500">{acuan}</p>}
                   </td>
-                  {displayedSampleNos.map((sampleNo) => {
+                  {displayedSampleNos.map((sampleNo, sampleIndex) => {
                     const value = sampleNo === '-' ? null : hasilBySample[sampleNo];
                     return (
-                      <td key={sampleNo} className="border-r border-gray-200 px-3 py-3 text-center font-semibold text-gray-900">
+                      <td key={`${sampleNo}-${sampleIndex}`} className="border-r border-gray-200 px-3 py-3 text-center font-semibold text-gray-900">
                         {hasValue(value) ? value : <span className="text-gray-400">-</span>}
                       </td>
                     );

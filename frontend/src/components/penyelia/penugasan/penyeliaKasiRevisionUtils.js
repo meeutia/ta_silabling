@@ -27,11 +27,19 @@ export function formatRevisionDate(value) {
 }
 
 export function getKasiRevisionItems(row = {}) {
-  return Array.isArray(row.items)
-    ? row.items
-    : Array.isArray(row.lka_revisi_items)
-      ? row.lka_revisi_items
-      : [];
+  return Array.isArray(row.items) ? row.items : [];
+}
+
+export function getPreviousRevisionId(row = {}) {
+  const previous = row.revisiSebelumnya || row.revisi_sebelumnya || row.RevisiSebelumnya || {};
+
+  return (
+    row.idRevisiSebelumnya ||
+    row.id_revisi_sebelumnya ||
+    previous.idRevisiLka ||
+    previous.id_revisi_lka ||
+    ''
+  );
 }
 
 export function getRevisionItemLabel(item = {}) {
@@ -57,7 +65,7 @@ export function getRevisionItemsNote(row = {}) {
   const itemNotes = getKasiRevisionItems(row).map((item) =>
     item.catatan_revisi || item.catatanRevisi || ''
   );
-  const globalNote = row.catatan_umum || row.catatanUmum || '';
+  const globalNote = row.catatan_revisi || row.catatanRevisi || '';
   const noteText = joinUniqueNotes(itemNotes.length > 0 ? itemNotes : [globalNote]);
 
   return noteText || '-';

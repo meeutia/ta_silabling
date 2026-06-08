@@ -2,50 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const cookieParser = require('cookie-parser');
-const app = express();
-
-app.disable('x-powered-by');
-
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('X-Frame-Options', 'DENY');
-  next();
-});
-
-const configuredFrontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
-
-const allowedOrigins = configuredFrontendOrigin
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-const localhostOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/i;
-const allowAnyLocalhostOrigin = process.env.NODE_ENV !== 'production';
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (
-      !origin ||
-      allowedOrigins.includes(origin) ||
-      (allowAnyLocalhostOrigin && localhostOriginPattern.test(origin))
-    ) {
-      return callback(null, true);
-    }
-    return callback(new Error('Origin tidak diizinkan oleh CORS.'));
-  },
-  credentials: true
-}));
-
-const jsonBodyLimit = process.env.JSON_BODY_LIMIT || '2mb';
-const urlEncodedBodyLimit = process.env.URLENCODED_BODY_LIMIT || '2mb';
-
-app.use(cookieParser());
-app.use(express.json({ limit: jsonBodyLimit }));
-app.use(express.urlencoded({ extended: true, limit: urlEncodedBodyLimit }));
-app.use('/assets', express.static(path.join(__dirname, '../public', 'assets')));
-
-
 const authRoutes = require('./routes/auth');
 const referenceRoutes = require('./routes/reference');
 const requestRoutes = require('./routes/request');
@@ -58,156 +14,212 @@ const adminAccountRoutes = require('./routes/admin-account');
 const fileRoutes = require('./routes/file');
 const PaymentService = require('./services/payment/payment.service');
 const { createRateLimit } = require('./middlewares/rate-limit');
-
-app.use('/auth', authRoutes);
-app.use('/references', referenceRoutes);
-app.use('/requests', requestRoutes);
-app.use('/me', meRoutes);
-app.use('/assignments', assignmentRoutes);
-app.use('/lhu', lhuRoutes);
-app.use('/lka-revisions', lkaRevisionRoutes);
-app.use('/admin/parameters', adminParameterRoutes);
-app.use('/admin/accounts', adminAccountRoutes);
-const fileAccessLimiter = createRateLimit({
-  windowMs: 60 * 1000,
-  max: 120,
-  keyPrefix: 'files',
-  message: 'Terlalu banyak akses file. Silakan coba lagi beberapa saat.',
-});
-
-const webhookLimiter = createRateLimit({
-  windowMs: 60 * 1000,
-  max: 120,
-  keyPrefix: 'webhook-xendit',
-  message: 'Terlalu banyak request webhook.',
-});
-
-app.use('/files', fileAccessLimiter, fileRoutes);
-app.post('/webhooks/xendit/payment-session', webhookLimiter, PaymentService.handleXenditPaymentSessionWebhook);
-
-app.get('/health', (req, res) => {
-  return res.status(200).json({
-    success: true,
-    message: 'OK',
-    data: { service: 'SILABLING API' },
-  });
-});
-
-function parseBooleanEnv(value, defaultValue = false) {
-  if (value === undefined || value === null || value === '') return defaultValue;
-  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
-}
-
-function legacyFileAccessBlocked(req, res) {
-  return res.status(403).json({
-    success: false,
-    message: 'Akses file langsung sudah dinonaktifkan. Gunakan URL file aman dari endpoint /files.',
-  });
-}
-
-const enableLegacyFileStatic = parseBooleanEnv(process.env.ENABLE_LEGACY_FILE_STATIC, false);
-
-if (enableLegacyFileStatic) {
-  app.use('/invoices', express.static(path.join(__dirname, '../public', 'invoices')));
-  app.use('/lhu', express.static(path.join(__dirname, '../public', 'lhu')));
-  app.use('/worksheets', express.static(path.join(__dirname, '../public', 'worksheets')));
-  app.use('/worksheets', express.static(path.join(process.cwd(), 'uploads', 'worksheets')));
-  app.use('/uploads/worksheets', express.static(path.join(process.cwd(), 'uploads', 'worksheets')));
-} else {
-  app.use('/invoices', legacyFileAccessBlocked);
-  app.use('/worksheets', legacyFileAccessBlocked);
-  app.use('/uploads/worksheets', legacyFileAccessBlocked);
-}
-
-function trimTrailingSlash(value) {
-  return String(value || '').trim().replace(/\/+$/, '');
-}
-
-function getFrontendRedirectBaseUrl() {
-  return trimTrailingSlash(
-    process.env.FRONTEND_URL ||
-    process.env.CLIENT_URL ||
-    process.env.VITE_FRONTEND_URL ||
-    allowedOrigins[0] ||
-    'http://localhost:5173'
-  );
-}
-
-function redirectPaymentReturn(status) {
-  return async (req, res) => {
-    const frontendBaseUrl = getFrontendRedirectBaseUrl();
-    const redirectUrl = new URL('/pelanggan/status', `${frontendBaseUrl}/`);
-
-    Object.entries(req.query || {}).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        value.forEach((item) => {
-          if (item !== undefined && item !== null && String(item).trim() !== '') {
-            redirectUrl.searchParams.append(key, String(item));
-          }
-        });
-        return;
-      }
-
-      if (value !== undefined && value !== null && String(value).trim() !== '') {
-        redirectUrl.searchParams.set(key, String(value));
-      }
-    });
-
-    try {
-      const syncResult = await PaymentService.syncXenditPaymentStatusFromReturn(req.query || {});
-      if (syncResult?.status) {
-        redirectUrl.searchParams.set('gateway_status', syncResult.status);
-      }
-    } catch (error) {
-      console.error('syncXenditPaymentStatusFromReturn error:', error);
-      redirectUrl.searchParams.set('payment_sync', 'failed');
+class SilablingApplication {
+    constructor({ paymentService = PaymentService } = {}) {
+        this.app = express();
+        this.paymentService = paymentService;
+        this.configuredFrontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+        this.allowedOrigins = this.configuredFrontendOrigin
+            .split(',')
+            .map((origin) => origin.trim())
+            .filter(Boolean);
+        this.localhostOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/i;
+        this.allowAnyLocalhostOrigin = process.env.NODE_ENV !== 'production';
+        this.jsonBodyLimit = process.env.JSON_BODY_LIMIT || '2mb';
+        this.urlEncodedBodyLimit = process.env.URLENCODED_BODY_LIMIT || '2mb';
+        this.enableLegacyFileStatic = this.parseBooleanEnv(process.env.ENABLE_LEGACY_FILE_STATIC, false);
+        this.configure();
     }
-
-    redirectUrl.searchParams.set('payment', status);
-
-    return res.redirect(302, redirectUrl.toString());
-  };
+    configure = () => {
+        this.app.disable('x-powered-by');
+        this.registerSecurityMiddleware();
+        this.registerCorsMiddleware();
+        this.registerBodyMiddleware();
+        this.registerStaticAssets();
+        this.registerRoutes();
+        this.registerProtectedFileRoutes();
+        this.registerPaymentReturnRoutes();
+        this.registerFallbackHandlers();
+    };
+    getApp = () => {
+        return this.app;
+    };
+    registerSecurityMiddleware = () => {
+        this.app.use(this.applySecurityHeaders);
+    };
+    applySecurityHeaders = (req, res, next) => {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Referrer-Policy', 'no-referrer');
+        res.setHeader('X-Frame-Options', 'DENY');
+        next();
+    };
+    registerCorsMiddleware = () => {
+        this.app.use(cors({
+            origin: (origin, callback) => {
+                if (this.isAllowedOrigin(origin)) {
+                    return callback(null, true);
+                }
+                return callback(new Error('Origin tidak diizinkan oleh CORS.'));
+            },
+            credentials: true,
+        }));
+    };
+    isAllowedOrigin = (origin) => {
+        return (!origin ||
+            this.allowedOrigins.includes(origin) ||
+            (this.allowAnyLocalhostOrigin && this.localhostOriginPattern.test(origin)));
+    };
+    registerBodyMiddleware = () => {
+        this.app.use(cookieParser());
+        this.app.use(express.json({ limit: this.jsonBodyLimit }));
+        this.app.use(express.urlencoded({ extended: true, limit: this.urlEncodedBodyLimit }));
+    };
+    registerStaticAssets = () => {
+        this.app.use('/assets', express.static(path.join(__dirname, '../public', 'assets')));
+    };
+    registerRoutes = () => {
+        this.app.use('/auth', authRoutes);
+        this.app.use('/references', referenceRoutes);
+        this.app.use('/requests', requestRoutes);
+        this.app.use('/me', meRoutes);
+        this.app.use('/assignments', assignmentRoutes);
+        this.app.use('/lhu', lhuRoutes);
+        this.app.use('/lka-revisions', lkaRevisionRoutes);
+        this.app.use('/admin/parameters', adminParameterRoutes);
+        this.app.use('/admin/accounts', adminAccountRoutes);
+    };
+    registerProtectedFileRoutes = () => {
+        const fileAccessLimiter = createRateLimit({
+            windowMs: 60 * 1000,
+            max: 120,
+            keyPrefix: 'files',
+            message: 'Terlalu banyak akses file. Silakan coba lagi beberapa saat.',
+        });
+        const webhookLimiter = createRateLimit({
+            windowMs: 60 * 1000,
+            max: 120,
+            keyPrefix: 'webhook-xendit',
+            message: 'Terlalu banyak request webhook.',
+        });
+        this.app.use('/files', fileAccessLimiter, fileRoutes);
+        this.app.post('/webhooks/xendit/payment-session', webhookLimiter, this.paymentService.handleXenditPaymentSessionWebhook);
+        this.app.get('/health', this.healthCheck);
+        this.registerLegacyFileRoutes();
+    };
+    healthCheck = (req, res) => {
+        return res.status(200).json({
+            success: true,
+            message: 'OK',
+            data: { service: 'SILABLING API' },
+        });
+    };
+    parseBooleanEnv = (value, defaultValue = false) => {
+        if (value === undefined || value === null || value === '')
+            return defaultValue;
+        return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+    };
+    legacyFileAccessBlocked = (req, res) => {
+        return res.status(403).json({
+            success: false,
+            message: 'Akses file langsung sudah dinonaktifkan. Gunakan URL file aman dari endpoint /files.',
+        });
+    };
+    registerLegacyFileRoutes = () => {
+        if (this.enableLegacyFileStatic) {
+            this.app.use('/invoices', express.static(path.join(__dirname, '../public', 'invoices')));
+            this.app.use('/lhu', express.static(path.join(__dirname, '../public', 'lhu')));
+            this.app.use('/worksheets', express.static(path.join(__dirname, '../public', 'worksheets')));
+            this.app.use('/worksheets', express.static(path.join(process.cwd(), 'uploads', 'worksheets')));
+            this.app.use('/uploads/worksheets', express.static(path.join(process.cwd(), 'uploads', 'worksheets')));
+            return;
+        }
+        this.app.use('/invoices', this.legacyFileAccessBlocked);
+        this.app.use('/worksheets', this.legacyFileAccessBlocked);
+        this.app.use('/uploads/worksheets', this.legacyFileAccessBlocked);
+    };
+    trimTrailingSlash = (value) => {
+        return String(value || '').trim().replace(/\/+$/, '');
+    };
+    getFrontendRedirectBaseUrl = () => {
+        return this.trimTrailingSlash(process.env.FRONTEND_URL ||
+            process.env.CLIENT_URL ||
+            process.env.VITE_FRONTEND_URL ||
+            this.allowedOrigins[0] ||
+            'http://localhost:5173');
+    };
+    redirectPaymentReturn = (status) => {
+        return async (req, res) => {
+            const frontendBaseUrl = this.getFrontendRedirectBaseUrl();
+            const redirectUrl = new URL('/pelanggan/status', `${frontendBaseUrl}/`);
+            Object.entries(req.query || {}).forEach(([key, value]) => {
+                if (Array.isArray(value)) {
+                    value.forEach((item) => {
+                        if (item !== undefined && item !== null && String(item).trim() !== '') {
+                            redirectUrl.searchParams.append(key, String(item));
+                        }
+                    });
+                    return;
+                }
+                if (value !== undefined && value !== null && String(value).trim() !== '') {
+                    redirectUrl.searchParams.set(key, String(value));
+                }
+            });
+            try {
+                const syncResult = await this.paymentService.syncXenditPaymentStatusFromReturn(req.query || {});
+                if (syncResult?.status) {
+                    redirectUrl.searchParams.set('gateway_status', syncResult.status);
+                }
+            }
+            catch (error) {
+                console.error('syncXenditPaymentStatusFromReturn error:', error);
+                redirectUrl.searchParams.set('payment_sync', 'failed');
+            }
+            redirectUrl.searchParams.set('payment', status);
+            return res.redirect(302, redirectUrl.toString());
+        };
+    };
+    registerPaymentReturnRoutes = () => {
+        this.app.get('/payment/return/success', this.redirectPaymentReturn('success'));
+        this.app.get('/payment/return/cancel', this.redirectPaymentReturn('failed'));
+        // Backward-compatible aliases for older Xendit return URL configuration.
+        this.app.get('/payment/success', this.redirectPaymentReturn('success'));
+        this.app.get('/payment/cancel', this.redirectPaymentReturn('failed'));
+    };
+    registerFallbackHandlers = () => {
+        this.app.use(this.notFoundHandler);
+        this.app.use(this.errorHandler);
+    };
+    notFoundHandler = (req, res) => {
+        return res.status(404).json({
+            success: false,
+            message: 'Endpoint tidak ditemukan.',
+        });
+    };
+    errorHandler = (err, req, res, next) => {
+        if (res.headersSent)
+            return next(err);
+        if (err?.type === 'entity.too.large') {
+            return res.status(413).json({
+                success: false,
+                message: 'Ukuran payload request terlalu besar.',
+            });
+        }
+        if (err?.message === 'Origin tidak diizinkan oleh CORS.') {
+            return res.status(403).json({
+                success: false,
+                message: 'Origin tidak diizinkan oleh CORS.',
+            });
+        }
+        if (process.env.NODE_ENV !== 'production') {
+            console.error('Unhandled app error:', err);
+        }
+        return res.status(500).json({
+            success: false,
+            message: 'Terjadi kesalahan pada server.',
+        });
+    };
 }
-
-app.get('/payment/return/success', redirectPaymentReturn('success'));
-app.get('/payment/return/cancel', redirectPaymentReturn('failed'));
-
-// Backward-compatible aliases for older Xendit return URL configuration.
-app.get('/payment/success', redirectPaymentReturn('success'));
-app.get('/payment/cancel', redirectPaymentReturn('failed'));
-
-app.use((req, res) => {
-  return res.status(404).json({
-    success: false,
-    message: 'Endpoint tidak ditemukan.',
-  });
-});
-
-app.use((err, req, res, next) => {
-  if (res.headersSent) return next(err);
-
-  if (err?.type === 'entity.too.large') {
-    return res.status(413).json({
-      success: false,
-      message: 'Ukuran payload request terlalu besar.',
-    });
-  }
-
-  if (err?.message === 'Origin tidak diizinkan oleh CORS.') {
-    return res.status(403).json({
-      success: false,
-      message: 'Origin tidak diizinkan oleh CORS.',
-    });
-  }
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('Unhandled app error:', err);
-  }
-
-  return res.status(500).json({
-    success: false,
-    message: 'Terjadi kesalahan pada server.',
-  });
-});
-
-module.exports = app;
+const silablingApplication = new SilablingApplication({ paymentService: PaymentService });
+module.exports = silablingApplication.getApp();
+module.exports.SilablingApplication = SilablingApplication;
+module.exports.silablingApplication = silablingApplication;

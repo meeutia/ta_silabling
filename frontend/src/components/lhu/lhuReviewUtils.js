@@ -323,8 +323,8 @@ export function getKeteranganSampel(row = {}) {
   return (
     row.keteranganSampel ||
     row.keterangan_sampel ||
-    row.catatanUmum ||
-    row.catatan_umum ||
+    row.catatanRevisi ||
+    row.catatan_revisi ||
     '-'
   );
 }

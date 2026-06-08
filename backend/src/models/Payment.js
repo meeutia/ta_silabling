@@ -55,6 +55,15 @@ const Payment = sequelize.define('payment', {
         type: DataTypes.DATE,
         allowNull: true
     },
+}, {
+    tableName: 'payment',
+    timestamps: false,
+    indexes: [
+        { name: 'idx_payment_invoice', fields: ['id_invoice'] },
+        { name: 'idx_payment_gateway_status', fields: ['gateway_status'] },
+        { name: 'idx_payment_gateway_session_id', fields: ['gateway_session_id'] },
+        { name: 'idx_payment_gateway_reference_id', fields: ['gateway_reference_id'] },
+    ],
 });
 
 module.exports = Payment;

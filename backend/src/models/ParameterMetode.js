@@ -32,18 +32,22 @@ const ParameterMetode = sequelize.define('parameter_metode', {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false
+    },
+    is_active: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
     }
 }, {
     indexes: [
         {
-            unique: true,
             fields: ['id_metode_parameter', 'id_parameter'],
-            name: 'uq_parameter_metode_idparam'
+            name: 'idx_parameter_metode_idparam'
         },
         {
             unique: true,
-            fields: ['id_parameter', 'id_metode', 'is_subkontrak'],
-            name: 'uq_parameter_metode_pair_source'
+            fields: ['id_parameter', 'id_metode', 'acuan_metode', 'is_subkontrak'],
+            name: 'uq_parameter_metode_variant'
         }
     ]
 });

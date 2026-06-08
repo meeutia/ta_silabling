@@ -4,10 +4,122 @@ import { normalizeBool, stripHtml } from './parameterFormatters';
 
 const EMPTY_PAKET_PARAM_FORM = {
   id_parameter: '',
-  nilai_bm: '',
   satuan_bm: '',
   ket_bm: '',
+  nilai_by_paket: {},
 };
+
+function assertBmLength(value, maxLength, label) {
+  if (String(value || '').length > maxLength) {
+    throw new Error(`${label} maksimal ${maxLength} karakter`);
+  }
+}
+
+function getJenisSampelLabel(item = {}) {
+  return item.jenis_sampel_row?.jenis_sampel || item.jenis_sampel?.jenis_sampel || item.jenis_sampel || item.nama_jenis_sampel || '-';
+}
+
+function getRegulasiLabel(item = {}) {
+  return item.reg_bm?.ref_reg || item.ref_reg || item.id_reg_bm || '-';
+}
+
+function getGroupKey(item = {}) {
+  return `${item.id_reg_bm || item.reg_bm?.id_reg_bm || ''}__${item.id_jenis_sampel || item.jenis_sampel?.id_jenis_sampel || ''}`;
+}
+
+function sortPaketItems(items = []) {
+  return [...items].sort((a, b) => {
+    const left = String(a.klasifikasi || '').localeCompare(String(b.klasifikasi || ''), 'id');
+    if (left !== 0) return left;
+    return String(a.id_pkt_bm || '').localeCompare(String(b.id_pkt_bm || ''), 'id');
+  });
+}
+
+function buildPaketGroups(paketRows = []) {
+  const groups = new Map();
+
+  paketRows.forEach((paket) => {
+    const groupKey = getGroupKey(paket);
+    if (!groupKey || groupKey === '__') return;
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        group_key: groupKey,
+        id_reg_bm: paket.id_reg_bm || paket.reg_bm?.id_reg_bm || '',
+        id_jenis_sampel: paket.id_jenis_sampel || paket.jenis_sampel?.id_jenis_sampel || '',
+        reg_bm: paket.reg_bm || null,
+        jenis_sampel: paket.jenis_sampel || paket.jenis_sampel_row || null,
+        jenis_sampel_label: getJenisSampelLabel(paket),
+        paket_items: [],
+        is_locked: false,
+        is_active: normalizeBool(paket.group_is_active ?? paket.is_active),
+      });
+    }
+
+    const group = groups.get(groupKey);
+    group.paket_items.push(paket);
+    group.is_locked = group.is_locked || Boolean(paket.is_locked);
+    group.is_active = normalizeBool(paket.group_is_active ?? paket.is_active ?? group.is_active);
+  });
+
+  return [...groups.values()]
+    .map((group) => {
+      const paketItems = sortPaketItems(group.paket_items);
+      return {
+        ...group,
+        paket_items: paketItems,
+        total_klasifikasi: paketItems.length,
+        klasifikasi_labels: paketItems.map((item) => item.klasifikasi || item.id_pkt_bm).filter(Boolean),
+      };
+    })
+    .sort((a, b) => {
+      const regCompare = getRegulasiLabel(a).localeCompare(getRegulasiLabel(b), 'id');
+      if (regCompare !== 0) return regCompare;
+      return String(a.jenis_sampel_label || '').localeCompare(String(b.jenis_sampel_label || ''), 'id');
+    });
+}
+
+function createMatrixRows(group, paketParameterResults) {
+  const rowMap = new Map();
+  const paketItems = group?.paket_items || [];
+
+  paketParameterResults.forEach(({ paket, parameters }) => {
+    (parameters || []).forEach((item) => {
+      const idParameter = item.id_parameter || item.parameter?.id_parameter;
+      if (!idParameter) return;
+
+      if (!rowMap.has(idParameter)) {
+        rowMap.set(idParameter, {
+          id_parameter: idParameter,
+          parameter: item.parameter || {
+            id_parameter: idParameter,
+            nama_parameter: item.nama_parameter,
+            kategori_parameter: item.kategori_parameter,
+          },
+          nama_parameter: item.nama_parameter || item.parameter?.nama_parameter || '',
+          kategori_parameter: item.kategori_parameter || item.parameter?.kategori_parameter || item.parameter?.kategori?.nama_kategori || '',
+          satuan_bm: item.satuan_bm || '',
+          ket_bm: item.ket_bm || '',
+          nilai_by_paket: {},
+          existing_by_paket: {},
+          paket_items: paketItems,
+        });
+      }
+
+      const row = rowMap.get(idParameter);
+      if (!row.satuan_bm && item.satuan_bm) row.satuan_bm = item.satuan_bm;
+      if (!row.ket_bm && item.ket_bm) row.ket_bm = item.ket_bm;
+      row.nilai_by_paket[paket.id_pkt_bm] = item.nilai_bm ?? '';
+      row.existing_by_paket[paket.id_pkt_bm] = true;
+    });
+  });
+
+  return [...rowMap.values()].sort((a, b) => {
+    const nameA = stripHtml(a.parameter?.nama_parameter || a.nama_parameter || '');
+    const nameB = stripHtml(b.parameter?.nama_parameter || b.nama_parameter || '');
+    return nameA.localeCompare(nameB, 'id');
+  });
+}
 
 const DELETE_META = {
   param_metode: {
@@ -23,8 +135,8 @@ const DELETE_META = {
     description: (item) => item.nama_pkt || item.id_pkt_bm,
   },
   paket_param: {
-    title: 'Hapus Parameter dari Paket',
-    description: (item) => item.parameter?.nama_parameter || item.id_pkt_bm_param,
+    title: 'Hapus Parameter dari Matrix Baku Mutu',
+    description: (item) => item.parameter?.nama_parameter || item.nama_parameter || item.id_parameter || '-',
   },
   tarif: {
     title: 'Hapus Tarif Pengambilan',
@@ -40,9 +152,10 @@ function getInitialFormData(type, item) {
           id_parameter: item.id_parameter || item.parameter?.id_parameter || '',
           id_metode: item.id_metode || item.metode?.id_metode || '',
           acuan_metode: item.acuan_metode || '',
-          tarif: item.tarif || 0,
+          tarif: item.tarif ?? '',
           is_terakreditasi: normalizeBool(item.is_terakreditasi),
           is_subkontrak: normalizeBool(item.is_subkontrak),
+          is_active: normalizeBool(item.is_active ?? true),
           is_new_parameter: false,
           is_new_metode: false,
           nama_parameter: '',
@@ -53,9 +166,10 @@ function getInitialFormData(type, item) {
           id_parameter: '',
           id_metode: '',
           acuan_metode: '',
-          tarif: 0,
+          tarif: '',
           is_terakreditasi: false,
           is_subkontrak: false,
+          is_active: true,
           is_new_parameter: false,
           is_new_metode: false,
           nama_parameter: '',
@@ -83,15 +197,11 @@ function getInitialFormData(type, item) {
           ...item,
           id_reg_bm: item.id_reg_bm || item.reg_bm?.id_reg_bm || '',
           id_jenis_sampel: item.id_jenis_sampel || item.jenis_sampel?.id_jenis_sampel || '',
-          is_active: normalizeBool(item.is_active),
         }
       : {
           id_reg_bm: '',
           id_jenis_sampel: '',
-          nama_pkt: '',
           klasifikasi: '',
-          teks_lhu: '',
-          is_active: true,
         };
   }
 
@@ -100,7 +210,7 @@ function getInitialFormData(type, item) {
       ? { ...item }
       : {
           keterangan_jarak: '',
-          tarif: 0,
+          tarif: '',
         };
   }
 
@@ -125,10 +235,32 @@ function validateParameterMetode(body) {
   }
 }
 
+function validateMatrixPayload(formValue, paketItems) {
+  assertBmLength(formValue.satuan_bm, 20, 'Satuan baku mutu');
+  assertBmLength(formValue.ket_bm, 100, 'Keterangan baku mutu');
+
+  const nilaiMap = formValue.nilai_by_paket || {};
+  const hasAtLeastOneValue = paketItems.some((paket) => String(nilaiMap[paket.id_pkt_bm] ?? '').trim());
+
+  if (!hasAtLeastOneValue) {
+    throw new Error('Isi minimal satu nilai baku mutu pada salah satu klasifikasi');
+  }
+
+  paketItems.forEach((paket) => {
+    assertBmLength(nilaiMap[paket.id_pkt_bm], 30, `Nilai baku mutu ${paket.klasifikasi || paket.id_pkt_bm}`);
+  });
+}
+
 async function saveByModalType(modalType, body, selectedItem) {
   if (modalType === 'add_param_metode' || modalType === 'edit_param_metode') {
     validateParameterMetode(body);
-    return adminParameterApi.saveParameterMetode(body, selectedItem);
+    const payload = selectedItem
+      ? {
+          tarif: body.tarif ? Number(body.tarif) : 0,
+          is_active: body.is_active,
+        }
+      : body;
+    return adminParameterApi.saveParameterMetode(payload, selectedItem);
   }
 
   if (modalType === 'add_regulasi' || modalType === 'edit_regulasi') {
@@ -140,7 +272,7 @@ async function saveByModalType(modalType, body, selectedItem) {
   }
 
   if (modalType === 'add_tarif' || modalType === 'edit_tarif') {
-    return adminParameterApi.saveTarifPengambilan(body, selectedItem);
+    return adminParameterApi.saveTarifPengambilan({ ...body, tarif: body.tarif ? Number(body.tarif) : 0 }, selectedItem);
   }
 
   throw new Error('Jenis form tidak valid.');
@@ -150,8 +282,23 @@ async function deleteByType(type, item) {
   if (type === 'param_metode') return adminParameterApi.deleteParameterMetode(item);
   if (type === 'regulasi') return adminParameterApi.deleteRegulasi(item);
   if (type === 'paket') return adminParameterApi.deletePaket(item);
-  if (type === 'paket_param') return adminParameterApi.deletePaketParameter(item);
   if (type === 'tarif') return adminParameterApi.deleteTarifPengambilan(item);
+
+  if (type === 'paket_param') {
+    const paketItems = item?.paket_items || [];
+    const existingMap = item?.existing_by_paket || {};
+    const nilaiMap = item?.nilai_by_paket || {};
+    const targetPaketItems = paketItems.filter((paket) => existingMap[paket.id_pkt_bm] || String(nilaiMap[paket.id_pkt_bm] ?? '').trim());
+
+    for (const paket of targetPaketItems) {
+      await adminParameterApi.deletePaketParameter({
+        id_pkt_bm: paket.id_pkt_bm,
+        id_parameter: item.id_parameter,
+      });
+    }
+
+    return { message: 'Parameter berhasil dihapus dari matrix baku mutu' };
+  }
 
   throw new Error('Jenis data tidak valid.');
 }
@@ -240,15 +387,22 @@ export function useAdminKelolaParameter() {
     fetchData();
   }, [fetchData]);
 
-  const fetchPaketParameters = useCallback(
-    async (idPktBm) => {
+  const fetchPaketMatrix = useCallback(
+    async (group) => {
+      const paketItems = group?.paket_items || [];
       setIsModalLoading(true);
 
       try {
-        const parameters = await adminParameterApi.getPaketParameters(idPktBm);
-        setPaketParameters(parameters);
+        const results = [];
+
+        for (const paket of paketItems) {
+          const parameters = await adminParameterApi.getPaketParameters(paket.id_pkt_bm);
+          results.push({ paket, parameters });
+        }
+
+        setPaketParameters(createMatrixRows(group, results));
       } catch (error) {
-        showToast(error.message || 'Gagal memuat parameter paket', 'error');
+        showToast(error.message || 'Gagal memuat matrix baku mutu', 'error');
       } finally {
         setIsModalLoading(false);
       }
@@ -260,6 +414,13 @@ export function useAdminKelolaParameter() {
     setActiveTab(tabKey);
     setSearchQuery('');
     setFilterStatus('Semua');
+    if (tabKey !== 'paket_baku_mutu') {
+      setModalType(null);
+      setSelectedItem(null);
+      setPaketParamForm(EMPTY_PAKET_PARAM_FORM);
+      setEditingPaketParam(null);
+      setPaketParameters([]);
+    }
   }, []);
 
   const handleOpenModal = useCallback((type, item = null) => {
@@ -312,6 +473,18 @@ export function useAdminKelolaParameter() {
   const handlePaketParamFormChange = useCallback((event) => {
     const { name, value } = event.target;
 
+    if (name.startsWith('nilai_by_paket.')) {
+      const idPktBm = name.replace('nilai_by_paket.', '');
+      setPaketParamForm((prev) => ({
+        ...prev,
+        nilai_by_paket: {
+          ...(prev.nilai_by_paket || {}),
+          [idPktBm]: value,
+        },
+      }));
+      return;
+    }
+
     setPaketParamForm((prev) => ({
       ...prev,
       [name]: value,
@@ -339,7 +512,6 @@ export function useAdminKelolaParameter() {
 
   const openDeleteConfirm = useCallback((type, item) => {
     const meta = DELETE_META[type] || {};
-
     const willDeactivate = item?.can_delete === false;
 
     setConfirmDelete({
@@ -358,8 +530,8 @@ export function useAdminKelolaParameter() {
 
       showToast(result?.message || 'Data berhasil diproses');
 
-      if (confirmDelete.type === 'paket_param' && selectedItem?.id_pkt_bm) {
-        fetchPaketParameters(selectedItem.id_pkt_bm);
+      if (confirmDelete.type === 'paket_param' && selectedItem?.group_key) {
+        fetchPaketMatrix(selectedItem);
       } else {
         fetchData();
       }
@@ -368,20 +540,30 @@ export function useAdminKelolaParameter() {
     } catch (error) {
       showToast(error.message || 'Gagal menghapus data', 'error');
     }
-  }, [confirmDelete, fetchData, fetchPaketParameters, selectedItem, showToast]);
-
+  }, [confirmDelete, fetchData, fetchPaketMatrix, selectedItem, showToast]);
 
   const handleToggleMasterStatus = useCallback(
     async (type, item) => {
       try {
         const isCurrentlyActive = normalizeBool(item?.is_active);
-        const result = type === 'regulasi'
-          ? await adminParameterApi.toggleRegulasiStatus(item)
-          : await adminParameterApi.togglePaketStatus(item);
+        let result;
+        let label = 'data';
 
-        showToast(
-          result?.message || `Berhasil ${isCurrentlyActive ? 'menonaktifkan' : 'mengaktifkan'} ${type === 'regulasi' ? 'regulasi' : 'paket'}`
-        );
+        if (type === 'param_metode') {
+          result = await adminParameterApi.toggleParameterMetodeStatus(item);
+          label = 'parameter metode';
+        } else if (type === 'regulasi') {
+          result = await adminParameterApi.toggleRegulasiStatus(item);
+          label = 'regulasi';
+        } else if (type === 'paket_group') {
+          result = await adminParameterApi.togglePaketGroupStatus(item);
+          label = 'kelompok baku mutu';
+        } else {
+          result = await adminParameterApi.togglePaketStatus(item);
+          label = 'klasifikasi baku mutu';
+        }
+
+        showToast(result?.message || `Berhasil ${isCurrentlyActive ? 'menonaktifkan' : 'mengaktifkan'} ${label}`);
         fetchData();
       } catch (error) {
         showToast(error.message || 'Gagal mengubah status data', 'error');
@@ -391,16 +573,16 @@ export function useAdminKelolaParameter() {
   );
 
   const handleKelolaPaket = useCallback(
-    async (paket) => {
-      setSelectedItem(paket);
+    async (group) => {
+      setSelectedItem(group);
       setModalType('manage_paket_param');
-      setIsModalOpen(true);
+      setIsModalOpen(false);
       setPaketParamForm(EMPTY_PAKET_PARAM_FORM);
       setEditingPaketParam(null);
 
-      await fetchPaketParameters(paket.id_pkt_bm);
+      await fetchPaketMatrix(group);
     },
-    [fetchPaketParameters]
+    [fetchPaketMatrix]
   );
 
   const handleAddPaketParameter = useCallback(
@@ -408,37 +590,48 @@ export function useAdminKelolaParameter() {
       event.preventDefault();
 
       try {
+        if (selectedItem?.is_locked) {
+          throw new Error('Matrix baku mutu dikunci karena salah satu klasifikasi sudah dipakai pada LHU');
+        }
+
         if (!paketParamForm.id_parameter) {
           throw new Error('Pilih parameter terlebih dahulu');
         }
 
-        if (!paketParamForm.nilai_bm?.trim()) {
-          throw new Error('Nilai baku mutu harus diisi');
+        const paketItems = selectedItem?.paket_items || [];
+        validateMatrixPayload(paketParamForm, paketItems);
+
+        for (const paket of paketItems) {
+          const nilaiBm = String(paketParamForm.nilai_by_paket?.[paket.id_pkt_bm] ?? '').trim();
+          if (!nilaiBm) continue;
+
+          await adminParameterApi.addPaketParameter(paket.id_pkt_bm, {
+            id_parameter: paketParamForm.id_parameter,
+            nilai_bm: nilaiBm,
+            satuan_bm: paketParamForm.satuan_bm,
+            ket_bm: paketParamForm.ket_bm,
+          });
         }
 
-        await adminParameterApi.addPaketParameter(selectedItem.id_pkt_bm, {
-          id_parameter: paketParamForm.id_parameter,
-          nilai_bm: paketParamForm.nilai_bm,
-          satuan_bm: paketParamForm.satuan_bm,
-          ket_bm: paketParamForm.ket_bm,
-        });
-
-        showToast('Berhasil menambahkan parameter');
+        showToast('Berhasil menambahkan parameter matrix');
         setPaketParamForm(EMPTY_PAKET_PARAM_FORM);
-        fetchPaketParameters(selectedItem.id_pkt_bm);
+        fetchPaketMatrix(selectedItem);
+        return true;
       } catch (error) {
-        showToast(error.message || 'Gagal menambahkan parameter', 'error');
+        showToast(error.message || 'Gagal menambahkan parameter matrix', 'error');
+        return false;
       }
     },
-    [fetchPaketParameters, paketParamForm, selectedItem, showToast]
+    [fetchPaketMatrix, paketParamForm, selectedItem, showToast]
   );
 
   const handleStartEditPaketParameter = useCallback((item) => {
     setEditingPaketParam({
       ...item,
-      nilai_bm: item.nilai_bm || '',
       satuan_bm: item.satuan_bm || '',
       ket_bm: item.ket_bm || '',
+      nilai_by_paket: { ...(item.nilai_by_paket || {}) },
+      existing_by_paket: { ...(item.existing_by_paket || {}) },
     });
   }, []);
 
@@ -447,28 +640,70 @@ export function useAdminKelolaParameter() {
       event.preventDefault();
 
       try {
-        if (!editingPaketParam?.nilai_bm?.trim()) {
-          throw new Error('Nilai baku mutu harus diisi');
+        if (selectedItem?.is_locked) {
+          throw new Error('Matrix baku mutu dikunci karena salah satu klasifikasi sudah dipakai pada LHU');
         }
 
-        await adminParameterApi.updatePaketParameter(editingPaketParam, {
-          nilai_bm: editingPaketParam.nilai_bm,
-          satuan_bm: editingPaketParam.satuan_bm,
-          ket_bm: editingPaketParam.ket_bm,
-        });
+        const paketItems = selectedItem?.paket_items || [];
+        validateMatrixPayload(editingPaketParam || {}, paketItems);
 
-        showToast('Berhasil mengubah nilai baku mutu');
+        for (const paket of paketItems) {
+          const idPktBm = paket.id_pkt_bm;
+          const nextValue = String(editingPaketParam?.nilai_by_paket?.[idPktBm] ?? '').trim();
+          const existedBefore = Boolean(editingPaketParam?.existing_by_paket?.[idPktBm]);
+
+          if (nextValue) {
+            const payload = {
+              nilai_bm: nextValue,
+              satuan_bm: editingPaketParam.satuan_bm,
+              ket_bm: editingPaketParam.ket_bm,
+            };
+
+            if (existedBefore) {
+              await adminParameterApi.updatePaketParameter(
+                { id_pkt_bm: idPktBm, id_parameter: editingPaketParam.id_parameter },
+                payload
+              );
+            } else {
+              await adminParameterApi.addPaketParameter(idPktBm, {
+                id_parameter: editingPaketParam.id_parameter,
+                ...payload,
+              });
+            }
+          } else if (existedBefore) {
+            await adminParameterApi.deletePaketParameter({
+              id_pkt_bm: idPktBm,
+              id_parameter: editingPaketParam.id_parameter,
+            });
+          }
+        }
+
+        showToast('Berhasil mengubah matrix baku mutu');
         setEditingPaketParam(null);
-        fetchPaketParameters(selectedItem.id_pkt_bm);
+        fetchPaketMatrix(selectedItem);
+        return true;
       } catch (error) {
-        showToast(error.message || 'Gagal mengubah nilai baku mutu', 'error');
+        showToast(error.message || 'Gagal mengubah matrix baku mutu', 'error');
+        return false;
       }
     },
-    [editingPaketParam, fetchPaketParameters, selectedItem, showToast]
+    [editingPaketParam, fetchPaketMatrix, selectedItem, showToast]
   );
 
   const handleEditPaketParamChange = useCallback((event) => {
     const { name, value } = event.target;
+
+    if (name.startsWith('nilai_by_paket.')) {
+      const idPktBm = name.replace('nilai_by_paket.', '');
+      setEditingPaketParam((prev) => ({
+        ...prev,
+        nilai_by_paket: {
+          ...(prev?.nilai_by_paket || {}),
+          [idPktBm]: value,
+        },
+      }));
+      return;
+    }
 
     setEditingPaketParam((prev) => ({
       ...prev,
@@ -478,7 +713,7 @@ export function useAdminKelolaParameter() {
 
   const currentFilterOptions = useMemo(() => {
     if (activeTab === 'parameter_metode') {
-      return ['Semua', 'Terakreditasi', 'Non-akreditasi'];
+      return ['Semua', 'Aktif', 'Nonaktif', 'Terakreditasi', 'Non-akreditasi'];
     }
 
     return [];
@@ -503,8 +738,11 @@ export function useAdminKelolaParameter() {
       const matchSearch = !query || text.includes(query);
 
       const isAccredited = normalizeBool(item.is_terakreditasi);
+      const isActive = normalizeBool(item.is_active ?? true);
       const matchFilter =
         filterStatus === 'Semua' ||
+        (filterStatus === 'Aktif' && isActive) ||
+        (filterStatus === 'Nonaktif' && !isActive) ||
         (filterStatus === 'Terakreditasi' && isAccredited) ||
         (filterStatus === 'Non-akreditasi' && !isAccredited);
 
@@ -514,7 +752,28 @@ export function useAdminKelolaParameter() {
 
   const filteredRegulasi = useMemo(() => regulasiData, [regulasiData]);
 
-  const filteredPaket = useMemo(() => paketData, [paketData]);
+  const paketGroups = useMemo(() => buildPaketGroups(paketData), [paketData]);
+
+  const filteredPaket = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return paketGroups;
+
+    return paketGroups.filter((group) => {
+      const text = [
+        group.id_reg_bm,
+        group.id_jenis_sampel,
+        group.reg_bm?.instansi,
+        group.reg_bm?.ref_reg,
+        group.jenis_sampel_label,
+        ...(group.klasifikasi_labels || []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return text.includes(query);
+    });
+  }, [paketGroups, searchQuery]);
 
   const filteredTarifPengambilan = useMemo(() => tarifPengambilanData, [tarifPengambilanData]);
 
@@ -552,7 +811,7 @@ export function useAdminKelolaParameter() {
     if (activeTab === 'parameter_metode') return 'Tambah Parameter';
     if (activeTab === 'regulasi') return 'Tambah Regulasi';
     if (activeTab === 'tarif_pengambilan') return 'Tambah Tarif';
-    return 'Tambah Paket';
+    return 'Tambah Klasifikasi';
   }, [activeTab]);
 
   const searchPlaceholder = useMemo(() => {
@@ -568,7 +827,7 @@ export function useAdminKelolaParameter() {
       return 'Cari jarak atau keterangan...';
     }
 
-    return 'Cari nama paket, regulasi, atau jenis sampel...';
+    return 'Cari regulasi, jenis sampel, atau klasifikasi...';
   }, [activeTab]);
 
   return {

@@ -6,8 +6,16 @@ const Sampel = sequelize.define('sampel', {
     type: DataTypes.STRING(25),
     primaryKey: true,
   },
-  id_fppl_sampel: {
-    type: DataTypes.STRING(13),
+  id_registrasi: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+  },
+  id_jenis_sampel: {
+    type: DataTypes.STRING(4),
+    allowNull: false,
+  },
+  id_reg_bm: {
+    type: DataTypes.STRING(6),
     allowNull: false,
   },
   tanggal_pengambilan_sampel: {

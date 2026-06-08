@@ -17,6 +17,7 @@ import {
 import { DashboardMetricCard } from '../../common/DashboardWidgets';
 import {
   formatRevisionDate,
+  getPreviousRevisionId,
   getRevisionItemsNote,
   getRevisionItemsText,
 } from './penyeliaKasiRevisionUtils';
@@ -394,6 +395,7 @@ export function KasiRevisionReviewTable({
             ) : (
               pendingKasiRevisions.map((row) => {
                 const id = row.id_revisi_lka || row.idRevisiLka;
+                const previousRevisionId = getPreviousRevisionId(row);
                 const isReviewing = reviewingKasiRevisionId === id;
                 const pengaju = row.PengajuRevisi || row.pengajuRevisi || {};
 
@@ -401,6 +403,11 @@ export function KasiRevisionReviewTable({
                   <tr key={id} className="transition-all hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                       {id}
+                      {previousRevisionId && (
+                        <div className="mt-1 text-xs font-normal text-gray-500">
+                          Ref: {previousRevisionId}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
                       {row.kode_lka || row.kodeLka || row.lka?.kode_lka || '-'}

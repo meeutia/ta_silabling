@@ -19,6 +19,7 @@ import {
   mapHolidaysToLookup,
   mapParametersToOptions,
   mapSampleTypesToOptions,
+  normalizeSampleEntries,
 } from './registrationMappers';
 import {
   trimRegistrationTextFields,
@@ -70,11 +71,7 @@ export function useRegistrationPage({
           ...defaultFormData,
           ...parsed,
           sampleEntries: Array.isArray(parsed?.sampleEntries) && parsed.sampleEntries.length > 0
-            ? parsed.sampleEntries.map((entry) => ({
-              ...createEmptySampleEntry(),
-              ...entry,
-              idRegBm: entry?.idRegBm || entry?.id_reg_bm || '',
-            }))
+            ? normalizeSampleEntries(parsed.sampleEntries)
             : defaultFormData.sampleEntries,
         };
       }
@@ -420,7 +417,7 @@ export function useRegistrationPage({
   };
 
   const getRequestDetails = () => {
-    return formData.sampleEntries.filter(
+    return normalizeSampleEntries(formData.sampleEntries).filter(
       (entry) => entry.jenisSampel && entry.parameters.length > 0
     );
   };

@@ -1,6 +1,5 @@
 import React from 'react';
 import { AlertTriangle, Lock, X } from 'lucide-react';
-import { ScientificInput, ScientificTextarea } from './AdminKelolaParameterFormControls';
 
 function normalizeBool(value) {
   if (typeof value === 'boolean') return value;
@@ -34,10 +33,9 @@ export function PaketModal({
   const regulasiOptions = buildRegulasiOptions(regulasiData, formData.id_reg_bm);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-stretch justify-center z-50 p-4">
       <div
-        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden"
-        style={{ maxHeight: '90vh' }}
+        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full h-full flex flex-col overflow-hidden"
       >
         <div className="p-6 border-b border-gray-200 shrink-0 bg-white">
           <div className="flex items-center justify-between gap-4">
@@ -46,7 +44,7 @@ export function PaketModal({
                 {selectedItem ? 'Edit Paket Baku Mutu' : 'Tambah Paket Baku Mutu'}
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Hubungkan regulasi dengan jenis sampel dan klasifikasi baku mutu.
+                Tambahkan klasifikasi ke kelompok regulasi dan jenis sampel. Status aktif/nonaktif dikelola pada level kelompok baku mutu.
               </p>
             </div>
 
@@ -62,12 +60,10 @@ export function PaketModal({
 
         <form
           onSubmit={onSubmit}
-          className="flex flex-col flex-1 overflow-hidden"
-          style={{ minHeight: 0 }}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <div
-            className="p-6 space-y-4 overflow-y-auto flex-1"
-            style={{ minHeight: 0 }}
+            className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6"
           >
             {isLocked && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -77,14 +73,14 @@ export function PaketModal({
                     <p className="font-semibold">Struktur paket dikunci</p>
                     <p className="mt-1">
                       Paket ini sudah dipakai pada LHU ({Number(usage.lhu || 0)} data).
-                      Kamu masih bisa mengubah status aktif/nonaktif, tetapi regulasi, jenis sampel, klasifikasi, nama paket, dan teks LHU tidak boleh diubah.
+                      Regulasi, jenis sampel, dan klasifikasi tidak boleh diubah. Status aktif/nonaktif dikelola pada level kelompok baku mutu.
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {!isLocked && selectedItem && Number(selectedItem?.usage?.pkt_bm_param || 0) > 0 && (
+            {!isLocked && selectedItem && Number(selectedItem?.usage?.pkt_bm_nilai || 0) > 0 && (
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -142,16 +138,6 @@ export function PaketModal({
               </div>
             </div>
 
-            <ScientificInput
-              label="Nama Paket"
-              name="nama_pkt"
-              value={formData.nama_pkt || ''}
-              onChange={onChange}
-              placeholder="Contoh: Air Sungai Kelas II"
-              disabled={isLocked}
-              required
-            />
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Klasifikasi
@@ -168,32 +154,6 @@ export function PaketModal({
               />
             </div>
 
-            <ScientificTextarea
-              label="Teks LHU"
-              value={formData.teks_lhu || ''}
-              onChange={(value) =>
-                onChange({
-                  target: {
-                    name: 'teks_lhu',
-                    value,
-                  },
-                })
-              }
-              placeholder="Teks keterangan regulasi yang akan ditampilkan di LHU"
-              disabled={isLocked}
-              required
-            />
-
-            <label className="flex items-center gap-2 cursor-pointer pb-6">
-              <input
-                type="checkbox"
-                name="is_active"
-                checked={formData.is_active || false}
-                onChange={onChange}
-                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">Paket Aktif</span>
-            </label>
           </div>
 
           <div className="p-6 border-t border-gray-200 bg-gray-50 shrink-0">

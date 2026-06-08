@@ -61,9 +61,11 @@ export function QcLhuDetailModal({
   const sampleRows = detailMode === 'finalisasi'
     ? normalizedSampleRows.filter((sample) => !isSampleAlreadyInLhu(sample))
     : normalizedSampleRows;
-  const selectedSampleNos = Array.isArray(form.sampleNos)
-    ? form.sampleNos.filter((noSampel) => sampleRows.some((sample) => (sample.noSampel || sample.no_sampel) === noSampel))
-    : [];
+  const selectedSampleNos = dedupeTextList(
+    Array.isArray(form.sampleNos)
+      ? form.sampleNos.filter((noSampel) => sampleRows.some((sample) => (sample.noSampel || sample.no_sampel) === noSampel))
+      : []
+  );
   const hasSelectedSamples = selectedSampleNos.length > 0;
   const selectedSampleRows = sampleRows.filter((sample) =>
     selectedSampleNos.includes(sample.noSampel || sample.no_sampel)
@@ -392,7 +394,7 @@ export function QcLhuDetailModal({
                                 disabled={lockedForQc}
                                 onChange={(event) => {
                                   const nextNos = event.target.checked
-                                    ? [...selectedSampleNos, noSampel]
+                                    ? dedupeTextList([...selectedSampleNos, noSampel])
                                     : selectedSampleNos.filter((item) => item !== noSampel);
 
                                   setForm((prev) => ({ ...prev, sampleNos: nextNos, idPktBm: '' }));

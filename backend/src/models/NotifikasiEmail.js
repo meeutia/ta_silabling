@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const { NOTIFICATION_RECIPIENT_TYPE, NOTIFICATION_REFERENCE_TYPE } = require('../constants/notification.constant');
 
 const NotifikasiEmail = sequelize.define('notifikasi_email', {
   id_notifikasi_email: {
@@ -12,33 +13,23 @@ const NotifikasiEmail = sequelize.define('notifikasi_email', {
     allowNull: false,
   },
 
-  penerima_user_nik: {
-    type: DataTypes.STRING(16),
+  penerima_tipe: {
+    type: DataTypes.ENUM(...Object.values(NOTIFICATION_RECIPIENT_TYPE)),
     allowNull: true,
   },
 
-  penerima_pelanggan_id: {
-    type: DataTypes.STRING(8),
-    allowNull: true,
-  },
-
-  id_registrasi: {
-    type: DataTypes.STRING(10),
-    allowNull: true,
-  },
-
-  id_jadwal_lhu: {
-    type: DataTypes.STRING(10),
-    allowNull: true,
-  },
-
-  nomor_lhu: {
+  penerima_id: {
     type: DataTypes.STRING(20),
     allowNull: true,
   },
 
-  id_penugasan: {
-    type: DataTypes.STRING(10),
+  referensi_tipe: {
+    type: DataTypes.ENUM(...Object.values(NOTIFICATION_REFERENCE_TYPE)),
+    allowNull: true,
+  },
+
+  referensi_id: {
+    type: DataTypes.STRING(30),
     allowNull: true,
   },
 
@@ -59,12 +50,6 @@ const NotifikasiEmail = sequelize.define('notifikasi_email', {
   },
 
   dibuat_pada: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-  },
-
-  diperbarui_pada: {
     type: DataTypes.DATE,
     allowNull: false,
     defaultValue: DataTypes.NOW,

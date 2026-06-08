@@ -7,8 +7,16 @@ const FpplParameterMetode = sequelize.define('fppl_parameter_metode', {
     primaryKey: true,
     allowNull: false,
   },
-  id_fppl_sampel: {
-    type: DataTypes.STRING(13),
+  id_registrasi: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+  },
+  id_jenis_sampel: {
+    type: DataTypes.STRING(4),
+    allowNull: false,
+  },
+  id_reg_bm: {
+    type: DataTypes.STRING(6),
     allowNull: false,
   },
   id_parameter: {

@@ -72,26 +72,34 @@ function SubkontrakBadge({ value }) {
   );
 }
 
-function ActionButtons({ onEdit, onDelete, deleteTitle = 'Hapus' }) {
+function ActionButtons({ onEdit, onDelete, deleteTitle = 'Hapus', showEdit = true, showDelete = true }) {
+  if (!showEdit && !showDelete) {
+    return <span className="text-xs text-gray-400">-</span>;
+  }
+
   return (
     <div className="flex items-center justify-end gap-1">
-      <button
-        type="button"
-        onClick={onEdit}
-        className="p-1.5 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-all"
-        title="Edit"
-      >
-        <Edit2 className="w-4 h-4" />
-      </button>
+      {showEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="p-1.5 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-all"
+          title="Edit"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+      )}
 
-      <button
-        type="button"
-        onClick={onDelete}
-        className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-all"
-        title={deleteTitle}
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      {showDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-all"
+          title={deleteTitle}
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }
@@ -197,7 +205,7 @@ function TableShell({ children }) {
   );
 }
 
-function ParameterMetodeTable({ rows, onEdit, onDelete }) {
+function ParameterMetodeTable({ rows, onEdit, onDelete, onToggleStatus }) {
   return (
     <TableShell>
       <table className="w-full text-sm text-left">
@@ -210,6 +218,7 @@ function ParameterMetodeTable({ rows, onEdit, onDelete }) {
             <th className="px-4 py-3">Tarif</th>
             <th className="px-4 py-3">Akreditasi</th>
             <th className="px-4 py-3">Subkontrak</th>
+            <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3 text-right">Aksi</th>
           </tr>
         </thead>
@@ -249,13 +258,25 @@ function ParameterMetodeTable({ rows, onEdit, onDelete }) {
               </td>
 
               <td className="px-4 py-3">
-                <ActionButtons onEdit={() => onEdit(item)} onDelete={() => onDelete(item)} />
+                <ActiveStatusBadge isActive={item.is_active ?? true} />
+              </td>
+
+              <td className="px-4 py-3">
+                <div className="flex items-center justify-end gap-1">
+                  <StatusToggleButton item={item} onToggle={() => onToggleStatus('param_metode', item)} />
+                  <ActionButtons
+                    onEdit={() => onEdit(item)}
+                    onDelete={() => onDelete(item)}
+                    showEdit={item.can_edit !== false}
+                    showDelete={item.can_delete !== false}
+                  />
+                </div>
               </td>
             </tr>
           ))}
 
           {rows.length === 0 && (
-            <EmptyRow colSpan="8">Tidak ada parameter & metode ditemukan</EmptyRow>
+            <EmptyRow colSpan="9">Tidak ada parameter & metode ditemukan</EmptyRow>
           )}
         </tbody>
       </table>
@@ -319,7 +340,8 @@ function RegulasiTable({ rows, onEdit, onDelete, onToggleStatus }) {
   );
 }
 
-function PaketTable({ rows, onEdit, onDelete, onManage, onToggleStatus }) {
+
+function PaketGroupTable({ rows, onManage, onToggleStatus }) {
   return (
     <TableShell>
       <table className="w-full text-sm text-left">
@@ -327,73 +349,73 @@ function PaketTable({ rows, onEdit, onDelete, onManage, onToggleStatus }) {
           <tr>
             <th className="px-4 py-3">Regulasi</th>
             <th className="px-4 py-3">Jenis Sampel</th>
-            <th className="px-4 py-3">Nama Paket</th>
             <th className="px-4 py-3">Klasifikasi</th>
             <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3 text-center">Parameter</th>
-            <th className="px-4 py-3 text-right">Aksi</th>
+            <th className="px-4 py-3 text-right">Matrix Baku Mutu</th>
           </tr>
         </thead>
 
         <tbody className="divide-y divide-gray-100">
           {rows.map((item) => (
-            <tr key={item.id_pkt_bm} className="hover:bg-gray-50 transition-colors">
-              <td className="px-4 py-3 text-gray-700 min-w-[260px]">
+            <tr key={item.group_key} className="hover:bg-gray-50 transition-colors">
+              <td className="px-4 py-3 text-gray-700 min-w-[320px]">
                 <p className="font-medium text-gray-900">{item.reg_bm?.instansi || '-'}</p>
-                <p className="text-xs text-gray-500 line-clamp-2">{item.reg_bm?.ref_reg || '-'}</p>
+                <p className="text-xs text-gray-500 line-clamp-2">{item.reg_bm?.ref_reg || item.id_reg_bm || '-'}</p>
               </td>
 
               <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                {item.jenis_sampel?.jenis_sampel || '-'}
+                {item.jenis_sampel_label || '-'}
               </td>
 
-              <td className="px-4 py-3 text-gray-900 font-medium min-w-[200px]">
-                <p>{item.nama_pkt || '-'}</p>
-                {item.is_locked && (
-                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700">
-                    <Lock className="h-3.5 w-3.5" />
-                    Acuan dikunci, hanya status yang bisa diubah
-                  </p>
-                )}
-              </td>
-
-              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                {item.klasifikasi || '-'}
+              <td className="px-4 py-3 min-w-[280px]">
+                <div className="flex flex-wrap gap-1.5">
+                  {(item.paket_items || []).map((paket) => (
+                    <span
+                      key={paket.id_pkt_bm}
+                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700"
+                    >
+                      {paket.klasifikasi || paket.id_pkt_bm}
+                      {paket.is_locked && <Lock className="h-3 w-3 text-amber-600" />}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  {item.total_klasifikasi || 0} klasifikasi dalam satu kelompok baku mutu
+                </p>
               </td>
 
               <td className="px-4 py-3">
                 <ActiveStatusBadge isActive={item.is_active} />
-              </td>
-
-              <td className="px-4 py-3 text-center">
-                <button
-                  type="button"
-                  onClick={() => onManage(item)}
-                  className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-medium transition-colors"
-                >
-                  Kelola
-                </button>
-              </td>
-
-              <td className="px-4 py-3">
-                {item.is_locked || item.can_delete === false ? (
-                  <StatusToggleButton item={item} onToggle={() => onToggleStatus('paket', item)} />
-                ) : (
-                  <ActionButtons
-                    onEdit={() => onEdit(item)}
-                    onDelete={() => onDelete(item)}
-                  />
+                {item.is_locked && (
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+                    <Lock className="h-3.5 w-3.5" />
+                    Ada klasifikasi terkunci
+                  </p>
                 )}
+              </td>
+
+              <td className="px-4 py-3 text-right">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <StatusToggleButton item={item} onToggle={() => onToggleStatus('paket_group', item)} />
+                  <button
+                    type="button"
+                    onClick={() => onManage(item)}
+                    className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    Kelola Matrix
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
 
-          {rows.length === 0 && <EmptyRow colSpan="7">Tidak ada paket baku mutu ditemukan</EmptyRow>}
+          {rows.length === 0 && <EmptyRow colSpan="5">Tidak ada kelompok baku mutu ditemukan</EmptyRow>}
         </tbody>
       </table>
     </TableShell>
   );
 }
+
 
 function TarifPengambilanTable({ rows, onEdit, onDelete }) {
   return (
@@ -445,6 +467,7 @@ function TabBody({
         rows={rowsByTab.parameterMetode}
         onEdit={(item) => onOpenModal('edit_param_metode', item)}
         onDelete={(item) => onDeleteConfirm('param_metode', item)}
+        onToggleStatus={onToggleStatus}
       />
     );
   }
@@ -462,10 +485,8 @@ function TabBody({
 
   if (activeTab === 'paket_baku_mutu') {
     return (
-      <PaketTable
+      <PaketGroupTable
         rows={rowsByTab.paket}
-        onEdit={(item) => onOpenModal('edit_paket', item)}
-        onDelete={(item) => onDeleteConfirm('paket', item)}
         onManage={onManagePaket}
         onToggleStatus={onToggleStatus}
       />

@@ -9,10 +9,6 @@ const PenugasanItem = sequelize.define('penugasan_item', {
     no_sampel: {
         type: DataTypes.STRING(25),
         primaryKey: true
-    },
-    tanggal_penugasan: {
-        type: DataTypes.DATEONLY,
-        allowNull: true
     }
 }, {
     tableName: 'penugasan_item'

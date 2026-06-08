@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { X, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { X, CheckCircle, Loader2 } from 'lucide-react';
 import { getApiErrorMessage } from '../../api/httpClient';
 import { kasiRequestApi } from '../../api/kasiRequestApi';
 import { showError, showSuccess, showWarning } from '../../utils/feedback';
 
 import { formatInsituLabel, getFilteredMethods, getFpmKey, getMethodAcuan, getMethodId, getMethodName, getParamName, isMethodSubkontrak, normalizeInsituValue } from './kasiPermohonanUtils';
 import { KasiPermohonanListSection } from './KasiPermohonanListSection.jsx';
-import { KasiPermohonanRejectModal } from './KasiPermohonanRejectModal.jsx';
 
 export function KasiPermohonanPage({ initialRegistrationId = '', onDetailRouteChange = null }) {
   const location = useLocation();
@@ -23,8 +22,6 @@ export function KasiPermohonanPage({ initialRegistrationId = '', onDetailRouteCh
   const [detailLoading, setDetailLoading] = useState(false);
 
   const [showMethodModal, setShowMethodModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
   
   // mapKey = `${paramId}_${waterType}`
   const [selectedMethods, setSelectedMethods] = useState({});
@@ -311,25 +308,7 @@ export function KasiPermohonanPage({ initialRegistrationId = '', onDetailRouteCh
     }
   };
 
-  const handleReject = async () => {
-    if (!rejectReason.trim()) {
-      showWarning('Silakan masukkan alasan penolakan.');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await kasiRequestApi.reject(selectedRequest.noReg, rejectReason);
-      showSuccess('Permohonan ditolak.');
-      setShowRejectModal(false);
-      closeMethodModal();
-      setRejectReason('');
-      fetchRequests();
-    } catch (err) {
-      showError(getApiErrorMessage(err, 'Gagal menolak permohonan.'));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+
 
 
   return (
@@ -681,17 +660,7 @@ export function KasiPermohonanPage({ initialRegistrationId = '', onDetailRouteCh
 
               {/* Modal Footer */}
               {!detailLoading && requestDetail && activeTab !== 'Riwayat' && (
-                <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-between items-center shrink-0">
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowRejectModal(true)}
-                      disabled={submitting}
-                      className="px-5 py-2.5 border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-50 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
-                    >
-                      <XCircle className="w-5 h-5" />
-                      Tolak
-                    </button>
-                  </div>
+                <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end items-center shrink-0">
                   <button
                     onClick={handleVerify}
                     disabled={submitting}
@@ -705,15 +674,6 @@ export function KasiPermohonanPage({ initialRegistrationId = '', onDetailRouteCh
             </div>
           </div>
         )}
-
-        <KasiPermohonanRejectModal
-          showRejectModal={showRejectModal}
-          setShowRejectModal={setShowRejectModal}
-          rejectReason={rejectReason}
-          setRejectReason={setRejectReason}
-          submitting={submitting}
-          handleReject={handleReject}
-        />
 
       </div>
     </main>

@@ -9,6 +9,43 @@ export const createEmptySampleEntry = () => ({
   jumlahSampel: 1,
 });
 
+
+export const normalizeSampleEntries = (entries = []) => {
+  const normalized = [];
+  const seenKeys = new Set();
+
+  entries.forEach((entry) => {
+    const jenisSampel = entry?.jenisSampel || entry?.id_jenis_sampel || '';
+    const idRegBm = entry?.idRegBm || entry?.id_reg_bm || '';
+    const parameters = Array.isArray(entry?.parameters)
+      ? [...new Set(entry.parameters.filter(Boolean))]
+      : [];
+    const jumlahSampel = toPositiveInteger(entry?.jumlahSampel || entry?.jumlah_sampel || 1);
+
+    const normalizedEntry = {
+      ...createEmptySampleEntry(),
+      ...entry,
+      jenisSampel,
+      idRegBm,
+      parameters,
+      jumlahSampel,
+    };
+
+    const key = [
+      jenisSampel,
+      idRegBm,
+      jumlahSampel,
+      [...parameters].sort().join(','),
+    ].join('|');
+
+    if (seenKeys.has(key)) return;
+    seenKeys.add(key);
+    normalized.push(normalizedEntry);
+  });
+
+  return normalized.length > 0 ? normalized : [createEmptySampleEntry()];
+};
+
 export const createDefaultFormData = (userData) => ({
   id_pelanggan: '',
   namaInstansi: '',
@@ -67,7 +104,7 @@ export const getSampleEntriesFromRequest = (request) => {
     };
   }).filter((entry) => entry.jenisSampel);
 
-  return mapped.length > 0 ? mapped : [createEmptySampleEntry()];
+  return normalizeSampleEntries(mapped);
 };
 
 export const mapRequestToFormData = (request, fallbackUserData) => {
@@ -171,12 +208,12 @@ export const buildRegistrationPayload = (formData) => ({
   jamPengambilan: formData.metodePengambilan === 'laboratorium' ? formData.jamPengambilan || null : null,
   alamatPengambilan: asTrimmedText(formData.alamatPengambilan) || null,
   estimasiDiterima: formData.metodePengambilan === 'kirim' ? formData.estimasiDiterima || null : null,
-  sampleEntries: formData.sampleEntries
+  sampleEntries: normalizeSampleEntries(formData.sampleEntries)
     .filter((entry) => entry.jenisSampel && entry.idRegBm && entry.parameters.length > 0)
     .map((entry) => ({
       jenisSampel: entry.jenisSampel,
       idRegBm: entry.idRegBm,
       jumlahSampel: toPositiveInteger(entry.jumlahSampel),
-      parameters: entry.parameters,
+      parameters: [...new Set(entry.parameters.filter(Boolean))],
     })),
 });

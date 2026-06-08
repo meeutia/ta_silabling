@@ -30,6 +30,7 @@ router.delete('/regulasi/:id', AdminParameterController.deleteRegulasi);
 // ==========================================
 // 3. Paket Baku Mutu (pkt_bm)
 // ==========================================
+router.put('/paket-groups/:id_reg_bm/:id_jenis_sampel/status', AdminParameterController.updatePaketKelompokStatus);
 router.get('/paket', AdminParameterController.getAllPaket);
 router.post('/paket', AdminParameterController.createPaket);
 router.put('/paket/:id', AdminParameterController.updatePaket);
@@ -40,8 +41,8 @@ router.delete('/paket/:id', AdminParameterController.deletePaket);
 // ==========================================
 router.get('/paket/:id/parameters', AdminParameterController.getPaketParameters);
 router.post('/paket/:id/parameters', AdminParameterController.addPaketParameter);
-router.put('/paket/parameters/:id_pkt_bm_param', AdminParameterController.updatePaketParameter);
-router.delete('/paket/parameters/:id_pkt_bm_param', AdminParameterController.deletePaketParameter);
+router.put('/paket/:id_pkt_bm/parameters/:id_parameter', AdminParameterController.updatePaketParameter);
+router.delete('/paket/:id_pkt_bm/parameters/:id_parameter', AdminParameterController.deletePaketParameter);
 
 // ==========================================
 // 5. Tarif Pengambilan

@@ -1,87 +1,46 @@
-const {
-  getAnalystOptions,
-  getPendingItems,
-  getAssignmentMonitor,
-  getTestingOverview,
-  getMyAssignments,
-} = require('./assignment/assignment-read.service');
-const {
-  createAssignment,
-} = require('./assignment/assignment-create.service');
-const {
-  updateAssignmentDetailDeadline,
-} = require('./assignment/assignment-deadline.service');
-const {
-  getAssignmentWorkDetail,
-  getLkaRevisionHistory,
-  saveWorksheetDraft,
-  saveWorksheetResults,
-  submitWorksheet,
-  assertWorksheetEditableForAnalyst,
-} = require('./assignment/assignment-worksheet.service');
-const {
-  assertWorksheetFileAccess,
-} = require('./assignment/assignment-worksheet-files.helper');
-const {
-  getAssignmentDetailsByPenugasan,
-} = require('./assignment/assignment-monitor-detail.service');
-const {
-  getReviewQueue,
-  getReviewDetail,
-  reviewWorksheet,
-} = require('./assignment/assignment-penyelia-review.service');
-const {
-  getKasiReviewQueue,
-  getKasiReviewHistory,
-  getKasiReviewDetail,
-  approveKasiReview,
-  reviseKasiReview,
-  getPendingKasiRevisionRequests,
-  reviewKasiRevisionRequest,
-} = require('./assignment/assignment-kasi-review.service');
-const {
-  requestLkaRevision,
-} = require('./assignment/assignment-revision-request.service');
-const {
-  getSubkontrakItems,
-  saveSubkontrakResults,
-} = require('./assignment/assignment-subkontrak.service');
-const {
-  assertSamplesEditableBeforeLhu,
-  assertPenugasanDetailSamplesEditableBeforeLhu,
-  getLockedLhuRowsBySamples,
-} = require('./assignment/assignment-lhu-lock.helper');
-
-module.exports = {
-  getAnalystOptions,
-  getPendingItems,
-  createAssignment,
-  updateAssignmentDetailDeadline,
-  getAssignmentMonitor,
-  getTestingOverview,
-  getMyAssignments,
-  getAssignmentWorkDetail,
-  getLkaRevisionHistory,
-  saveWorksheetDraft,
-  saveWorksheetResults,
-  submitWorksheet,
-  getReviewQueue,
-  getReviewDetail,
-  reviewWorksheet,
-  assertWorksheetEditableForAnalyst,
-  assertWorksheetFileAccess,
-  getKasiReviewQueue,
-  getKasiReviewHistory,
-  getKasiReviewDetail,
-  approveKasiReview,
-  reviseKasiReview,
-  getPendingKasiRevisionRequests,
-  reviewKasiRevisionRequest,
-  requestLkaRevision,
-  getSubkontrakItems,
-  saveSubkontrakResults,
-  assertSamplesEditableBeforeLhu,
-  assertPenugasanDetailSamplesEditableBeforeLhu,
-  getLockedLhuRowsBySamples,
-  getAssignmentDetailsByPenugasan,
-};
+const { getAnalystOptions, getPendingItems, getAssignmentMonitor, getTestingOverview, getMyAssignments, } = require('./assignment/assignment-read.service');
+const { createAssignment, } = require('./assignment/assignment-create.service');
+const { updateAssignmentDetailDeadline, } = require('./assignment/assignment-deadline.service');
+const { getAssignmentWorkDetail, getLkaRevisionHistory, saveWorksheetDraft, saveWorksheetResults, submitWorksheet, assertWorksheetEditableForAnalyst, } = require('./assignment/assignment-worksheet.service');
+const { assertWorksheetFileAccess, } = require('./assignment/assignment-worksheet-files.helper');
+const { getAssignmentDetailsByPenugasan, } = require('./assignment/assignment-monitor-detail.service');
+const { getReviewQueue, getReviewDetail, reviewWorksheet, } = require('./assignment/assignment-penyelia-review.service');
+const { getKasiReviewQueue, getKasiReviewHistory, getKasiReviewDetail, approveKasiReview, reviseKasiReview, getPendingKasiRevisionRequests, reviewKasiRevisionRequest, } = require('./assignment/assignment-kasi-review.service');
+const { requestLkaRevision, } = require('./assignment/assignment-revision-request.service');
+const { getSubkontrakItems, saveSubkontrakResults, } = require('./assignment/assignment-subkontrak.service');
+const { assertSamplesEditableBeforeLhu, assertPenugasanDetailSamplesEditableBeforeLhu, getLockedLhuRowsBySamples, } = require('./assignment/assignment-lhu-lock.helper');
+class AssignmentService {
+getAnalystOptions = async (...args) => { return getAnalystOptions(...args); };
+    getPendingItems = async (...args) => { return getPendingItems(...args); };
+    createAssignment = async (...args) => { return createAssignment(...args); };
+    updateAssignmentDetailDeadline = async (...args) => { return updateAssignmentDetailDeadline(...args); };
+    getAssignmentMonitor = async (...args) => { return getAssignmentMonitor(...args); };
+    getTestingOverview = async (...args) => { return getTestingOverview(...args); };
+    getMyAssignments = async (...args) => { return getMyAssignments(...args); };
+    getAssignmentWorkDetail = async (...args) => { return getAssignmentWorkDetail(...args); };
+    getLkaRevisionHistory = async (...args) => { return getLkaRevisionHistory(...args); };
+    saveWorksheetDraft = async (...args) => { return saveWorksheetDraft(...args); };
+    saveWorksheetResults = async (...args) => { return saveWorksheetResults(...args); };
+    submitWorksheet = async (...args) => { return submitWorksheet(...args); };
+    getReviewQueue = async (...args) => { return getReviewQueue(...args); };
+    getReviewDetail = async (...args) => { return getReviewDetail(...args); };
+    reviewWorksheet = async (...args) => { return reviewWorksheet(...args); };
+    assertWorksheetEditableForAnalyst = async (...args) => { return assertWorksheetEditableForAnalyst(...args); };
+    assertWorksheetFileAccess = async (...args) => { return assertWorksheetFileAccess(...args); };
+    getKasiReviewQueue = async (...args) => { return getKasiReviewQueue(...args); };
+    getKasiReviewHistory = async (...args) => { return getKasiReviewHistory(...args); };
+    getKasiReviewDetail = async (...args) => { return getKasiReviewDetail(...args); };
+    approveKasiReview = async (...args) => { return approveKasiReview(...args); };
+    reviseKasiReview = async (...args) => { return reviseKasiReview(...args); };
+    getPendingKasiRevisionRequests = async (...args) => { return getPendingKasiRevisionRequests(...args); };
+    reviewKasiRevisionRequest = async (...args) => { return reviewKasiRevisionRequest(...args); };
+    requestLkaRevision = async (...args) => { return requestLkaRevision(...args); };
+    getSubkontrakItems = async (...args) => { return getSubkontrakItems(...args); };
+    saveSubkontrakResults = async (...args) => { return saveSubkontrakResults(...args); };
+    assertSamplesEditableBeforeLhu = async (...args) => { return assertSamplesEditableBeforeLhu(...args); };
+    assertPenugasanDetailSamplesEditableBeforeLhu = async (...args) => { return assertPenugasanDetailSamplesEditableBeforeLhu(...args); };
+    getLockedLhuRowsBySamples = async (...args) => { return getLockedLhuRowsBySamples(...args); };
+    getAssignmentDetailsByPenugasan = async (...args) => { return getAssignmentDetailsByPenugasan(...args); };
+}
+module.exports = new AssignmentService();
+module.exports.AssignmentService = AssignmentService;

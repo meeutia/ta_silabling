@@ -17,12 +17,20 @@ function getRevisionId(row = {}) {
   return row.idRevisiLka || row.id_revisi_lka || row.id || row.id_revisi || '';
 }
 
+function getPreviousRevisionId(row = {}) {
+  const previous = row.revisiSebelumnya || row.revisi_sebelumnya || row.RevisiSebelumnya || {};
+
+  return (
+    row.idRevisiSebelumnya ||
+    row.id_revisi_sebelumnya ||
+    previous.idRevisiLka ||
+    previous.id_revisi_lka ||
+    ''
+  );
+}
+
 function getRevisionItems(row = {}) {
-  return Array.isArray(row.items)
-    ? row.items
-    : Array.isArray(row.lka_revisi_items)
-      ? row.lka_revisi_items
-      : [];
+  return Array.isArray(row.items) ? row.items : [];
 }
 
 function getRevisionItemLabel(item = {}) {
@@ -46,8 +54,8 @@ function getRevisionItemsNote(row = {}) {
 function getRevisionNote(row = {}) {
   return String(
     getRevisionItemsNote(row) ||
-      row.catatanUmum ||
-      row.catatan_umum ||
+      row.catatanRevisi ||
+      row.catatan_revisi ||
       ''
   ).trim();
 }
@@ -77,6 +85,7 @@ export function PenyeliaKasiRevisionReviewModal({
 
   const revision = modal.revision || {};
   const revisionId = getRevisionId(revision);
+  const previousRevisionId = getPreviousRevisionId(revision);
   const revisionNote = getRevisionNote(revision);
   const isSubmitting = reviewingKasiRevisionId === revisionId;
 
@@ -105,6 +114,17 @@ export function PenyeliaKasiRevisionReviewModal({
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          {previousRevisionId && (
+            <div className="rounded-xl border border-gray-200 bg-white p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Revisi sebelumnya
+              </p>
+              <p className="mt-2 text-sm font-semibold text-gray-800">
+                {previousRevisionId}
+              </p>
+            </div>
+          )}
+
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
               Catatan Kasi Pengujian

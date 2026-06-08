@@ -239,10 +239,11 @@ export function useAdminPermohonanSampling({
       if (activeSchedule) {
         setSampelFormList(buildInitialSampleReceiptForms(selectedRequest, activeSchedule));
         setSampleReceiptError('');
+        setExpandedSection('sampel');
       } else {
         setSampelFormList([]);
+        setExpandedSection('jadwal');
       }
-      setExpandedSection('jadwal');
     } else if (
       normalizedStatus === FPPL_STATUSES.PROSES_PENGUJIAN ||
       normalizedStatus === FPPL_STATUSES.SELESAI

@@ -13,6 +13,7 @@ import {
 } from '../../lhu/lhuReviewUtils';
 import { getPktValue } from './qcLhuUtils';
 import { buildQcFinalizePayload, validateQcFinalize } from '../../lhu/lhuReviewValidators';
+import { dedupeTextList } from '../../lhu/lhuSampleDisplayUtils';
 import { isQcEditableLhuStatus } from '../../../utils/workflowAccessRules';
 
 export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
@@ -59,7 +60,10 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
   const getRequestId = (item = {}) => item.idRegistrasi || item.id_registrasi || getNoSampel(item);
   const getSampleNos = (item = {}) => {
     const values = item.defaultSampleNos || item.default_sample_nos || item.sampleNos || item.sample_nos || [];
-    return Array.isArray(values) ? values.filter(Boolean) : String(values || '').split(',').map((value) => value.trim()).filter(Boolean);
+    const normalizedValues = Array.isArray(values)
+      ? values.filter(Boolean)
+      : String(values || '').split(/[\n,]+/).map((value) => value.trim()).filter(Boolean);
+    return dedupeTextList(normalizedValues);
   };
 
   function getDetailRowId(row = {}, index = 0) {
@@ -221,7 +225,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
   async function loadPreviewFor(identifier, idPktBm, sampleNos = form.sampleNos) {
     const requestId = String(identifier || '').trim();
     const paketId = String(idPktBm || '').trim();
-    const selectedNos = Array.isArray(sampleNos) ? sampleNos.filter(Boolean) : [];
+    const selectedNos = dedupeTextList(Array.isArray(sampleNos) ? sampleNos.filter(Boolean) : []);
 
     if (!requestId || !paketId || selectedNos.length === 0) {
       setPreviewData(null);
@@ -271,9 +275,9 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
       setDetailOrderFromRows(detail?.details || detail?.detailLhu || detail?.detail_lhu || []);
 
       const detailSamples = detail.samples || detail.sampels || [];
-      const availableNos = detailSamples.map((sample) => sample.noSampel || sample.no_sampel).filter(Boolean);
+      const availableNos = dedupeTextList(detailSamples.map((sample) => sample.noSampel || sample.no_sampel).filter(Boolean));
       const selectedNos = initialSampleNos.length
-        ? initialSampleNos.filter((noSampel) => availableNos.includes(noSampel))
+        ? dedupeTextList(initialSampleNos.filter((noSampel) => availableNos.includes(noSampel)))
         : availableNos;
 
       const nextForm = {
@@ -356,7 +360,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
   function moveSampleRow(fromIndex, toIndex) {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
 
-    const currentNos = Array.isArray(form.sampleNos) ? [...form.sampleNos] : [];
+    const currentNos = dedupeTextList(Array.isArray(form.sampleNos) ? [...form.sampleNos] : []);
     if (!currentNos.length || fromIndex >= currentNos.length || toIndex >= currentNos.length) return;
 
     const nextNos = [...currentNos];
@@ -389,7 +393,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
       return;
     }
 
-    const sampleLabel = Array.isArray(form.sampleNos) ? form.sampleNos.join(', ') : '';
+    const sampleLabel = Array.isArray(form.sampleNos) ? dedupeTextList(form.sampleNos).join(', ') : '';
     setConfirmFinalizeModal({ open: true, sampleLabel });
   }
 
@@ -456,7 +460,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
   const pelangganInfo = detailData?.pelanggan || detailData?.customer || detailData?.pemohon || {};
 
   const selectedNoSampel =
-    (Array.isArray(form.sampleNos) && form.sampleNos.length ? form.sampleNos.join(', ') : '') ||
+    (Array.isArray(form.sampleNos) && form.sampleNos.length ? dedupeTextList(form.sampleNos).join(', ') : '') ||
     getNoSampel(selectedSample) ||
     lhuInfo.no_sampel ||
     lhuInfo.noSampel ||

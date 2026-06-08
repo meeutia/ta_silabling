@@ -19,6 +19,106 @@ export function getSampleQuantity(sample) {
   return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
 }
 
+function pickSampleIdentity(sample) {
+  return sample?.id_fppl_sampel || sample?.idFpplSampel || sample?.id || '';
+}
+
+function pickSampleTypeId(sample) {
+  return sample?.id_jenis_sampel || sample?.idJenisSampel || sample?.JenisSampel?.id_jenis_sampel || sample?.jenis_sampel?.id_jenis_sampel || sample?.jenisSampel?.idJenisSampel || '';
+}
+
+function pickRegBmId(sample) {
+  return sample?.id_reg_bm || sample?.idRegBm || sample?.RegBm?.id_reg_bm || sample?.reg_bm?.id_reg_bm || sample?.regBm?.idRegBm || '';
+}
+
+function pickParameterIdentity(sampleParameterMethod) {
+  const parameterMethod = getParameterMethod(sampleParameterMethod);
+  const parameter = sampleParameterMethod?.Parameter || sampleParameterMethod?.parameter || parameterMethod?.Parameter || parameterMethod?.parameter || null;
+
+  return (
+    sampleParameterMethod?.id_fppl_parameter_metode ||
+    sampleParameterMethod?.idFpplParameterMetode ||
+    sampleParameterMethod?.id_parameter ||
+    sampleParameterMethod?.idParameter ||
+    parameter?.id_parameter ||
+    parameter?.idParameter ||
+    parameterMethod?.id_parameter ||
+    parameterMethod?.idParameter ||
+    parameterMethod?.id_parameter_metode ||
+    parameterMethod?.idParameterMetode ||
+    getParameterName(sampleParameterMethod)
+  );
+}
+
+function getAllSampleParameterMethods(requestSample) {
+  return [
+    ...(Array.isArray(requestSample?.FpplParameterMetodes) ? requestSample.FpplParameterMetodes : []),
+    ...(Array.isArray(requestSample?.fppl_parameter_metodes) ? requestSample.fppl_parameter_metodes : []),
+    ...(Array.isArray(requestSample?.fpplParameterMetodes) ? requestSample.fpplParameterMetodes : []),
+  ];
+}
+
+function mergeUniqueByIdentity(items, pickIdentity) {
+  const map = new Map();
+
+  items.forEach((item, index) => {
+    const identity = pickIdentity(item) || `idx-${index}`;
+    const key = String(identity).trim().toLowerCase();
+    const existing = map.get(key);
+    map.set(key, existing ? { ...existing, ...item } : item);
+  });
+
+  return Array.from(map.values());
+}
+
+function buildSampleBusinessKey(sample) {
+  const parameterSignature = mergeUniqueByIdentity(getAllSampleParameterMethods(sample), pickParameterIdentity)
+    .map((item) => String(pickParameterIdentity(item) || '').trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join('|');
+
+  return [
+    pickSampleTypeId(sample) || getRequestSampleTypeName(sample),
+    pickRegBmId(sample) || getRegBmLabel(sample),
+    parameterSignature,
+  ]
+    .map((value) => String(value || '').trim().toLowerCase())
+    .join('::');
+}
+
+function mergeRequestSample(existing, incoming) {
+  const existingQuantity = getSampleQuantity(existing);
+  const incomingQuantity = getSampleQuantity(incoming);
+  const mergedParameterMethods = mergeUniqueByIdentity(
+    [
+      ...getAllSampleParameterMethods(existing),
+      ...getAllSampleParameterMethods(incoming),
+    ],
+    pickParameterIdentity
+  );
+
+  return {
+    ...existing,
+    ...incoming,
+    id_fppl_sampel: pickSampleIdentity(incoming) || pickSampleIdentity(existing),
+    idFpplSampel: pickSampleIdentity(incoming) || pickSampleIdentity(existing),
+    jumlah_sampel: Math.max(existingQuantity, incomingQuantity),
+    jumlahSampel: Math.max(existingQuantity, incomingQuantity),
+    JenisSampel: incoming?.JenisSampel || existing?.JenisSampel,
+    jenis_sampel: incoming?.jenis_sampel || existing?.jenis_sampel,
+    jenisSampel: incoming?.jenisSampel || existing?.jenisSampel,
+    RegBm: incoming?.RegBm || existing?.RegBm,
+    reg_bm: incoming?.reg_bm || existing?.reg_bm,
+    regBm: incoming?.regBm || existing?.regBm,
+    FpplParameterMetodes: mergedParameterMethods,
+    fppl_parameter_metodes: mergedParameterMethods,
+    fpplParameterMetodes: mergedParameterMethods,
+    Sampels: incoming?.Sampels || existing?.Sampels,
+    sampels: incoming?.sampels || existing?.sampels,
+  };
+}
+
 export function getRequestSamples(requestItem) {
   const allSamples = [
     ...(Array.isArray(requestItem?.FpplSampels) ? requestItem.FpplSampels : []),
@@ -28,45 +128,16 @@ export function getRequestSamples(requestItem) {
 
   const sampleMap = new Map();
 
-  allSamples.forEach((sample, index) => {
-    const key =
-      sample?.id_fppl_sampel ||
-      `${sample?.id_jenis_sampel || sample?.idJenisSampel || 'jenis'}-${sample?.id_reg_bm || sample?.idRegBm || 'reg'}-${index}`;
+  allSamples.forEach((sample) => {
+    const key = pickSampleIdentity(sample) || buildSampleBusinessKey(sample);
+    const normalizedKey = String(key).trim().toLowerCase();
+    const existing = sampleMap.get(normalizedKey);
 
-    const existing = sampleMap.get(key);
-
-    if (!existing) {
-      sampleMap.set(key, sample);
-      return;
-    }
-
-    const existingQuantity = getSampleQuantity(existing);
-    const incomingQuantity = getSampleQuantity(sample);
-
-    sampleMap.set(key, {
-      ...existing,
-      ...sample,
-      jumlah_sampel: Math.max(existingQuantity, incomingQuantity),
-      jumlahSampel: Math.max(existingQuantity, incomingQuantity),
-      JenisSampel: sample?.JenisSampel || existing?.JenisSampel,
-      jenis_sampel: sample?.jenis_sampel || existing?.jenis_sampel,
-      jenisSampel: sample?.jenisSampel || existing?.jenisSampel,
-      RegBm: sample?.RegBm || existing?.RegBm,
-      reg_bm: sample?.reg_bm || existing?.reg_bm,
-      regBm: sample?.regBm || existing?.regBm,
-      FpplParameterMetodes:
-        sample?.FpplParameterMetodes || existing?.FpplParameterMetodes,
-      fppl_parameter_metodes:
-        sample?.fppl_parameter_metodes || existing?.fppl_parameter_metodes,
-      fpplParameterMetodes:
-        sample?.fpplParameterMetodes || existing?.fpplParameterMetodes,
-      Sampels: sample?.Sampels || existing?.Sampels,
-      sampels: sample?.sampels || existing?.sampels,
-    });
+    sampleMap.set(normalizedKey, existing ? mergeRequestSample(existing, sample) : mergeRequestSample({}, sample));
   });
 
   return Array.from(sampleMap.values()).sort((a, b) =>
-    String(a?.id_fppl_sampel || '').localeCompare(String(b?.id_fppl_sampel || ''))
+    String(pickSampleIdentity(a) || buildSampleBusinessKey(a)).localeCompare(String(pickSampleIdentity(b) || buildSampleBusinessKey(b)))
   );
 }
 
@@ -139,7 +210,7 @@ export function buildSampleReceiptForms(requestItem) {
 }
 
 export function getSampleParameterMethods(requestSample) {
-  return requestSample?.FpplParameterMetodes || requestSample?.fppl_parameter_metodes || requestSample?.fpplParameterMetodes || [];
+  return mergeUniqueByIdentity(getAllSampleParameterMethods(requestSample), pickParameterIdentity);
 }
 
 export function getParameterMethod(sampleParameterMethod) {

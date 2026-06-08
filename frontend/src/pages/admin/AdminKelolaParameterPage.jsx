@@ -27,7 +27,7 @@ const PARAMETER_TABS = [
   },
   {
     key: 'paket_baku_mutu',
-    label: 'Paket Baku Mutu',
+    label: 'Baku Mutu',
     icon: Package,
   },
   {
@@ -84,40 +84,63 @@ export function AdminKelolaParameterPage() {
     setEditingPaketParam,
   } = useAdminKelolaParameter();
 
+  const isManagingPaketParameter = activeTab === 'paket_baku_mutu' && modalType === 'manage_paket_param' && selectedItem;
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-              Kelola Parameter Uji
-            </h1>
-            <p className="text-sm text-gray-600">
-              Manajemen parameter pengujian, regulasi baku mutu, dan paket baku mutu laboratorium.
-            </p>
+        {!isManagingPaketParameter && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+                Kelola Parameter Uji
+              </h1>
+              <p className="text-sm text-gray-600">
+                Manajemen parameter pengujian, regulasi, matrix baku mutu, dan tarif pengambilan laboratorium.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
-        <AdminKelolaParameterTabs
-          activeTab={activeTab}
-          tabs={PARAMETER_TABS}
-          isLoading={isLoading}
-          searchQuery={searchQuery}
-          searchPlaceholder={searchPlaceholder}
-          filterStatus={filterStatus}
-          filterOptions={currentFilterOptions}
-          rowsCount={currentRowsCount}
-          addButtonLabel={addButtonLabel}
-          rowsByTab={rowsByTab}
-          onChangeTab={handleChangeTab}
-          onSearchChange={setSearchQuery}
-          onFilterChange={setFilterStatus}
-          onAdd={handleAddCurrentTab}
-          onOpenModal={handleOpenModal}
-          onDeleteConfirm={openDeleteConfirm}
-          onManagePaket={handleKelolaPaket}
-          onToggleStatus={handleToggleMasterStatus}
-        />
+        {isManagingPaketParameter ? (
+          <ManagePaketParameterModal
+            selectedItem={selectedItem}
+            paketParameters={paketParameters}
+            parametersOption={parametersOption}
+            isModalLoading={isModalLoading}
+            paketParamForm={paketParamForm}
+            editingPaketParam={editingPaketParam}
+            onClose={handleCloseModal}
+            onAddChange={handlePaketParamFormChange}
+            onAddSubmit={handleAddPaketParameter}
+            onEditChange={handleEditPaketParamChange}
+            onStartEdit={handleStartEditPaketParameter}
+            onCancelEdit={() => setEditingPaketParam(null)}
+            onUpdateSubmit={handleUpdatePaketParameter}
+            onDelete={(item) => openDeleteConfirm('paket_param', item)}
+          />
+        ) : (
+          <AdminKelolaParameterTabs
+            activeTab={activeTab}
+            tabs={PARAMETER_TABS}
+            isLoading={isLoading}
+            searchQuery={searchQuery}
+            searchPlaceholder={searchPlaceholder}
+            filterStatus={filterStatus}
+            filterOptions={currentFilterOptions}
+            rowsCount={currentRowsCount}
+            addButtonLabel={addButtonLabel}
+            rowsByTab={rowsByTab}
+            onChangeTab={handleChangeTab}
+            onSearchChange={setSearchQuery}
+            onFilterChange={setFilterStatus}
+            onAdd={handleAddCurrentTab}
+            onOpenModal={handleOpenModal}
+            onDeleteConfirm={openDeleteConfirm}
+            onManagePaket={handleKelolaPaket}
+            onToggleStatus={handleToggleMasterStatus}
+          />
+        )}
 
         <ToastNotification toast={toast} position="bottom" compact />
 
@@ -156,24 +179,6 @@ export function AdminKelolaParameterPage() {
           />
         )}
 
-        {isModalOpen && modalType === 'manage_paket_param' && (
-          <ManagePaketParameterModal
-            selectedItem={selectedItem}
-            paketParameters={paketParameters}
-            parametersOption={parametersOption}
-            isModalLoading={isModalLoading}
-            paketParamForm={paketParamForm}
-            editingPaketParam={editingPaketParam}
-            onClose={handleCloseModal}
-            onAddChange={handlePaketParamFormChange}
-            onAddSubmit={handleAddPaketParameter}
-            onEditChange={handleEditPaketParamChange}
-            onStartEdit={handleStartEditPaketParameter}
-            onCancelEdit={() => setEditingPaketParam(null)}
-            onUpdateSubmit={handleUpdatePaketParameter}
-            onDelete={(item) => openDeleteConfirm('paket_param', item)}
-          />
-        )}
 
         {isModalOpen && (modalType === 'add_tarif' || modalType === 'edit_tarif') && (
           <TarifPengambilanModal

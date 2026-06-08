@@ -15,15 +15,7 @@ const PktBm = sequelize.define('pkt_bm', {
         allowNull: false
     },
     klasifikasi: {
-        type: DataTypes.STRING(10),
-        allowNull: true
-    },
-    nama_pkt: {
-        type: DataTypes.STRING(30),
-        allowNull: false
-    },
-    teks_lhu: {
-        type: DataTypes.STRING(100),
+        type: DataTypes.STRING(50),
         allowNull: true
     },
     is_active: {
@@ -32,7 +24,8 @@ const PktBm = sequelize.define('pkt_bm', {
         defaultValue: 1
     }
 }, {
-    tableName: 'pkt_bm'
+    tableName: 'pkt_bm',
+    timestamps: false,
 });
 
 module.exports = PktBm;

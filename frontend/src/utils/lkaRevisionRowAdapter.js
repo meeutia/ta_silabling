@@ -22,7 +22,7 @@ function getRevisionRows(payload = {}) {
   if (!Array.isArray(sourceRows)) return [];
 
   return sourceRows.flatMap((row = {}) => {
-    const items = row.items || row.revisi_items || row.revision_items || row.lka_revisi_items || [];
+    const items = row.items || row.revisi_items || row.revision_items || [];
 
     if (!Array.isArray(items) || items.length === 0) return [row];
 
@@ -31,12 +31,16 @@ function getRevisionRows(payload = {}) {
       ...item,
       idRevisiLka: row.idRevisiLka || row.id_revisi_lka,
       id_revisi_lka: row.id_revisi_lka || row.idRevisiLka,
+      idRevisiSebelumnya: row.idRevisiSebelumnya || row.id_revisi_sebelumnya,
+      id_revisi_sebelumnya: row.id_revisi_sebelumnya || row.idRevisiSebelumnya,
+      revisiSebelumnya: row.revisiSebelumnya || row.revisi_sebelumnya,
+      revisi_sebelumnya: row.revisi_sebelumnya || row.revisiSebelumnya,
       sumberRevisi: row.sumberRevisi || row.sumber_revisi,
       sumber_revisi: row.sumber_revisi || row.sumberRevisi,
       levelRevisi: row.levelRevisi || row.level_revisi,
       level_revisi: row.level_revisi || row.levelRevisi,
-      statusRevisi: row.statusRevisi || row.status_revisi,
-      status_revisi: row.status_revisi || row.statusRevisi,
+      statusRevisi: item.statusRevisi || item.status_revisi || row.statusRevisi || row.status_revisi,
+      status_revisi: item.status_revisi || item.statusRevisi || row.status_revisi || row.statusRevisi,
       diajukanOleh: row.diajukanOleh || row.diajukan_oleh,
       diajukan_oleh: row.diajukan_oleh || row.diajukanOleh,
       diajukanPada: row.diajukanPada || row.diajukan_pada,
@@ -47,12 +51,8 @@ function getRevisionRows(payload = {}) {
       ditinjau_pada: row.ditinjau_pada || row.ditinjauPada,
       catatanTinjauan: row.catatanTinjauan || row.catatan_tinjauan,
       catatan_tinjauan: row.catatan_tinjauan || row.catatanTinjauan,
-      idRevisiItem: item.idRevisiItem || item.id_revisi_item,
-      id_revisi_item: item.id_revisi_item || item.idRevisiItem,
-      statusItemRevisi: item.statusItemRevisi || item.status_item_revisi,
-      status_item_revisi: item.status_item_revisi || item.statusItemRevisi,
-      catatanRevisi: item.catatanRevisi || item.catatan_revisi,
-      catatan_revisi: item.catatan_revisi || item.catatanRevisi,
+      catatanRevisi: item.catatanRevisi || item.catatan_revisi || row.catatanRevisi || row.catatan_revisi,
+      catatan_revisi: item.catatan_revisi || item.catatanRevisi || row.catatan_revisi || row.catatanRevisi,
     }));
   });
 }
@@ -76,7 +76,7 @@ export function getLkaHasilTargetKey(row = {}) {
 }
 
 function getRevisionId(row = {}) {
-  return asText(row.idRevisiItem || row.id_revisi_item || row.idRevisiLka || row.id_revisi_lka);
+  return asText(row.idRevisiLka || row.id_revisi_lka);
 }
 
 function joinUniqueNotes(notes = []) {
@@ -149,7 +149,7 @@ function getPenyeliaResponseNote(row = {}) {
 
   if (direct) return direct;
 
-  const sourceText = asText(row.catatanRevisi || row.catatan_revisi || row.catatanUmum || row.catatan_umum);
+  const sourceText = asText(row.catatanRevisi || row.catatan_revisi);
   const responseLine = sourceText
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -159,12 +159,7 @@ function getPenyeliaResponseNote(row = {}) {
 }
 
 function getRevisionNote(row = {}) {
-  const revisionNote = stripPenyeliaReviewLines(
-    row.catatanRevisi ||
-      row.catatan_revisi ||
-      row.catatanUmum ||
-      row.catatan_umum
-  );
+  const revisionNote = stripPenyeliaReviewLines(row.catatanRevisi || row.catatan_revisi);
 
   return revisionNote;
 }
@@ -175,16 +170,15 @@ function getRevisionTime(row = {}) {
 
 function isKasiRevisionVisibleForAnalyst(row = {}) {
   const revisionStatus = asText(row.statusRevisi || row.status_revisi).toLowerCase();
-  const itemStatus = asText(row.statusItemRevisi || row.status_item_revisi).toLowerCase();
 
-  return (
-    revisionStatus === 'dikirim ke analis' ||
-    revisionStatus === 'selesai' ||
-    itemStatus === 'disetujui untuk analis' ||
-    itemStatus === 'diperbaiki analis' ||
-    itemStatus === 'disetujui penyelia' ||
-    itemStatus === 'disetujui kasi'
-  );
+  return [
+    'dikirim ke analis',
+    'disetujui untuk analis',
+    'diperbaiki analis',
+    'disetujui penyelia',
+    'disetujui kasi',
+    'selesai',
+  ].includes(revisionStatus);
 }
 
 function isKasiLegacyNoteVisibleForAnalyst(row = {}) {

@@ -17,6 +17,7 @@ function normalizeParameterMetode(item) {
   if (!item || typeof item !== 'object') return item;
   return {
     ...item,
+    is_active: item.is_active ?? true,
     parameter: normalizeParameterCategory(item.parameter),
   };
 }
@@ -26,6 +27,7 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
 function normalizeBool(value) {
   return value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true';
 }
+
 
 export const adminParameterApi = {
   async getParameterMethodTabData() {
@@ -121,6 +123,20 @@ export const adminParameterApi = {
     );
   },
 
+
+  async toggleParameterMetodeStatus(item) {
+    const nextStatus = !normalizeBool(item?.is_active ?? true);
+    return requestJson(
+      `/admin/parameters/${item.id_metode_parameter}`,
+      {
+        method: 'PUT',
+        headers: jsonHeaders,
+        body: JSON.stringify({ is_active: nextStatus }),
+      },
+      { auth: true }
+    );
+  },
+
   async deleteParameterMetode(item) {
     return requestJson(`/admin/parameters/${item.id_metode_parameter}`, { method: 'DELETE' }, { auth: true });
   },
@@ -160,8 +176,21 @@ export const adminParameterApi = {
     );
   },
 
+  async togglePaketGroupStatus(item) {
+    const nextStatus = !normalizeBool(item?.is_active);
+    return requestJson(
+      `/admin/parameters/paket-groups/${encodeURIComponent(item.id_reg_bm)}/${encodeURIComponent(item.id_jenis_sampel)}/status`,
+      {
+        method: 'PUT',
+        headers: jsonHeaders,
+        body: JSON.stringify({ is_active: nextStatus }),
+      },
+      { auth: true }
+    );
+  },
+
   async deletePaketParameter(item) {
-    return requestJson(`/admin/parameters/paket/parameters/${item.id_pkt_bm_param}`, { method: 'DELETE' }, { auth: true });
+    return requestJson(`/admin/parameters/paket/${encodeURIComponent(item.id_pkt_bm)}/parameters/${encodeURIComponent(item.id_parameter)}`, { method: 'DELETE' }, { auth: true });
   },
 
   async deleteTarifPengambilan(item) {
@@ -173,13 +202,13 @@ export const adminParameterApi = {
   },
 
   async getPaketParameters(idPktBm) {
-    const parameters = await requestData(`/admin/parameters/paket/${idPktBm}/parameters`, {}, { auth: true });
+    const parameters = await requestData(`/admin/parameters/paket/${encodeURIComponent(idPktBm)}/parameters`, {}, { auth: true });
     return Array.isArray(parameters) ? parameters : [];
   },
 
   async addPaketParameter(idPktBm, body) {
     return requestJson(
-      `/admin/parameters/paket/${idPktBm}/parameters`,
+      `/admin/parameters/paket/${encodeURIComponent(idPktBm)}/parameters`,
       {
         method: 'POST',
         headers: jsonHeaders,
@@ -191,7 +220,7 @@ export const adminParameterApi = {
 
   async updatePaketParameter(item, body) {
     return requestJson(
-      `/admin/parameters/paket/parameters/${item.id_pkt_bm_param}`,
+      `/admin/parameters/paket/${encodeURIComponent(item.id_pkt_bm)}/parameters/${encodeURIComponent(item.id_parameter)}`,
       {
         method: 'PUT',
         headers: jsonHeaders,

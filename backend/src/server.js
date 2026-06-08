@@ -22,7 +22,7 @@ validateRequiredEnv();
 
 const app = require('./app');
 const { sequelize } = require('./models/Associations');
-const { startDeadlineAnalisJob } = require('./jobs/deadline-analis.job');
+const deadlineAnalisJob = require('./jobs/deadline-analis.job');
 const PORT = process.env.PORT || 3000;
 
 sequelize.authenticate()
@@ -30,7 +30,7 @@ sequelize.authenticate()
     console.log('Database connected...');
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
-      startDeadlineAnalisJob();
+      deadlineAnalisJob.startDeadlineAnalisJob();
     });
   })
   .catch((err) => {

@@ -134,8 +134,6 @@ function getMethodRows(row) {
     row?.parameter_metode,
     row?.parameterMetode,
     row?.ParameterMetode,
-    row?.pkt_bm_pms,
-    row?.pktBmPms,
   ].find(Array.isArray) || [];
 }
 

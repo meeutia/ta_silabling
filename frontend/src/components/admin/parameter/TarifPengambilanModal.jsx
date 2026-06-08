@@ -1,10 +1,11 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { CurrencyInput } from './CurrencyInput';
 
 export function TarifPengambilanModal({ selectedItem, formData, onClose, onChange, onSubmit }) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black/50 flex items-stretch justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg h-full overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 shrink-0">
           <h2 className="text-xl font-semibold text-gray-900">
             {selectedItem ? 'Edit Tarif Pengambilan' : 'Tambah Tarif Pengambilan'}
@@ -18,7 +19,7 @@ export function TarifPengambilanModal({ selectedItem, formData, onClose, onChang
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           <form id="tarifForm" onSubmit={onSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -40,14 +41,11 @@ export function TarifPengambilanModal({ selectedItem, formData, onClose, onChang
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tarif (Rp) <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
+              <CurrencyInput
                 name="tarif"
                 value={formData.tarif || ''}
                 onChange={onChange}
-                min="0"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                placeholder="Contoh: 150000"
+                placeholder="Contoh: 150.000"
                 required
               />
             </div>

@@ -491,15 +491,14 @@ export function getSampleLkaHasilTarget(sample = {}) {
 }
 
 export function isNormalPenyeliaReviewReady(detail) {
-  const detailStatus = normalizeStatus(detail?.statusDetail || detail?.status_detail);
   const lkaStatus = normalizeStatus(
-    detail?.worksheet?.statusLka || detail?.worksheet?.status_lka
+    detail?.worksheet?.statusLka ||
+      detail?.worksheet?.status_lka ||
+      detail?.statusLka ||
+      detail?.status_lka
   );
 
-  return (
-    detailStatus === 'worksheet terkirim' &&
-    lkaStatus === 'menunggu verifikasi penyelia'
-  );
+  return lkaStatus === 'menunggu verifikasi penyelia';
 }
 
 export function isReturnedByKasiForRevision(detail) {
