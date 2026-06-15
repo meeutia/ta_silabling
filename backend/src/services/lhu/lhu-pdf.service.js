@@ -195,19 +195,31 @@ findExistingFile = (paths = []) => {
         return rows.length ? rows : [[]];
     };
     normalizeSampleKey = (value) => {
-        return String(value || '').trim();
+        return String(value || '').trim().replace(/\s*\/\s*/g, '/');
     };
+    getSampleDisplayKey = (value) => String(getDisplayNoSampel(this.normalizeSampleKey(value)) || '').trim().toLowerCase();
     dedupeSampleKeys = (sampleNos = []) => {
         const seen = new Set();
         const result = [];
         (Array.isArray(sampleNos) ? sampleNos : []).forEach((value) => {
             const sampleNo = this.normalizeSampleKey(value);
-            if (!sampleNo || seen.has(sampleNo))
+            const key = this.getSampleDisplayKey(sampleNo) || sampleNo.toLowerCase();
+            if (!sampleNo || seen.has(key))
                 return;
-            seen.add(sampleNo);
+            seen.add(key);
             result.push(sampleNo);
         });
         return result;
+    };
+    getHasilBySampleNo = (row = {}, sampleNo = '') => {
+        const hasilBySample = row.hasil_by_sample || {};
+        const normalizedSampleNo = this.normalizeSampleKey(sampleNo);
+        const directValue = hasilBySample[normalizedSampleNo] ?? hasilBySample[String(sampleNo || '').trim()];
+        if (directValue !== null && directValue !== undefined && String(directValue).trim() !== '')
+            return directValue;
+        const displayKey = this.getSampleDisplayKey(normalizedSampleNo);
+        const matchedKey = Object.keys(hasilBySample).find((key) => this.getSampleDisplayKey(key) === displayKey);
+        return matchedKey ? hasilBySample[matchedKey] : null;
     };
     buildParameterGroupKey = (row = {}) => {
         return [
@@ -233,11 +245,21 @@ findExistingFile = (paths = []) => {
             const sampleNo = this.normalizeSampleKey(row.no_sampel);
             if (sampleNo) {
                 group.hasil_by_sample[sampleNo] = row.hasil_snapshot;
-                if (!group.samples.includes(sampleNo))
+                if (!group.__sampleKeySet)
+                    group.__sampleKeySet = new Set(group.samples.map((item) => this.getSampleDisplayKey(item) || String(item || '').toLowerCase()));
+                const sampleKey = this.getSampleDisplayKey(sampleNo) || sampleNo.toLowerCase();
+                if (!group.__sampleKeySet.has(sampleKey)) {
+                    group.__sampleKeySet.add(sampleKey);
                     group.samples.push(sampleNo);
+                }
             }
         });
-        return Array.from(map.values()).sort((a, b) => Number(a.urutan_lhu || 0) - Number(b.urutan_lhu || 0) ||
+        return Array.from(map.values())
+            .map((row) => {
+            const { __sampleKeySet, ...payload } = row;
+            return payload;
+        })
+            .sort((a, b) => Number(a.urutan_lhu || 0) - Number(b.urutan_lhu || 0) ||
             String(a.nama_parameter_snapshot || '').localeCompare(String(b.nama_parameter_snapshot || '')));
     };
     getTableColumns = (sampleChunk = []) => {
@@ -324,7 +346,7 @@ findExistingFile = (paths = []) => {
             if (col.type === 'parameter')
                 return { ...col, text: this.buildParameterName(row) };
             if (col.type === 'hasil')
-                return { ...col, text: valueOrDash(row.hasil_by_sample?.[col.sampleNo]) };
+                return { ...col, text: valueOrDash(this.getHasilBySampleNo(row, col.sampleNo)) };
             if (col.type === 'satuan')
                 return { ...col, text: valueOrDash(row.satuan_bm_snapshot) };
             if (col.type === 'bakuMutu')
@@ -386,7 +408,7 @@ findExistingFile = (paths = []) => {
                     if (col.type === 'parameter')
                         return { ...col, text: this.buildParameterName(row) };
                     if (col.type === 'hasil')
-                        return { ...col, text: valueOrDash(row.hasil_by_sample?.[col.sampleNo]) };
+                        return { ...col, text: valueOrDash(this.getHasilBySampleNo(row, col.sampleNo)) };
                     if (col.type === 'satuan')
                         return { ...col, text: valueOrDash(row.satuan_bm_snapshot) };
                     if (col.type === 'bakuMutu')
@@ -620,9 +642,9 @@ findExistingFile = (paths = []) => {
         doc.y = y + 6;
     };
     generateLhuPdf = async (nomorLhu, options = {}) => {
-        const { mode = 'draft', transaction = null } = options;
+        const { mode = 'draft', transaction = null, detailOrder = [] } = options;
         const isFinal = mode === 'final';
-        const { lhu, details } = await getLhuPdfData(nomorLhu, transaction);
+        const { lhu, details } = await getLhuPdfData(nomorLhu, transaction, { detailOrder });
         const accreditationStats = calculateAccreditationStats(details);
         const targetFolder = isFinal ? 'final' : 'draft';
         const outputDir = path.join(LHU_PUBLIC_DIR, targetFolder);
@@ -660,16 +682,18 @@ findExistingFile = (paths = []) => {
             absolutePath,
         };
     };
-    generateDraftLhuPdf = async (nomorLhu, transaction = null) => {
+    generateDraftLhuPdf = async (nomorLhu, transaction = null, options = {}) => {
         return this.generateLhuPdf(nomorLhu, {
             mode: 'draft',
             transaction,
+            detailOrder: options.detailOrder || options.detail_order || [],
         });
     };
-    generateFinalLhuPdf = async (nomorLhu, transaction = null) => {
+    generateFinalLhuPdf = async (nomorLhu, transaction = null, options = {}) => {
         return this.generateLhuPdf(nomorLhu, {
             mode: 'final',
             transaction,
+            detailOrder: options.detailOrder || options.detail_order || [],
         });
     };
 }

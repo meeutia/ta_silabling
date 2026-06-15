@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const { NOTIFICATION_RECIPIENT_TYPE, NOTIFICATION_REFERENCE_TYPE } = require('../constants/notification.constant');
+const { NOTIFICATION_REFERENCE_TYPE } = require('../constants/notification.constant');
 
 const NotifikasiEmail = sequelize.define('notifikasi_email', {
   id_notifikasi_email: {
@@ -13,13 +13,18 @@ const NotifikasiEmail = sequelize.define('notifikasi_email', {
     allowNull: false,
   },
 
-  penerima_tipe: {
-    type: DataTypes.ENUM(...Object.values(NOTIFICATION_RECIPIENT_TYPE)),
+  nik_penerima: {
+    type: DataTypes.STRING(16),
     allowNull: true,
   },
 
-  penerima_id: {
-    type: DataTypes.STRING(20),
+  email_tujuan: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+
+  nama_penerima: {
+    type: DataTypes.STRING(100),
     allowNull: true,
   },
 

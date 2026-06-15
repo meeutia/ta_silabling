@@ -7,7 +7,6 @@ import {
   getSubkontrakLabel,
 } from '../../lhu/lhuReviewUtils';
 import {
-  dedupeTextList,
   getDisplayNoSampel,
   isRowInsitu,
   isRowSubkontrak,
@@ -81,12 +80,101 @@ function ParameterStatusBadges({ row }) {
   );
 }
 
+function buildDetailSampleColumns(details = [], sampleNos = []) {
+  const rawSampleNos = Array.isArray(sampleNos) && sampleNos.length
+    ? sampleNos
+    : (Array.isArray(details) ? details : []).flatMap((row) => [
+        ...(Array.isArray(row.samples) ? row.samples : []),
+        ...(Array.isArray(row.sampels) ? row.sampels : []),
+        ...Object.keys(row.hasil_by_sample || row.hasilBySample || {}),
+      ]);
+
+  const columns = [];
+  const byDisplayKey = new Map();
+
+  rawSampleNos.forEach((value) => {
+    const sampleNo = String(value || '').trim();
+    if (!sampleNo || sampleNo === '-') return;
+
+    const displayNo = getDisplayNoSampel(sampleNo);
+    const displayKey = String(displayNo || sampleNo).trim().toLowerCase();
+    if (!displayKey || displayKey === '-') return;
+
+    if (!byDisplayKey.has(displayKey)) {
+      const column = {
+        key: displayKey,
+        displayNo: displayNo || sampleNo,
+        sampleNos: [],
+        sampleKeySet: new Set(),
+      };
+      byDisplayKey.set(displayKey, column);
+      columns.push(column);
+    }
+
+    const column = byDisplayKey.get(displayKey);
+    const fullKey = sampleNo.toLowerCase();
+    if (!column.sampleKeySet.has(fullKey)) {
+      column.sampleNos.push(sampleNo);
+      column.sampleKeySet.add(fullKey);
+    }
+  });
+
+  return columns
+    .map(({ ...column }) => column)
+    .sort((a, b) => String(a.displayNo).localeCompare(String(b.displayNo), 'id', { numeric: true, sensitivity: 'base' }));
+}
+
+function pickHasilForSampleColumn(hasilBySample = {}, column = {}, hasValue) {
+  const candidates = [
+    ...(Array.isArray(column.sampleNos) ? column.sampleNos : []),
+    column.displayNo,
+  ];
+
+  for (const candidate of candidates) {
+    const key = String(candidate || '').trim();
+    if (!key) continue;
+
+    const value = hasilBySample[key];
+    if (hasValue(value)) return value;
+  }
+
+  return null;
+}
+
+function buildDetailTextKey(row = {}, index = 0) {
+  return [
+    row.id_parameter || row.idParameter || '',
+    row.nama_parameter_snapshot || row.namaParameterSnapshot || row.nama_parameter || row.namaParameter || 'row',
+    row.metode_snapshot || row.metodeSnapshot || row.nama_metode || row.namaMetode || row.metode || '',
+    row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode || '',
+    `idx-${index}`,
+  ]
+    .map((value) => String(value || '').trim().toLowerCase())
+    .filter(Boolean)
+    .join('|');
+}
+
+function getDetailRowKey(row = {}, index = 0) {
+  return String(
+    row.detail_key ||
+      row.detailKey ||
+      row.key ||
+      row.id_fppl_parameter_metode ||
+      row.idFpplParameterMetode ||
+      row.id_metode_parameter ||
+      row.idMetodeParameter ||
+      row.id_parameter_metode ||
+      row.idParameterMetode ||
+      buildDetailTextKey(row, index) ||
+      `row-${index}`
+  );
+}
+
 function DetailLhuTable({
   details = [],
-  editableOrder = false,
-  onMoveRow,
   sampleNos = [],
-  onMoveSample,
+  draggable = false,
+  onMoveRow,
 }) {
   if (!details.length) {
     return (
@@ -101,14 +189,36 @@ function DetailLhuTable({
     value !== undefined &&
     String(value).trim() !== '';
 
-  const orderedSampleNos = Array.isArray(sampleNos) && sampleNos.length
-    ? dedupeTextList(sampleNos.filter(Boolean))
-    : dedupeTextList(
-        details.flatMap((row) => row.samples || row.sampels || Object.keys(row.hasil_by_sample || row.hasilBySample || {}))
-      );
+  const sampleColumns = buildDetailSampleColumns(details, sampleNos);
+  const displayedSampleColumns = sampleColumns.length
+    ? sampleColumns
+    : [{ key: '-', displayNo: '-', sampleNos: [] }];
+  const hasilMinWidth = Math.max(110, displayedSampleColumns.length * 92);
 
-  const displayedSampleNos = orderedSampleNos.length ? orderedSampleNos : ['-'];
-  const hasilMinWidth = Math.max(110, displayedSampleNos.length * 92);
+  function handleDragStart(event, index, row) {
+    if (!draggable) return;
+    const rowKey = getDetailRowKey(row, index);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(index));
+    event.dataTransfer.setData('application/x-lhu-detail-key', rowKey);
+  }
+
+  function handleDragOver(event) {
+    if (!draggable) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }
+
+  function handleDrop(event, targetIndex, targetRow) {
+    if (!draggable) return;
+    event.preventDefault();
+    const sourceIndex = Number(event.dataTransfer.getData('text/plain'));
+    const sourceKey = event.dataTransfer.getData('application/x-lhu-detail-key');
+    const targetKey = getDetailRowKey(targetRow, targetIndex);
+    if (!Number.isInteger(sourceIndex) && !sourceKey) return;
+    if (sourceIndex === targetIndex && sourceKey === targetKey) return;
+    onMoveRow?.(sourceIndex, targetIndex, sourceKey, targetKey);
+  }
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200">
@@ -120,7 +230,7 @@ function DetailLhuTable({
               <th rowSpan={2} className="min-w-[220px] border-r border-emerald-500 px-4 py-3 text-left font-semibold">Parameter</th>
               <th rowSpan={2} className="min-w-[230px] border-r border-emerald-500 px-4 py-3 text-left font-semibold">Metode</th>
               <th
-                colSpan={displayedSampleNos.length}
+                colSpan={displayedSampleColumns.length}
                 className="border-r border-emerald-500 px-4 py-2 text-center font-semibold"
                 style={{ minWidth: `${hasilMinWidth}px` }}
               >
@@ -133,34 +243,13 @@ function DetailLhuTable({
               <th rowSpan={2} className="w-[150px] px-4 py-3 text-center font-semibold">Akreditasi</th>
             </tr>
             <tr>
-              {displayedSampleNos.map((sampleNo, sampleIndex) => (
+              {displayedSampleColumns.map((column, sampleIndex) => (
                 <th
-                  key={sampleNo || sampleIndex}
-                  draggable={editableOrder && orderedSampleNos.length > 1}
-                  onDragStart={(event) => {
-                    if (!editableOrder || orderedSampleNos.length <= 1) return;
-                    event.stopPropagation();
-                    event.dataTransfer.effectAllowed = 'move';
-                    event.dataTransfer.setData('text/qc-sample-index', String(sampleIndex));
-                  }}
-                  onDragOver={(event) => {
-                    if (!editableOrder || orderedSampleNos.length <= 1) return;
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = 'move';
-                  }}
-                  onDrop={(event) => {
-                    if (!editableOrder || orderedSampleNos.length <= 1) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const fromIndex = Number(event.dataTransfer.getData('text/qc-sample-index'));
-                    if (Number.isFinite(fromIndex)) onMoveSample?.(fromIndex, sampleIndex);
-                  }}
-                  className={`min-w-[92px] border-r border-emerald-500 px-3 py-2 text-center font-semibold ${editableOrder && orderedSampleNos.length > 1 ? 'cursor-move hover:bg-emerald-700' : ''}`}
-                  title={editableOrder && orderedSampleNos.length > 1 ? 'Seret untuk mengatur urutan kolom sampel' : undefined}
+                  key={column.key || sampleIndex}
+                  className="min-w-[92px] border-r border-emerald-500 px-3 py-2 text-center font-semibold"
                 >
                   <span className="inline-flex items-center justify-center gap-1">
-                    {editableOrder && orderedSampleNos.length > 1 && <GripVertical className="h-3.5 w-3.5 text-white" />}
-                    {getDisplayNoSampel(sampleNo)}
+                    {column.displayNo}
                   </span>
                 </th>
               ))}
@@ -200,29 +289,16 @@ function DetailLhuTable({
 
               return (
                 <tr
-                  key={`${row.id_fppl_parameter_metode || row.idFpplParameterMetode || row.id_metode_parameter || row.idMetodeParameter || index}-${parameter}`}
-                  draggable={editableOrder}
-                  onDragStart={(event) => {
-                    if (!editableOrder) return;
-                    event.dataTransfer.effectAllowed = 'move';
-                    event.dataTransfer.setData('text/qc-parameter-index', String(index));
-                  }}
-                  onDragOver={(event) => {
-                    if (!editableOrder) return;
-                    event.preventDefault();
-                    event.dataTransfer.dropEffect = 'move';
-                  }}
-                  onDrop={(event) => {
-                    if (!editableOrder) return;
-                    event.preventDefault();
-                    const fromIndex = Number(event.dataTransfer.getData('text/qc-parameter-index'));
-                    if (Number.isFinite(fromIndex)) onMoveRow?.(fromIndex, index);
-                  }}
-                  className={`hover:bg-gray-50 ${editableOrder ? 'cursor-move' : ''}`}
+                  key={getDetailRowKey(row, index)}
+                  draggable={draggable}
+                  onDragStart={(event) => handleDragStart(event, index, row)}
+                  onDragOver={handleDragOver}
+                  onDrop={(event) => handleDrop(event, index, row)}
+                  className={`${draggable ? 'cursor-move' : ''} hover:bg-gray-50`}
                 >
                   <td className="border-r border-gray-200 px-4 py-3 text-center text-gray-500">
                     <span className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-600">
-                      {editableOrder && <GripVertical className="h-3.5 w-3.5" />}
+                      {draggable && <GripVertical className="h-3.5 w-3.5 text-gray-400" />}
                       {index + 1}
                     </span>
                   </td>
@@ -231,10 +307,10 @@ function DetailLhuTable({
                     <p>{metode}</p>
                     {acuan && <p className="mt-1 text-xs text-gray-500">{acuan}</p>}
                   </td>
-                  {displayedSampleNos.map((sampleNo, sampleIndex) => {
-                    const value = sampleNo === '-' ? null : hasilBySample[sampleNo];
+                  {displayedSampleColumns.map((column, sampleIndex) => {
+                    const value = column.key === '-' ? null : pickHasilForSampleColumn(hasilBySample, column, hasValue);
                     return (
-                      <td key={`${sampleNo}-${sampleIndex}`} className="border-r border-gray-200 px-3 py-3 text-center font-semibold text-gray-900">
+                      <td key={`${column.key}-${sampleIndex}`} className="border-r border-gray-200 px-3 py-3 text-center font-semibold text-gray-900">
                         {hasValue(value) ? value : <span className="text-gray-400">-</span>}
                       </td>
                     );

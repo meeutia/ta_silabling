@@ -28,8 +28,6 @@ const Lka = require('./Lka');
 const LkaHasil = require('./LkaHasil');
 const LkaRevisi = require('./LkaRevisi');
 const Lhu = require('./Lhu');
-const LhuSampel = require('./LhuSampel');
-const DetailLhu = require('./DetailLhu');
 const Invoice = require('./Invoice');
 const InvoiceItem = require('./InvoiceItem');
 const Payment = require('./Payment');
@@ -160,16 +158,8 @@ Fppl.hasMany(Lhu, { foreignKey: 'id_registrasi', as: 'lhus' });
 Lhu.belongsTo(Fppl, { foreignKey: 'id_registrasi', as: 'fppl' });
 PktBm.hasMany(Lhu, { foreignKey: 'id_pkt_bm' });
 Lhu.belongsTo(PktBm, { foreignKey: 'id_pkt_bm' });
-Lhu.hasMany(LhuSampel, { foreignKey: 'nomor_lhu', as: 'lhu_sampels' });
-LhuSampel.belongsTo(Lhu, { foreignKey: 'nomor_lhu', as: 'lhu' });
-Sampel.hasMany(LhuSampel, { foreignKey: 'no_sampel', as: 'lhu_sampels' });
-LhuSampel.belongsTo(Sampel, { foreignKey: 'no_sampel', as: 'sampel' });
-Lhu.belongsToMany(Sampel, { through: LhuSampel, foreignKey: 'nomor_lhu', otherKey: 'no_sampel', as: 'sampels' });
-Sampel.belongsToMany(Lhu, { through: LhuSampel, foreignKey: 'no_sampel', otherKey: 'nomor_lhu', as: 'lhus' });
-Lhu.hasMany(DetailLhu, { foreignKey: 'nomor_lhu', as: 'details' });
-DetailLhu.belongsTo(Lhu, { foreignKey: 'nomor_lhu', as: 'lhu' });
-FpplParameterMetode.hasMany(DetailLhu, { foreignKey: 'id_fppl_parameter_metode', as: 'detail_lhu_rows' });
-DetailLhu.belongsTo(FpplParameterMetode, { foreignKey: 'id_fppl_parameter_metode', as: 'fppl_parameter_metode' });
+Lhu.hasMany(Sampel, { foreignKey: 'nomor_lhu', as: 'sampels' });
+Sampel.belongsTo(Lhu, { foreignKey: 'nomor_lhu', as: 'lhu' });
 
 // INVOICE DAN PAYMENT
 Fppl.hasMany(Invoice, { foreignKey: 'id_registrasi' });
@@ -233,11 +223,19 @@ PengajuanPerubahanJadwal.belongsTo(JadwalPengambilanLhu, {
 });
 
 
-// notifikasi_email memakai pola polymorphic untuk penerima dan referensi.
-// Penerima disimpan pada penerima_tipe + penerima_id.
-// Referensi objek disimpan pada referensi_tipe + referensi_id.
-// Karena target tabelnya bisa berbeda-beda, relasi FK langsung ke user, pelanggan,
-// fppl, jadwal_lhu, lhu, dan penugasan tidak dibuat di Sequelize.
+// notifikasi_email memakai FK ke user untuk penerima.
+// Alamat email aktual tetap diselesaikan backend dan disimpan sebagai snapshot
+// pada email_tujuan/nama_penerima. Referensi objek tetap polymorphic melalui
+// referensi_tipe + referensi_id, sehingga tidak dibuat relasi FK ke objek bisnis.
+User.hasMany(NotifikasiEmail, {
+  foreignKey: 'nik_penerima',
+  as: 'notifikasi_email',
+});
+
+NotifikasiEmail.belongsTo(User, {
+  foreignKey: 'nik_penerima',
+  as: 'penerima_user',
+});
 
 User.hasMany(AktivitasSistemLog, {
   foreignKey: 'dibuat_oleh',
@@ -249,4 +247,4 @@ AktivitasSistemLog.belongsTo(User, {
   as: 'pembuat_aktivitas',
 });
 
-module.exports = { sequelize, Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, RegBm, PktBm, PktBmKelompok, PktBmParam, PktBmNilai, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, Lhu, LhuSampel, DetailLhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, NotifikasiEmail, AktivitasSistemLog };
+module.exports = { sequelize, Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, RegBm, PktBm, PktBmKelompok, PktBmParam, PktBmNilai, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, Lhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, NotifikasiEmail, AktivitasSistemLog };

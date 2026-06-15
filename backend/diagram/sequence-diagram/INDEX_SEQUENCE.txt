@@ -1,0 +1,29 @@
+No|Area|File|Masuk Bab 4
+1|Bab 4 Wajib|bab4-wajib/01_BAB4_Membuat_Permohonan_Pengujian.puml|Ya
+2|Bab 4 Wajib|bab4-wajib/02_BAB4_Memverifikasi_Permohonan.puml|Ya
+3|Bab 4 Wajib|bab4-wajib/03_BAB4_Menentukan_Metode_Uji.puml|Ya
+4|Bab 4 Wajib|bab4-wajib/04_BAB4_Melihat_Invoice_dan_Melakukan_Pembayaran.puml|Ya
+5|Bab 4 Wajib|bab4-wajib/05_BAB4_Mengirim_Hasil_Uji.puml|Ya
+6|Bab 4 Wajib|bab4-wajib/06_BAB4_Memfinalisasi_LHU.puml|Ya
+7|Bab 4 Wajib|bab4-wajib/07_BAB4_Mengesahkan_LHU.puml|Ya
+8|Bab 4 Wajib|bab4-wajib/08_BAB4_Mengelola_Jadwal_Pengambilan_LHU.puml|Ya
+1|Lampiran Detail|lampiran-detail/L01_Melakukan_Login.puml|Tidak, kecuali dosen minta detail
+2|Lampiran Detail|lampiran-detail/L02_Register.puml|Tidak, kecuali dosen minta detail
+3|Lampiran Detail|lampiran-detail/L03_Membuat_Permohonan_Pengujian.puml|Tidak, kecuali dosen minta detail
+4|Lampiran Detail|lampiran-detail/L04_Memverifikasi_Permohonan.puml|Tidak, kecuali dosen minta detail
+5|Lampiran Detail|lampiran-detail/L05_Melihat_Invoice_dan_Melakukan_Pembayaran.puml|Tidak, kecuali dosen minta detail
+6|Lampiran Detail|lampiran-detail/L06_Mengelola_Perubahan_Jadwal_Sampel.puml|Tidak, kecuali dosen minta detail
+7|Lampiran Detail|lampiran-detail/L07_Menjadwalkan_Pengambilan_Sampel.puml|Tidak, kecuali dosen minta detail
+8|Lampiran Detail|lampiran-detail/L08_Menerima_Sampel_dan_Generate_Nomor_Sampel.puml|Tidak, kecuali dosen minta detail
+9|Lampiran Detail|lampiran-detail/L09_Mengelola_Penugasan_Analis.puml|Tidak, kecuali dosen minta detail
+10|Lampiran Detail|lampiran-detail/L10_Menentukan_Metode_Uji.puml|Tidak, kecuali dosen minta detail
+11|Lampiran Detail|lampiran-detail/L11_Mengelola_Hasil_Uji_oleh_Analis.puml|Tidak, kecuali dosen minta detail
+12|Lampiran Detail|lampiran-detail/L12_Mengelola_Review_Hasil_Uji_oleh_Penyelia.puml|Tidak, kecuali dosen minta detail
+13|Lampiran Detail|lampiran-detail/L13_Mengelola_Review_Hasil_Uji_oleh_Kasi_Pengujian.puml|Tidak, kecuali dosen minta detail
+14|Lampiran Detail|lampiran-detail/L14_Menanggapi_Permintaan_Revisi_Kasi.puml|Tidak, kecuali dosen minta detail
+15|Lampiran Detail|lampiran-detail/L15_Memperbaiki_Hasil_Uji.puml|Tidak, kecuali dosen minta detail
+16|Lampiran Detail|lampiran-detail/L16_Memfinalisasi_LHU.puml|Tidak, kecuali dosen minta detail
+17|Lampiran Detail|lampiran-detail/L17_Mengesahkan_LHU.puml|Tidak, kecuali dosen minta detail
+18|Lampiran Detail|lampiran-detail/L18_Mengelola_Jadwal_Pengambilan_LHU.puml|Tidak, kecuali dosen minta detail
+19|Lampiran Detail|lampiran-detail/L19_Mengatur_Ulang_Kata_Sandi.puml|Tidak, kecuali dosen minta detail
+20|Lampiran Detail|lampiran-detail/L20_Melihat_Status_dan_Detail_Permohonan.puml|Tidak, kecuali dosen minta detail

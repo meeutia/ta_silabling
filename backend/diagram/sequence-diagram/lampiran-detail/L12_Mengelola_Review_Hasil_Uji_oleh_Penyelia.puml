@@ -1,0 +1,57 @@
+    @startuml
+    title Sequence Diagram Mengelola Review Hasil Uji oleh Penyelia
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Penyelia" as Penyelia
+boundary "PenyeliaPenugasanDetailPage" as FE
+control "penyeliaPenugasanDetailApi" as Api
+control "AssignmentController" as Controller
+control "AssignmentService" as AssignmentService
+control "AssignmentPenyeliaReviewService
+.reviewWorksheet()" as ReviewService
+database "Sequelize Models
+PenugasanDetail, Lka, LkaHasil, LkaRevisi" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Penyelia -> FE: Membuka detail review hasil uji
+FE -> Api: getReviewDetails(idPenugasan, idDetail)
+Api -> Controller: GET /assignments/work/{idPenugasan}/details
+Controller -> AssignmentService: getAssignmentDetailsByPenugasan(...)
+AssignmentService -> DB: ambil detail penugasan dan hasil LKA
+Controller --> FE: detail review
+
+Penyelia -> FE: Pilih Setujui atau Revisi
+alt Setujui
+  FE -> Api: approveDetail(idPenugasanDetail)
+  Api -> Controller: POST /assignments/details/{id}/approve
+  Controller -> AssignmentService: reviewWorksheet(id, {action:'approve'}, penyeliaNik)
+else Revisi
+  FE -> Api: requestRevision(idPenugasanDetail, payload)
+  Api -> Controller: POST /assignments/details/{id}/revise
+  Controller -> AssignmentService: reviewWorksheet(id, {action:'revise', revisions}, penyeliaNik)
+end
+AssignmentService -> ReviewService: reviewWorksheet(...)
+activate ReviewService
+ReviewService -> DB: lock PenugasanDetail + Lka
+ReviewService -> ReviewService: pastikan status LKA = Menunggu Verifikasi Penyelia
+alt approve
+  ReviewService -> DB: update LkaHasil = Disetujui Penyelia
+  ReviewService -> DB: sync status LKA/detail
+  ReviewService -> Log: logStatusTransition(PENYELIA_MENYETUJUI_LKA)
+else revise
+  ReviewService -> DB: create LkaRevisi sumber=Penyelia
+  ReviewService -> DB: update Lka/LkaHasil = Perlu Perbaikan
+  ReviewService -> Log: logStatusTransition(PENYELIA_MEMINTA_REVISI)
+end
+ReviewService --> AssignmentService: result
+deactivate ReviewService
+AssignmentService --> Controller: result
+Controller -> Notif: kirim notifikasi sesuai aksi
+Controller --> FE: successResponse
+    @enduml

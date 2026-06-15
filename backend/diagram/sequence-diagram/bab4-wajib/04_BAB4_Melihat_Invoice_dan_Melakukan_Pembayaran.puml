@@ -1,0 +1,75 @@
+    @startuml
+    title Sequence Diagram Melihat Invoice dan Melakukan Pembayaran
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Pelanggan" as Pelanggan
+boundary "PelangganDetailPermohonanPage" as FE
+control "customerRequestApi" as Api
+control "CustomerRequestController" as Controller
+control "RequestService
+.detailRequest()" as RequestService
+control "PaymentService
+.createGatewayPayment()" as PaymentService
+control "PaymentXenditService
+.createXenditPaymentSession()" as XenditService
+control "XenditWebhookController
+.handlePaymentSessionWebhook()" as WebhookController
+database "Sequelize Models
+Fppl, Invoice, Payment" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+collections "Xendit Payment Gateway" as Xendit
+
+Pelanggan -> FE: Membuka detail permohonan dan invoice
+FE -> Api: getDetail(idRegistrasi)
+Api -> Controller: GET /requests/{id}
+Controller -> RequestService: detailRequest(id, userNik, role)
+RequestService -> DB: Fppl.findByPk(... include Invoice/Payment)
+RequestService --> Controller: detail + invoice
+Controller --> FE: data invoice
+
+Pelanggan -> FE: Memilih metode pembayaran dan klik bayar
+FE -> Api: submitPaymentDecision(id, {action:'approve', paymentMethodCode})
+Api -> Controller: POST /requests/{id}/payment
+activate Controller
+Controller -> PaymentService: createGatewayPayment(id, userNik, paymentMethodCode)
+activate PaymentService
+PaymentService -> DB: begin transaction
+PaymentService -> DB: ensureCustomerOwnsRequest(id, userNik)
+PaymentService -> DB: createOrRefreshInvoiceForRequest(id)
+PaymentService -> DB: create/update Payment
+PaymentService -> XenditService: createXenditPaymentSession(sessionPayload)
+activate XenditService
+XenditService -> Xendit: POST /sessions
+Xendit --> XenditService: payment_link_url, status ACTIVE
+XenditService --> PaymentService: xenditSession
+deactivate XenditService
+PaymentService -> DB: update Payment gateway fields
+PaymentService -> DB: update Invoice status Belum Dibayar
+PaymentService -> DB: commit transaction
+PaymentService --> Controller: invoice summary + payment URL
+deactivate PaymentService
+Controller --> Api: successResponse
+Api --> FE: paymentUrl
+FE --> Pelanggan: Redirect/buka link pembayaran Xendit
+
+deactivate Controller
+
+Pelanggan -> Xendit: Menyelesaikan pembayaran
+Xendit -> WebhookController: payment_session.completed webhook
+WebhookController -> PaymentService: handleXenditPaymentSessionWebhook(req, res)
+activate PaymentService
+PaymentService -> DB: find Payment by session/reference
+PaymentService -> DB: update Payment paid_at/gateway_status
+PaymentService -> DB: update Invoice status Lunas
+PaymentService -> DB: update Fppl status tahap sampel
+PaymentService -> Log: logStatusTransition(PEMBAYARAN_TERKONFIRMASI)
+PaymentService -> Notif: triggerPaymentNotificationFromResult(...)
+PaymentService --> WebhookController: webhook processed
+deactivate PaymentService
+    @enduml

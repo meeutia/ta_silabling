@@ -1,0 +1,69 @@
+    @startuml
+    title Sequence Diagram Mengelola Perubahan Jadwal Sampel
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Pelanggan" as Pelanggan
+actor "Admin" as Admin
+boundary "PelangganDetailPermohonanPage" as PelangganFE
+boundary "AdminPermohonanPage" as AdminFE
+control "customerRequestApi" as CustomerApi
+control "adminPermohonanApi" as AdminApi
+control "ScheduleChangeController" as Controller
+control "ScheduleChangeService" as Service
+database "Sequelize Models
+PengajuanPerubahanJadwal, JadwalSampel, Fppl" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Pelanggan -> PelangganFE: Ajukan perubahan jadwal sampel
+PelangganFE -> CustomerApi: requestScheduleChange(payload)
+CustomerApi -> Controller: POST /requests/schedule-changes
+activate Controller
+Controller -> Service: createScheduleChangeRequest(body, pelangganNik)
+activate Service
+Service -> DB: assertCustomerOwnsRequest(idRegistrasi)
+Service -> DB: findActiveSchedule(jenisJadwal=SAMPEL)
+Service -> Service: validateScheduleDateOrThrow(tanggalUsulan)
+Service -> DB: create PengajuanPerubahanJadwal
+status = Menunggu Persetujuan Admin
+Service -> Log: logStatusTransition(MENGAJUKAN_PERUBAHAN_JADWAL)
+Service -> Notif: notifyScheduleChangeRequested(...)
+Service --> Controller: pengajuan
+deactivate Service
+Controller --> CustomerApi: 201 success
+CustomerApi --> PelangganFE: pengajuan berhasil
+PelangganFE --> Pelanggan: Tampilkan status menunggu admin
+
+deactivate Controller
+
+Admin -> AdminFE: Membuka daftar pengajuan perubahan jadwal
+AdminFE -> AdminApi: getScheduleChangeRequests()
+AdminApi -> Controller: GET /requests/schedule-changes
+Controller -> Service: listScheduleChangeRequests(filter)
+Service -> DB: PengajuanPerubahanJadwal.findAll(...)
+Service --> AdminFE: daftar pengajuan
+
+Admin -> AdminFE: Setujui atau tolak pengajuan
+AdminFE -> AdminApi: decideScheduleChange(idPengajuan, body)
+AdminApi -> Controller: POST /requests/schedule-changes/{id}/decision
+Controller -> Service: decideScheduleChangeRequest(idPengajuan, body, adminNik)
+activate Service
+Service -> DB: lock PengajuanPerubahanJadwal dan JadwalSampel
+alt disetujui
+  Service -> DB: update JadwalSampel tanggal/jam/status
+  Service -> DB: update PengajuanPerubahanJadwal = Disetujui
+  Service -> Log: logStatusTransition(MENYETUJUI_PERUBAHAN_JADWAL)
+else ditolak
+  Service -> DB: update PengajuanPerubahanJadwal = Ditolak
+  Service -> Log: logStatusTransition(MENOLAK_PERUBAHAN_JADWAL)
+end
+Service -> Notif: notifyScheduleChangeDecision(...)
+Service --> Controller: result
+deactivate Service
+Controller --> AdminFE: success
+    @enduml

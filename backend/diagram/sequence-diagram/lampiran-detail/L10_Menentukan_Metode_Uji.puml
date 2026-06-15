@@ -1,0 +1,59 @@
+    @startuml
+    title Sequence Diagram Menentukan Metode Uji
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Kasi Pengujian" as Kasi
+boundary "KasiPermohonanPage" as FE
+control "kasiRequestApi" as Api
+control "RequestWorkflowController
+.assignMethods()" as Controller
+control "RequestWorkflowService
+.assignMethods()" as Service
+database "Sequelize Models
+Fppl, FpplSampel,
+FpplParameterMetode, ParameterMetode" as DB
+control "PaymentService
+.createOrRefreshInvoiceForRequest()" as Payment
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Kasi -> FE: Memilih status kemampuan, metode, insitu/subkontrak
+FE -> Api: saveMethods(noReg, selections)
+Api -> Controller: PUT /requests/{id}/methods
+activate Controller
+Controller -> Service: assignMethods(id, selections, req.user.nik)
+activate Service
+Service -> DB: begin transaction
+Service -> DB: lock Fppl dan ambil FpplSampel/FpplParameterMetode
+Service -> Service: Kelompokkan parameter berdasarkan business key
+Service -> Service: Validasi semua parameter sudah dipilih
+loop setiap kelompok parameter
+  Service -> DB: ParameterMetode.findOne(id_metode_parameter, id_parameter)
+  Service -> Service: Validasi metode aktif dan sesuai MAMPU/TIDAK_MAMPU
+  Service -> DB: update FpplParameterMetode
+metode, status_kemampuan_lab, is_insitu
+end
+Service -> DB: update Fppl
+status = Menunggu Pembayaran
+Service -> Log: logStatusTransition(MENETAPKAN_METODE_DAN_INVOICE)
+Service -> Payment: createOrRefreshInvoiceForRequest(id, transaction)
+activate Payment
+Payment -> DB: create/update Invoice dan InvoiceItem
+Payment -> Log: logStatusTransition(MEMBUAT/MEMPERBARUI_INVOICE)
+Payment --> Service: invoice
+deactivate Payment
+Service -> DB: commit transaction
+Service --> Controller: { id_registrasi, status, id_invoice }
+deactivate Service
+Controller -> Notif: notifyInvoiceReady(idRegistrasi)
+Controller --> Api: successResponse
+Api --> FE: status Menunggu Pembayaran
+FE --> Kasi: Menampilkan metode berhasil disimpan
+
+deactivate Controller
+    @enduml

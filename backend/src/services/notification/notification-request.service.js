@@ -3,7 +3,7 @@ const { Fppl, Pelanggan, Invoice, Payment, NotifikasiEmail, FpplSampel, Sampel, 
 const { NOTIFICATION_TYPE, STATUS_PENGIRIMAN_EMAIL, } = require('../../constants/notification.constant');
 const Roles = require('../../constants/roles');
 const { buildAdminRequestLink, buildKasiMethodsLink, buildPenyeliaAssignmentLink, buildRequestDetailLink, safeString, } = require('./notification-format.util');
-const { buildEmailLogWhere, createEmailLog, findNotificationTypeById, findOrCreateNotificationTypeById, getPlain, markEmailFailed, markEmailSent, resolveRecipientEmail, sendNotificationEmail, } = require('./notification-core.service');
+const { buildEmailLogWhere, createEmailLog, findNotificationTypeById, findOrCreateNotificationTypeById, getPlain, markEmailFailed, markEmailSent, resolveRecipientEmail, resolveRecipientSnapshot, sendNotificationEmail, } = require('./notification-core.service');
 const { getActiveUsersByRole, getRequestAndCustomer, getRequestWithCustomerAndSamples, resolveRequestStatusNotificationType, } = require('./notification-query.service');
 const { buildAdminRequestSubmittedEmail, } = require('../../templates/email/admin-request-submitted.template');
 const { buildDeferredPaymentMarkedEmail, } = require('../../templates/email/deferred-payment-marked.template');
@@ -35,12 +35,12 @@ getLatestInvoiceAndPayment = async (registrasiId) => {
         return { invoice, payment };
     };
     createEmailLogIfNotAlreadyQueuedOrSent = async ({ idTipeNotifikasi, penerimaUserNik = null, penerimaPelangganId = null, idRegistrasi = null, idJadwalLhu = null, nomorLhu = null, idPenugasan = null, }) => {
+        const recipient = await resolveRecipientSnapshot({ penerimaUserNik, penerimaPelangganId });
         const existing = await NotifikasiEmail.findOne({
             where: {
                 ...buildEmailLogWhere({
                     idTipeNotifikasi,
-                    penerimaUserNik,
-                    penerimaPelangganId,
+                    nikPenerima: recipient.nik_penerima,
                     idRegistrasi,
                     idJadwalLhu,
                     nomorLhu,

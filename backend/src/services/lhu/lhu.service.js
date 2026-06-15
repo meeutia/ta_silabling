@@ -8,10 +8,24 @@ const assignmentService = require('../assignment.service');
 const notificationService = require('../notification/notification.service');
 const WorkflowLogService = require('../workflow/workflow-log.service');
 const { generateNomorLhu } = require('../../utils/id-generator');
-const { User, Pegawai, Role, Pelanggan, Fppl, JadwalSampel, FpplSampel, JenisSampel, RegBm, PktBm, PktBmParam, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, PenugasanItem, PenugasanDetail, Lka, LkaHasil, Lhu, JadwalPengambilanLhu, LhuSampel, DetailLhu, } = require('../../models/Associations');
+const { User, Pegawai, Role, Pelanggan, Fppl, JadwalSampel, FpplSampel, JenisSampel, RegBm, PktBm, PktBmParam, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, PenugasanItem, PenugasanDetail, Lka, LkaHasil, Lhu, JadwalPengambilanLhu, } = require('../../models/Associations');
 const { LHU_STATUS, LHU_EDITABLE_BY_QC_STATUSES, LHU_NEXT_STATUS, isLhuEditableByQc, } = require('../../constants/lhu-status.constant');
 const { buildLkaHasilRevisionResponse } = require('../assignment/assignment-revision.helper');
 const RequestStatus = require('../../constants/request-status');
+
+const normalizeSampleNoKey = (value) => String(value || '').trim().replace(/\s*\/\s*/g, '/').toLowerCase();
+const dedupeSampleInfos = (sampleInfos = []) => {
+    const map = new Map();
+    (Array.isArray(sampleInfos) ? sampleInfos : []).forEach((sample) => {
+        const noSampel = String(sample?.no_sampel || sample?.noSampel || '').trim();
+        const key = normalizeSampleNoKey(noSampel);
+        if (!key || map.has(key))
+            return;
+        map.set(key, sample);
+    });
+    return Array.from(map.values()).sort((a, b) => String(a?.no_sampel || a?.noSampel || '').localeCompare(String(b?.no_sampel || b?.noSampel || ''), 'id', { numeric: true, sensitivity: 'base' }));
+};
+const dedupeSampleNos = (values = []) => dedupeSampleInfos((Array.isArray(values) ? values : []).map((noSampel) => ({ no_sampel: noSampel }))).map((sample) => sample.no_sampel);
 class LhuService {
 getLhuDetail = async (nomorLhu) => {
         const lhuNo = String(nomorLhu || '').trim();
@@ -26,7 +40,7 @@ getLhuDetail = async (nomorLhu) => {
         }
         let lhuPlain = getPlain(lhuInstance);
         lhuPlain = await ensureLhuPdfFile(lhuPlain);
-        const sampleInfos = await getSampleInfosForLhu(lhuPlain.nomor_lhu);
+        const sampleInfos = dedupeSampleInfos(await getSampleInfosForLhu(lhuPlain.nomor_lhu));
         const sampleInfo = sampleInfos[0] || {};
         const pktBm = await getPktBmHeaderById(lhuPlain.id_pkt_bm);
         const details = await getDetailLhuRows(lhuNo);
@@ -35,7 +49,7 @@ getLhuDetail = async (nomorLhu) => {
             getPegawaiDisplayName(lhuPlain.kalab_by),
         ]);
         const samplePayloads = sampleInfos.map(mapSamplePayload);
-        const sampleNos = sampleInfos.map((info) => info.no_sampel).filter(Boolean);
+        const sampleNos = dedupeSampleNos(sampleInfos.map((info) => info.no_sampel).filter(Boolean));
         const noSampelText = sampleNos.join('\n') || null;
         const lhu = {
             ...mapLhuHeaderPayload(lhuPlain, sampleInfo, pktBm, {

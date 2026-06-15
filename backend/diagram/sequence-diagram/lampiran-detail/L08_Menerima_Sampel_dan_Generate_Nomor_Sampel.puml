@@ -1,0 +1,61 @@
+    @startuml
+    title Sequence Diagram Menerima Sampel dan Generate Nomor Sampel
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Admin" as Admin
+boundary "AdminPermohonanPage
+AdminPermohonanSampleReceiptSection" as FE
+control "adminPermohonanApi" as Api
+control "RequestWorkflowController
+.receiveSamplesAndGenerateCodes()" as Controller
+control "RequestWorkflowService
+.receiveSamplesAndGenerateCodes()" as Service
+control "AssignmentService
+.getSubkontrakItems()" as AssignmentService
+database "Sequelize Models
+Fppl, JadwalSampel, FpplSampel, Sampel, SampelParameter" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Admin -> FE: Input penerimaan sampel, kondisi, abnormalitas, koordinat
+FE -> Api: receiveSamples(idRegistrasi, body)
+Api -> Controller: POST /requests/{id}/samples/receive
+activate Controller
+Controller -> Service: receiveSamplesAndGenerateCodes(id, payload, adminNik)
+activate Service
+Service -> DB: begin transaction
+Service -> DB: lock Fppl
+Service -> Service: assertRequestReadyForSampleReceipt()
+Service -> DB: ambil JadwalSampel aktif
+Service -> DB: ambil FpplSampel dan FpplParameterMetode
+Service -> DB: pastikan nomor sampel belum pernah dibuat
+loop setiap kelompok FpplSampel dan jumlah_sampel
+  Service -> Service: buildNoSampel(sequence, jenisSampel, tanggal)
+  Service -> DB: create Sampel status = Diterima
+  Service -> Log: logStatusTransition(MENERIMA_SAMPEL)
+  loop setiap parameter kelompok
+    Service -> DB: create SampelParameter(no_sampel, id_fppl_parameter_metode)
+  end
+end
+Service -> DB: update JadwalSampel status = Selesai
+Service -> DB: update Fppl status = Proses Pengujian
+Service -> Log: logStatusTransition(MENERIMA_SAMPEL pada FPPL)
+Service -> DB: commit transaction
+Service --> Controller: daftar sampel tergenerate
+deactivate Service
+Controller -> Notif: notifyRequestStatusChanged(...)
+Controller -> Notif: notifyPenyeliaPenugasanSampelMasuk(...)
+Controller -> AssignmentService: getSubkontrakItems()
+AssignmentService --> Controller: item subkontrak pending
+Controller -> Notif: notifySubkontrakPerluDiisi(items)
+Controller --> Api: successResponse
+Api --> FE: nomor sampel
+FE --> Admin: Tampilkan sampel berhasil diterima
+
+deactivate Controller
+    @enduml

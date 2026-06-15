@@ -128,13 +128,6 @@ isEditableByQcStatus = (status) => {
             catatan_hasil: row.catatan_hasil || null,
         }));
     };
-    buildDetailLhuCreateRow = (row = {}) => {
-        return {
-            nomor_lhu: row.nomor_lhu,
-            id_fppl_parameter_metode: getFpplParameterMetodeKey(row),
-            urutan_lhu: row.urutan_lhu,
-        };
-    };
     getPegawaiDisplayName = async (nik) => {
         const userNik = String(nik || '').trim();
         if (!userNik)

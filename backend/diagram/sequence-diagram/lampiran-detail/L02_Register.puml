@@ -1,0 +1,43 @@
+    @startuml
+    title Sequence Diagram Register
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Pelanggan" as Pelanggan
+boundary "RegisterPage" as FE
+control "authApi" as Api
+control "AuthController
+.register()" as Controller
+control "AuthService
+.register()" as Service
+database "Sequelize Models
+User, Role" as DB
+control "bcrypt" as Bcrypt
+control "JWT/Refresh Token" as Token
+
+Pelanggan -> FE: Input NIK, username, email, password
+FE -> Api: register(payload)
+Api -> Controller: POST /auth/register
+activate Controller
+Controller -> Service: register({nik, username, email, password})
+activate Service
+Service -> Service: validasi NIK, username, email, password
+Service -> DB: cek duplikasi User by NIK/email/username
+Service -> Bcrypt: hash(password)
+Bcrypt --> Service: hashedPassword
+Service -> DB: User.create(role=Pelanggan, aktif)
+Service -> Token: generateRefreshToken(), generateToken(user)
+Service -> DB: update refresh_token_hash, expires_at
+Service --> Controller: user, token, refreshToken
+deactivate Service
+Controller -> Controller: set httpOnly refresh cookie
+Controller --> Api: 201 successResponse
+Api --> FE: user + token
+FE --> Pelanggan: Registrasi berhasil dan masuk sistem
+
+deactivate Controller
+    @enduml

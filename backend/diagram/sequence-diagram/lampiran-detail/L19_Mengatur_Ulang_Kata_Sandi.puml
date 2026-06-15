@@ -1,0 +1,56 @@
+    @startuml
+    title Sequence Diagram Mengatur Ulang Kata Sandi
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Pengguna" as User
+boundary "LoginPage / ResetPasswordPage" as FE
+control "authApi" as Api
+control "AuthController" as Controller
+control "AuthService" as Service
+database "Sequelize Model
+User" as DB
+control "Mailer
+sendMail()" as Mailer
+control "bcrypt" as Bcrypt
+
+User -> FE: Input email lupa kata sandi
+FE -> Api: forgotPassword(email)
+Api -> Controller: POST /auth/forgot-password
+activate Controller
+Controller -> Service: forgotPassword(email)
+activate Service
+Service -> Service: validasi format email
+Service -> DB: User.findOne(email)
+alt email valid dan akun aktif
+  Service -> Service: generateResetToken() dan hashResetToken()
+  Service -> DB: update reset_password_token_hash, expires_at
+  Service -> Mailer: sendMail(resetUrl)
+else email tidak ditemukan / akun nonaktif
+  Service -> Service: return generic { sent: true }
+end
+Service --> Controller: { sent: true }
+deactivate Service
+Controller --> Api: successResponse(generic)
+Api --> FE: pesan cek email
+FE --> User: Tampilkan pesan reset dikirim jika email terdaftar
+
+deactivate Controller
+
+User -> FE: Buka link reset dan input password baru
+FE -> Api: resetPassword({token, password, confirmPassword})
+Api -> Controller: POST /auth/reset-password
+Controller -> Service: resetPassword(payload)
+activate Service
+Service -> Service: validasi token, password, confirmPassword
+Service -> DB: User.findOne(reset token hash, belum expired)
+Service -> Bcrypt: hash(password baru)
+Service -> DB: update password dan hapus token/reset refresh
+Service --> Controller: { success: true }
+deactivate Service
+Controller --> FE: password berhasil diubah
+    @enduml

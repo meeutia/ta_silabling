@@ -1,4 +1,4 @@
-const { Lhu, LhuSampel, DetailLhu, Sampel, FpplSampel, JenisSampel, RegBm, Fppl, Pelanggan, PktBm, PktBmParam, PktBmNilai, FpplParameterMetode, Parameter, ParameterMetode, Metode, Pegawai, JadwalSampel, Lka, LkaHasil, PenugasanDetail, } = require('../../models/Associations');
+const { Lhu, Sampel, FpplSampel, JenisSampel, RegBm, Fppl, Pelanggan, PktBm, PktBmParam, PktBmNilai, Parameter, ParameterMetode, Metode, Pegawai, JadwalSampel, Lka, LkaHasil, PenugasanDetail, } = require('../../models/Associations');
 const { formatSampleNoList, formatSampleFieldLines, getSampleOrderValue, sortRowsBySampleOrder, normalizeSampleTypeForLhu, normalizeSampleCollectorForLhu, } = require('./lhu-pdf-format.util');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
 class LhuPdfDataService {
@@ -184,37 +184,26 @@ getPlain = (instance) => {
         };
     };
     getLhuSampleRowsForPdf = async (nomorLhu, transaction = null) => {
-        const instances = await LhuSampel.findAll({
+        const instances = await Sampel.findAll({
             where: { nomor_lhu: nomorLhu },
             include: [
                 {
-                    model: Sampel,
-                    as: 'sampel',
-                    required: true,
-                    include: [
-                        {
-                            model: FpplSampel,
-                            as: 'fppl_sampel',
-                            required: false,
-                            include: [{ model: JenisSampel, required: false }],
-                        },
-                    ],
+                    model: FpplSampel,
+                    as: 'fppl_sampel',
+                    required: false,
+                    include: [{ model: JenisSampel, required: false }],
                 },
             ],
-            order: [
-                ['urutan_sampel', 'ASC'],
-                ['no_sampel', 'ASC'],
-            ],
+            order: [['no_sampel', 'ASC']],
             transaction,
         });
         const mappedRows = instances.map((instance, index) => {
-            const row = this.getPlain(instance) || {};
-            const sample = this.pickObject(row, ['sampel', 'Sampel']) || {};
+            const sample = this.getPlain(instance) || {};
             const fpplSampel = this.pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
             const jenisSampel = this.pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
             return {
-                no_sampel: row.no_sampel || sample.no_sampel || null,
-                urutan_sampel: getSampleOrderValue(row, index),
+                no_sampel: sample.no_sampel || null,
+                urutan_sampel: index + 1,
                 tanggal_pengambilan_sampel: sample.tanggal_pengambilan_sampel || null,
                 diterima_pada: sample.diterima_pada || null,
                 kondisi_sampel: sample.kondisi_sampel || null,
@@ -332,107 +321,194 @@ getPlain = (instance) => {
             return false;
         }) || null;
     };
-    getLhuDetailRowsForPdf = async (nomorLhu, header = {}, sampleRows = [], transaction = null) => {
-        const [detailInstances, bmParamMap] = await Promise.all([
-            DetailLhu.findAll({
-                where: { nomor_lhu: nomorLhu },
-                include: [
-                    {
-                        model: FpplParameterMetode,
-                        as: 'fppl_parameter_metode',
-                        required: false,
-                        include: [
-                            { model: Parameter, required: false },
-                            {
-                                model: ParameterMetode,
-                                required: false,
-                                include: [{ model: Metode, required: false }],
-                            },
-                        ],
-                    },
-                ],
-                order: [
-                    ['urutan_lhu', 'ASC'],
-                    ['id_fppl_parameter_metode', 'ASC'],
-                ],
-                transaction,
-            }),
-            this.getBmParamMapForPdf(header.id_pkt_bm, transaction),
-        ]);
+    getDetailFallbackKeyForPdf = (row = {}) => {
+        const textKey = [
+            this.getParameterKey(row),
+            row.nama_parameter_snapshot || row.nama_parameter || row.namaParameter,
+            row.metode_snapshot || row.nama_metode || row.namaMetode || row.metode,
+            row.acuan_metode_snapshot || row.acuan_metode || row.acuanMetode,
+        ].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean).join('|');
+        return String(
+            row.detail_key ||
+            row.detailKey ||
+            row.key ||
+            this.getParameterMethodKey(row) ||
+            textKey
+        ).trim();
+    };
+    compareText = (a, b) => {
+        return String(a || '').localeCompare(String(b || ''), 'id', {
+            sensitivity: 'base',
+            numeric: true,
+        });
+    };
+    sortPdfDetailGroups = (groups = []) => {
+        return (Array.isArray(groups) ? [...groups] : []).sort((a, b) => {
+            const parameterCompare = this.compareText(a.nama_parameter_snapshot || a.nama_parameter, b.nama_parameter_snapshot || b.nama_parameter);
+            if (parameterCompare)
+                return parameterCompare;
+            const metodeCompare = this.compareText(a.metode_snapshot || a.nama_metode || a.metode, b.metode_snapshot || b.nama_metode || b.metode);
+            if (metodeCompare)
+                return metodeCompare;
+            return this.compareText(this.getDetailFallbackKeyForPdf(a), this.getDetailFallbackKeyForPdf(b));
+        });
+    };
+    normalizeDetailOrderInput = (value) => {
+        if (Array.isArray(value))
+            return value;
+        if (!value)
+            return [];
+        if (typeof value === 'string') {
+            try {
+                const parsed = JSON.parse(value);
+                if (Array.isArray(parsed))
+                    return parsed;
+            }
+            catch (error) {
+                return value.split(/[\n,]+/).map((item) => item.trim()).filter(Boolean);
+            }
+        }
+        return [];
+    };
+    getPdfDetailOrderCandidateKeys = (row = {}) => {
+        const textKey = [row.nama_parameter_snapshot || row.nama_parameter, row.metode_snapshot || row.nama_metode || row.metode, row.acuan_metode_snapshot || row.acuan_metode || row.acuanMetode]
+            .map((value) => String(value || '').trim().toLowerCase())
+            .filter(Boolean)
+            .join('|');
+        return [
+            row.detail_key || row.detailKey || row.key,
+            this.getDetailFallbackKeyForPdf(row),
+            row.id_fppl_parameter_metode || row.idFpplParameterMetode,
+            row.id_metode_parameter || row.idMetodeParameter || row.id_parameter_metode || row.idParameterMetode,
+            row.id_parameter || row.idParameter,
+            textKey,
+        ].map((value) => String(value || '').trim()).filter(Boolean);
+    };
+    getStoredOrderCandidateKeys = (item = {}) => {
+        if (!item || typeof item !== 'object') {
+            const text = String(item || '').trim();
+            return text ? [text] : [];
+        }
+        const textKey = [item.nama_parameter || item.namaParameter, item.metode || item.nama_metode || item.namaMetode, item.acuan_metode || item.acuanMetode]
+            .map((value) => String(value || '').trim().toLowerCase())
+            .filter(Boolean)
+            .join('|');
+        return [
+            item.detail_key || item.detailKey,
+            item.key,
+            item.id_fppl_parameter_metode || item.idFpplParameterMetode,
+            item.id_metode_parameter || item.idMetodeParameter || item.id_parameter_metode || item.idParameterMetode,
+            item.id_parameter || item.idParameter,
+            textKey,
+        ].map((value) => String(value || '').trim()).filter(Boolean);
+    };
+    applyStoredDetailOrder = (groups = [], detailOrder = []) => {
+        const defaultGroups = this.sortPdfDetailGroups(groups);
+        const orderIndexByKey = new Map();
+        (Array.isArray(detailOrder) ? detailOrder : []).forEach((item, index) => {
+            this.getStoredOrderCandidateKeys(item).forEach((key) => {
+                const normalized = String(key || '').trim().toLowerCase();
+                if (normalized && !orderIndexByKey.has(normalized))
+                    orderIndexByKey.set(normalized, index);
+            });
+        });
+        if (!orderIndexByKey.size)
+            return defaultGroups;
+        const matched = [];
+        const unmatched = [];
+        defaultGroups.forEach((row, defaultIndex) => {
+            const matchedIndex = this.getPdfDetailOrderCandidateKeys(row)
+                .map((key) => orderIndexByKey.get(String(key).toLowerCase()))
+                .find((index) => Number.isInteger(index));
+            const payload = { ...row, __matchedOrderIndex: matchedIndex, __defaultIndex: defaultIndex };
+            if (Number.isInteger(matchedIndex))
+                matched.push(payload);
+            else
+                unmatched.push(payload);
+        });
+        return [...matched.sort((a, b) => a.__matchedOrderIndex - b.__matchedOrderIndex || a.__defaultIndex - b.__defaultIndex), ...unmatched]
+            .map(({ __matchedOrderIndex, __defaultIndex, ...row }) => row);
+    };
+    getLhuDetailRowsForPdf = async (nomorLhu, header = {}, sampleRows = [], transaction = null, options = {}) => {
+        const bmParamMap = await this.getBmParamMapForPdf(header.id_pkt_bm, transaction);
         const orderedSampleRows = this.dedupeSampleRowsForPdf(sampleRows);
         const sampleOrderMap = new Map();
-        const resultRowsBySample = new Map();
+        const grouped = new Map();
         for (const [index, sample] of orderedSampleRows.entries()) {
             const sampleNo = String(sample.no_sampel || '').trim();
             if (!sampleNo)
                 continue;
-            sampleOrderMap.set(sampleNo, getSampleOrderValue(sample, index));
-            resultRowsBySample.set(sampleNo, await this.getApprovedResultRowsForPdf(sampleNo, transaction));
+            const sampleOrder = getSampleOrderValue(sample, index);
+            sampleOrderMap.set(sampleNo, sampleOrder);
+            const resultRows = await this.getApprovedResultRowsForPdf(sampleNo, transaction);
+            resultRows.forEach((result) => {
+                const key = this.getDetailFallbackKeyForPdf(result);
+                if (!key)
+                    return;
+                if (!grouped.has(key)) {
+                    const bm = bmParamMap.get(String(result.id_parameter || result.idParameter || '')) || null;
+                    const nilaiBm = bm ? this.normalizeNilaiBmForLhu(bm.nilai_bm) : '(-)';
+                    const satuanBm = bm ? this.normalizeBmText(bm.satuan_bm) : null;
+                    const adaDiBm = bm ? 1 : 0;
+                    grouped.set(key, {
+                        nomor_lhu: nomorLhu,
+                        id_fppl_parameter_metode: result.id_fppl_parameter_metode || result.idFpplParameterMetode || null,
+                        id_metode_parameter: result.id_metode_parameter || result.idMetodeParameter || null,
+                        id_parameter: result.id_parameter || result.idParameter || null,
+                        nama_parameter_snapshot: result.nama_parameter || result.namaParameter || '-',
+                        metode_snapshot: result.nama_metode || result.namaMetode || result.metode || '-',
+                        acuan_metode_snapshot: result.acuan_metode || result.acuanMetode || '-',
+                        is_terakreditasi: this.toTinyIntFlag(result.is_terakreditasi || result.isTerakreditasi),
+                        is_insitu_snapshot: this.toTinyIntFlag(result.is_insitu || result.isInsitu),
+                        is_subkontrak_snapshot: this.getSubkontrakSnapshot(result),
+                        bm_snapshot: nilaiBm,
+                        satuan_bm_snapshot: satuanBm,
+                        ada_di_bm_snapshot: adaDiBm,
+                        resultsBySample: new Map(),
+                    });
+                }
+                grouped.get(key).resultsBySample.set(sampleNo, result);
+            });
         }
+        const sortedGroups = this.applyStoredDetailOrder(
+            Array.from(grouped.values()),
+            this.normalizeDetailOrderInput(options.detailOrder || options.detail_order || [])
+        );
         const rows = [];
-        detailInstances.forEach((instance) => {
-            const detail = this.getPlain(instance) || {};
-            const fpm = this.pickObject(detail, ['fppl_parameter_metode', 'FpplParameterMetode']) || {};
-            const parameter = this.pickObject(fpm, ['parameter', 'Parameter']) || {};
-            const parameterMetode = this.pickObject(fpm, ['parameter_metode', 'ParameterMetode']) || {};
-            const metode = this.pickObject(parameterMetode, ['metode', 'Metode']) || {};
-            const expected = {
-                id_fppl_parameter_metode: detail.id_fppl_parameter_metode || fpm.id_fppl_parameter_metode || null,
-                idFpplParameterMetode: detail.id_fppl_parameter_metode || fpm.id_fppl_parameter_metode || null,
-                id_parameter: fpm.id_parameter || parameter.id_parameter || parameterMetode.id_parameter || null,
-                idParameter: fpm.id_parameter || parameter.id_parameter || parameterMetode.id_parameter || null,
-                id_metode_parameter: fpm.id_metode_parameter || parameterMetode.id_metode_parameter || null,
-                idMetodeParameter: fpm.id_metode_parameter || parameterMetode.id_metode_parameter || null,
-                nama_parameter: parameter.nama_parameter || '-',
-                namaParameter: parameter.nama_parameter || '-',
-                metode: metode.nama_metode || '-',
-                nama_metode: metode.nama_metode || '-',
-                namaMetode: metode.nama_metode || '-',
-                acuan_metode: parameterMetode.acuan_metode || '-',
-                acuanMetode: parameterMetode.acuan_metode || '-',
-                is_terakreditasi: parameterMetode.is_terakreditasi ?? 0,
-                isTerakreditasi: parameterMetode.is_terakreditasi ?? 0,
-                is_insitu: fpm.is_insitu ?? 0,
-                isInsitu: fpm.is_insitu ?? 0,
-                is_subkontrak: parameterMetode.is_subkontrak ?? 0,
-                isSubkontrak: parameterMetode.is_subkontrak ?? 0,
-                urutan_lhu: detail.urutan_lhu || 1,
-            };
-            const bm = bmParamMap.get(String(expected.id_parameter || '')) || null;
-            const nilaiBm = bm ? this.normalizeNilaiBmForLhu(bm.nilai_bm) : '(-)';
-            const satuanBm = bm ? this.normalizeBmText(bm.satuan_bm) : null;
-            const adaDiBm = bm ? 1 : 0;
-            orderedSampleRows.forEach((sample) => {
+        sortedGroups.forEach((group, detailIndex) => {
+            orderedSampleRows.forEach((sample, sampleIndex) => {
                 const sampleNo = String(sample.no_sampel || '').trim();
-                const result = this.findApprovedResultForPdf({ ...expected, no_sampel: sampleNo, noSampel: sampleNo }, resultRowsBySample.get(sampleNo) || []);
+                if (!sampleNo)
+                    return;
+                const result = group.resultsBySample.get(sampleNo) || {};
                 rows.push({
                     nomor_lhu: nomorLhu,
                     no_sampel: sampleNo,
-                    urutan_sampel: sampleOrderMap.get(sampleNo) || getSampleOrderValue(sample, 0),
-                    urutan_lhu: detail.urutan_lhu || 1,
-                    id_fppl_parameter_metode: expected.id_fppl_parameter_metode,
-                    id_metode_parameter: expected.id_metode_parameter,
-                    id_parameter: expected.id_parameter,
-                    nama_parameter_snapshot: expected.nama_parameter,
-                    metode_snapshot: expected.metode,
-                    acuan_metode_snapshot: expected.acuan_metode,
-                    hasil_snapshot: result?.hasil || null,
-                    is_terakreditasi: this.toTinyIntFlag(expected.is_terakreditasi),
-                    is_insitu_snapshot: this.toTinyIntFlag(expected.is_insitu),
-                    is_subkontrak_snapshot: this.getSubkontrakSnapshot(expected),
-                    bm_snapshot: nilaiBm,
-                    satuan_bm_snapshot: satuanBm,
-                    ada_di_bm_snapshot: adaDiBm,
+                    urutan_sampel: sampleOrderMap.get(sampleNo) || getSampleOrderValue(sample, sampleIndex),
+                    urutan_lhu: detailIndex + 1,
+                    id_fppl_parameter_metode: group.id_fppl_parameter_metode,
+                    id_metode_parameter: group.id_metode_parameter,
+                    id_parameter: group.id_parameter,
+                    nama_parameter_snapshot: group.nama_parameter_snapshot,
+                    metode_snapshot: group.metode_snapshot,
+                    acuan_metode_snapshot: group.acuan_metode_snapshot,
+                    hasil_snapshot: result.hasil || null,
+                    is_terakreditasi: group.is_terakreditasi,
+                    is_insitu_snapshot: group.is_insitu_snapshot,
+                    is_subkontrak_snapshot: group.is_subkontrak_snapshot,
+                    bm_snapshot: group.bm_snapshot,
+                    satuan_bm_snapshot: group.satuan_bm_snapshot,
+                    ada_di_bm_snapshot: group.ada_di_bm_snapshot,
                     tanggal_sampling: sample.tanggal_pengambilan_sampel || null,
                 });
             });
         });
         return rows.sort((a, b) => Number(a.urutan_lhu || 0) - Number(b.urutan_lhu || 0) ||
-            String(a.nama_parameter_snapshot || '').localeCompare(String(b.nama_parameter_snapshot || '')) ||
+            this.compareText(a.nama_parameter_snapshot, b.nama_parameter_snapshot) ||
             Number(a.urutan_sampel || 0) - Number(b.urutan_sampel || 0) ||
-            String(a.no_sampel || '').localeCompare(String(b.no_sampel || '')));
+            this.compareText(a.no_sampel, b.no_sampel));
     };
-    getLhuPdfData = async (nomorLhu, transaction = null) => {
+    getLhuPdfData = async (nomorLhu, transaction = null, options = {}) => {
         const header = await this.getLhuHeaderForPdf(nomorLhu, transaction);
         if (!header) {
             throw new Error('Data LHU tidak ditemukan untuk generate PDF.');
@@ -441,7 +517,7 @@ getPlain = (instance) => {
         const [qc, kalab, details] = await Promise.all([
             this.getPegawaiSnapshot(header.qc_by, transaction),
             this.getPegawaiSnapshot(header.kalab_by, transaction),
-            this.getLhuDetailRowsForPdf(nomorLhu, header, sampleRows, transaction),
+            this.getLhuDetailRowsForPdf(nomorLhu, header, sampleRows, transaction, options),
         ]);
         const firstSample = sampleRows[0] || {};
         const sampleNoList = formatSampleNoList(sampleRows);

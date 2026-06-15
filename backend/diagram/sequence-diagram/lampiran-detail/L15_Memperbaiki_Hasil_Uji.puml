@@ -1,0 +1,52 @@
+    @startuml
+    title Sequence Diagram Memperbaiki Hasil Uji
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Analis" as Analis
+boundary "AnalisDetailSampelPage" as FE
+control "analisAssignmentApi" as Api
+control "AssignmentController" as Controller
+control "AssignmentService" as AssignmentService
+control "AssignmentWorksheetService
+.submitWorksheet()" as WorksheetService
+control "AssignmentWorksheetResultHelper" as ResultHelper
+database "Sequelize Models
+Lka, LkaHasil, LkaRevisi, PenugasanDetail" as DB
+control "NotificationService" as Notif
+
+Analis -> FE: Membuka pekerjaan dengan status Perlu Perbaikan
+FE -> Api: getWorkDetail(idPenugasanDetail)
+Api -> Controller: GET /assignments/work/{id}
+Controller -> AssignmentService: getAssignmentWorkDetail(id, analisNik)
+AssignmentService -> WorksheetService: getAssignmentWorkDetail(id, analisNik)
+WorksheetService -> DB: ambil LKA, hasil, dan riwayat revisi aktif
+WorksheetService --> FE: detail revisi
+
+Analis -> FE: Memperbaiki hasil sesuai catatan revisi
+FE -> Api: submitWorksheet(idPenugasanDetail, payload revisi)
+Api -> Controller: POST /assignments/work/{id}/submit
+activate Controller
+Controller -> AssignmentService: submitWorksheet(id, analisNik, payload)
+AssignmentService -> WorksheetService: submitWorksheet(...)
+activate WorksheetService
+WorksheetService -> DB: lock Lka dan PenugasanDetail
+WorksheetService -> ResultHelper: getLkaRevisionScope(kodeLka)
+WorksheetService -> ResultHelper: upsertWorksheetResults(...)
+WorksheetService -> ResultHelper: markRevisionItemsWorkedByAnalyst(kodeLka, noSampels)
+ResultHelper -> DB: update LkaRevisi/LkaHasil status revisi = Diperbaiki Analis
+WorksheetService -> DB: update LkaHasil = Menunggu Verifikasi Penyelia
+WorksheetService -> DB: sync status LKA/detail
+WorksheetService --> AssignmentService: kodeLka
+deactivate WorksheetService
+AssignmentService --> Controller: result
+Controller -> Notif: notifyAnalisSubmitToSupervisor(...)
+Controller --> FE: successResponse
+FE --> Analis: Hasil revisi dikirim ulang ke Penyelia
+
+deactivate Controller
+    @enduml

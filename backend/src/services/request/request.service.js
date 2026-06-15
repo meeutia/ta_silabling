@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
-const { sequelize, Fppl, FpplSampel, FpplParameterMetode, Pelanggan, JenisSampel, RegBm, ParameterMetode, Parameter, Metode, TarifPengambilan, JadwalSampel, PktBm, Pegawai, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, Lhu, DetailLhu, JadwalPengambilanLhu, PengajuanPerubahanJadwal, User } = require('../../models/Associations');
+const { sequelize, Fppl, FpplSampel, FpplParameterMetode, Pelanggan, JenisSampel, RegBm, ParameterMetode, Parameter, Metode, TarifPengambilan, JadwalSampel, PktBm, Pegawai, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, Lhu, JadwalPengambilanLhu, PengajuanPerubahanJadwal, User } = require('../../models/Associations');
 const { generateId } = require('../../utils/id-generator');
 const { buildInvoiceSummary, getAvailablePaymentMethods } = require('../payment/payment.service');
 const RequestStatus = require('../../constants/request-status');
@@ -378,7 +378,7 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                                 },
                                 {
                                     model: Lhu,
-                                    as: 'lhus',
+                                    as: 'lhu',
                                     attributes: [
                                         'nomor_lhu',
                                         'id_registrasi',
@@ -393,7 +393,6 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                                         'created_at',
                                         'updated_at'
                                     ],
-                                    through: { attributes: [] },
                                     required: false,
                                     include: [
                                         {
@@ -401,14 +400,6 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                                             attributes: ['id_pkt_bm', 'id_reg_bm', 'id_jenis_sampel', 'klasifikasi'],
                                             required: false,
                                             include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }]
-                                        },
-                                        {
-                                            model: DetailLhu,
-                                            as: 'details',
-                                            // detail_lhu pada skema terbaru hanya menyimpan parameter/metode per LHU.
-                                            // Hasil per sampel dibaca dari lka_hasil, bukan dari detail_lhu.
-                                            attributes: ['nomor_lhu', 'id_fppl_parameter_metode', 'urutan_lhu'],
-                                            required: false
                                         }
                                     ]
                                 }

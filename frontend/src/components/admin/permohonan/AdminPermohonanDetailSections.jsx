@@ -68,13 +68,32 @@ function formatSampleTypeHeading(value) {
   return /^air(\b|\s)/i.test(withoutDoubleAir) ? withoutDoubleAir : `Air ${withoutDoubleAir}`;
 }
 
+const getLhuIdentityKey = (lhu = {}) => String(
+  lhu?.nomor_lhu ||
+  lhu?.nomorLhu ||
+  lhu?.no_lhu ||
+  lhu?.noLhu ||
+  lhu?.id_lhu ||
+  lhu?.idLhu ||
+  ''
+).trim();
+
+const dedupeLhuArray = (items = []) => {
+  const map = new Map();
+  (Array.isArray(items) ? items : []).filter(Boolean).forEach((item, index) => {
+    const key = getLhuIdentityKey(item) || `lhu-index-${index}`;
+    if (!map.has(key)) map.set(key, item);
+  });
+  return Array.from(map.values());
+};
+
 const toLhuArray = (value) => {
-  if (Array.isArray(value)) return value.filter(Boolean);
-  return value ? [value] : [];
+  const rows = Array.isArray(value) ? value : value ? [value] : [];
+  return dedupeLhuArray(rows);
 };
 
 function getSampleLhus(actualSample = {}, rowLhus = null, rowLhu = null) {
-  const fromRow = Array.isArray(rowLhus) ? rowLhus.filter(Boolean) : [];
+  const fromRow = dedupeLhuArray(Array.isArray(rowLhus) ? rowLhus.filter(Boolean) : []);
   if (fromRow.length > 0) return fromRow;
 
   const directRows = [
@@ -85,7 +104,7 @@ function getSampleLhus(actualSample = {}, rowLhus = null, rowLhu = null) {
     actualSample?.lhuList,
   ].find((value) => Array.isArray(value));
 
-  if (directRows) return directRows.filter(Boolean);
+  if (directRows) return dedupeLhuArray(directRows.filter(Boolean));
 
   return toLhuArray(
     rowLhu ||

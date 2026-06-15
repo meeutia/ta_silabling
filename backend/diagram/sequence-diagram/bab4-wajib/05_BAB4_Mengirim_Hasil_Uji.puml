@@ -1,0 +1,96 @@
+    @startuml
+    title Sequence Diagram Mengirim Hasil Uji
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Analis" as Analis
+actor "Penyelia" as Penyelia
+actor "Kasi Pengujian" as Kasi
+boundary "AnalisDetailSampelPage" as AnalisFE
+boundary "PenyeliaPenugasanDetailPage" as PenyeliaFE
+boundary "KasiLhuPage / Review Hasil" as KasiFE
+control "analisAssignmentApi" as AnalisApi
+control "penyeliaPenugasanDetailApi" as PenyeliaApi
+control "lhuReviewApi" as KasiApi
+control "AssignmentController" as Controller
+control "AssignmentService" as AssignmentService
+control "AssignmentWorksheetService
+.submitWorksheet()" as WorksheetService
+control "AssignmentPenyeliaReviewService
+.reviewWorksheet()" as PenyeliaService
+control "AssignmentKasiReviewService" as KasiService
+database "Sequelize Models
+PenugasanDetail, Lka, LkaHasil, LkaRevisi" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Analis -> AnalisFE: Input worksheet dan hasil uji
+AnalisFE -> AnalisApi: submitWorksheet(idPenugasanDetail, payload)
+AnalisApi -> Controller: POST /assignments/work/{id}/submit
+activate Controller
+Controller -> AssignmentService: submitWorksheet(idDetail, analisNik, payload)
+AssignmentService -> WorksheetService: submitWorksheet(...)
+activate WorksheetService
+WorksheetService -> DB: lock PenugasanDetail dan Lka
+WorksheetService -> DB: upsert LkaHasil untuk sampel/parameter
+WorksheetService -> DB: update status LkaHasil = Menunggu Verifikasi Penyelia
+WorksheetService -> DB: sync status LKA/detail penugasan
+WorksheetService -> Log: logStatusTransition(MENGIRIM_WORKSHEET)
+WorksheetService --> AssignmentService: { kodeLka }
+deactivate WorksheetService
+AssignmentService --> Controller: { kodeLka }
+Controller -> Notif: notifyAnalisSubmitToSupervisor(...)
+Controller --> AnalisFE: successResponse
+
+deactivate Controller
+
+Penyelia -> PenyeliaFE: Review LKA/hasil uji
+PenyeliaFE -> PenyeliaApi: approveDetail(id) atau requestRevision(id, payload)
+PenyeliaApi -> Controller: POST /assignments/details/{id}/approve|revise
+Controller -> AssignmentService: reviewWorksheet(id, payload, penyeliaNik)
+AssignmentService -> PenyeliaService: reviewWorksheet(...)
+activate PenyeliaService
+PenyeliaService -> DB: lock PenugasanDetail + Lka
+alt Penyelia menyetujui
+  PenyeliaService -> DB: update LkaHasil = Disetujui Penyelia
+  PenyeliaService -> DB: update/sync LKA = Disetujui Penyelia / Menunggu Review Kasi
+  PenyeliaService -> Log: logStatusTransition(PENYELIA_MENYETUJUI_LKA)
+  PenyeliaService --> AssignmentService: approved
+else Penyelia meminta revisi
+  PenyeliaService -> DB: create LkaRevisi sumber=Penyelia
+  PenyeliaService -> DB: update target LkaHasil/Lka = Perlu Perbaikan
+  PenyeliaService -> Log: logStatusTransition(PENYELIA_MEMINTA_REVISI)
+  PenyeliaService --> AssignmentService: revised
+end
+deactivate PenyeliaService
+AssignmentService --> Controller: result
+Controller -> Notif: notifySupervisorApprovedToKasi / notifyTestResultRevisionByPenyelia
+Controller --> PenyeliaFE: successResponse
+
+Kasi -> KasiFE: Review hasil yang sudah disetujui penyelia
+KasiFE -> KasiApi: approveKasiReview(noSampel) atau requestKasiReviewRevision(...)
+KasiApi -> Controller: POST /assignments/kasi-review/approve|revise
+Controller -> AssignmentService: approveKasiReview/reviseKasiReview(...)
+alt Kasi menyetujui
+  AssignmentService -> KasiService: approveKasiReview(noSampel, kasiNik)
+  activate KasiService
+  KasiService -> DB: update LkaHasil = Disetujui Kasi Pengujian
+  KasiService -> DB: sync LKA/detail penugasan
+  KasiService -> Notif: notifyKasiReviewApprovedToQc(...)
+  KasiService --> AssignmentService: approved
+  deactivate KasiService
+else Kasi meminta revisi
+  AssignmentService -> KasiService: reviseKasiReview(noSampel, catatan, kasiNik, targets)
+  activate KasiService
+  KasiService -> DB: create LkaRevisi sumber=Kasi Pengujian
+  KasiService -> DB: update target LkaHasil = Menunggu Persetujuan Penyelia atas Revisi Kasi
+  KasiService --> AssignmentService: revision request
+  deactivate KasiService
+end
+AssignmentService --> Controller: result
+Controller --> KasiFE: successResponse
+    @enduml

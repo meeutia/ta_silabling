@@ -1,0 +1,57 @@
+    @startuml
+    title Sequence Diagram Menanggapi Permintaan Revisi Kasi
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Penyelia" as Penyelia
+boundary "PenyeliaPenugasanPage
+PenyeliaKasiRevisionReviewModal" as FE
+control "penyeliaPenugasanApi" as Api
+control "AssignmentController
+.reviewKasiRevisionRequest()" as Controller
+control "AssignmentService
+.reviewKasiRevisionRequest()" as AssignmentService
+control "AssignmentKasiReviewService
+.reviewKasiRevisionRequest()" as ReviewService
+database "Sequelize Models
+LkaRevisi, LkaHasil, Lka" as DB
+control "NotificationService" as Notif
+
+Penyelia -> FE: Membuka daftar revisi dari Kasi
+FE -> Api: getPendingKasiRevisionRequests()
+Api -> Controller: GET /assignments/revisi-kasi/pending
+Controller -> AssignmentService: getPendingKasiRevisionRequests()
+AssignmentService -> ReviewService: getPendingKasiRevisionRequests()
+ReviewService -> DB: ambil LkaRevisi sumber=Kasi status=Diajukan
+ReviewService --> FE: daftar permintaan revisi
+
+Penyelia -> FE: Menyetujui atau menolak permintaan revisi Kasi
+FE -> Api: reviewKasiRevisionRequest(idRevisiLka, payload)
+Api -> Controller: POST /assignments/revisi-kasi/{idRevisiLka}/review
+activate Controller
+Controller -> AssignmentService: reviewKasiRevisionRequest(idRevisiLka, payload, penyeliaNik)
+AssignmentService -> ReviewService: reviewKasiRevisionRequest(...)
+activate ReviewService
+ReviewService -> DB: lock LkaRevisi
+alt disetujui penyelia
+  ReviewService -> DB: update LkaRevisi = Disetujui Penyelia
+  ReviewService -> DB: update LkaHasil target = Perlu Perbaikan
+  ReviewService -> DB: sync LKA/detail menjadi Perlu Perbaikan
+  ReviewService -> Notif: notifyTestResultRevisionByKasi(...)
+else ditolak penyelia
+  ReviewService -> DB: update LkaRevisi = Ditolak Penyelia
+  ReviewService -> DB: kembalikan LkaHasil ke Disetujui Penyelia/siap review
+  ReviewService -> Notif: notifyKasiRevisionRejectedToKasi(...)
+end
+ReviewService --> AssignmentService: result
+deactivate ReviewService
+AssignmentService --> Controller: result
+Controller --> FE: successResponse
+FE --> Penyelia: Status permintaan revisi diperbarui
+
+deactivate Controller
+    @enduml

@@ -16,6 +16,7 @@ import {
   getStatusLhu,
 } from '../../lhu/lhuReviewUtils';
 import { getLhuStatusDisplayLabel } from '../../../utils/workflowAccessRules';
+import { dedupeTextList } from '../../lhu/lhuSampleDisplayUtils';
 
 export function QcLhuSummaryCards({ summary }) {
   return (
@@ -147,14 +148,15 @@ export function QcLhuFinalizationTable({ loadingQueue, filteredQueue, openFinali
               filteredQueue.map((item) => {
                 const status = getStatusLhu(item);
                 const displayStatus = getLhuStatusDisplayLabel(status, status || '-');
-                const sampleNos = item.sampleNos || item.sample_nos || [];
+                const sampleNos = dedupeTextList(item.sampleNos || item.sample_nos || [])
+                  .sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }));
 
                 return (
                   <tr key={item.idRegistrasi || item.id_registrasi || item.nomorFppl || item.nomor_fppl} className="transition-all hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900">{item.nomorFppl || item.nomor_fppl || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">
                       <div className="space-y-1">
-                        {(Array.isArray(sampleNos) ? sampleNos : []).map((noSampel) => (
+                        {sampleNos.map((noSampel) => (
                           <div key={noSampel} className="font-medium text-gray-900">{noSampel}</div>
                         ))}
                       </div>

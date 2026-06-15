@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Lhu, LhuSampel, PenugasanItem } = require('../../models/Associations');
+const { Lhu, Sampel, PenugasanItem } = require('../../models/Associations');
 const { LHU_STATUS } = require('../../constants/lhu-status.constant');
 const { uniqueSampleNos } = require('./assignment-revision.helper');
 const LHU_SOURCE_LOCK_STATUSES = Object.freeze([
@@ -28,8 +28,11 @@ getPlain = (instance) => {
         const sampleNos = uniqueSampleNos(noSampels);
         if (!sampleNos.length)
             return [];
-        const rows = await LhuSampel.findAll({
-            where: { no_sampel: { [Op.in]: sampleNos } },
+        const rows = await Sampel.findAll({
+            where: {
+                no_sampel: { [Op.in]: sampleNos },
+                nomor_lhu: { [Op.ne]: null },
+            },
             include: [
                 {
                     model: Lhu,
@@ -60,8 +63,11 @@ getPlain = (instance) => {
         const sampleNos = uniqueSampleNos(noSampels);
         if (!sampleNos.length)
             return [];
-        const rows = await LhuSampel.findAll({
-            where: { no_sampel: { [Op.in]: sampleNos } },
+        const rows = await Sampel.findAll({
+            where: {
+                no_sampel: { [Op.in]: sampleNos },
+                nomor_lhu: { [Op.ne]: null },
+            },
             include: [
                 {
                     model: Lhu,
@@ -93,6 +99,10 @@ getPlain = (instance) => {
                 nomor_lhu: { [Op.in]: nomorLhus },
                 status_lhu: { [Op.ne]: LHU_STATUS.APPROVED_FINAL },
             },
+            transaction,
+        });
+        await Sampel.update({ nomor_lhu: null }, {
+            where: { nomor_lhu: { [Op.in]: nomorLhus } },
             transaction,
         });
         return nomorLhus;

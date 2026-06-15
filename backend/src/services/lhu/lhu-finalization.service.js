@@ -3,9 +3,9 @@ const sequelize = require('../../config/database');
 const lhuPdfService = require('./lhu-pdf.service');
 const WorkflowLogService = require('../workflow/workflow-log.service');
 const { generateNomorLhu } = require('../../utils/id-generator');
-const { Fppl, FpplSampel, Pelanggan, JadwalSampel, JenisSampel, RegBm, PktBm, PktBmParam, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, Lhu, LhuSampel, DetailLhu, } = require('../../models/Associations');
+const { Fppl, FpplSampel, Pelanggan, JadwalSampel, JenisSampel, RegBm, PktBm, PktBmParam, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, Lhu, } = require('../../models/Associations');
 const { LHU_STATUS, LHU_EDITABLE_BY_QC_STATUSES, LHU_NEXT_STATUS, } = require('../../constants/lhu-status.constant');
-const { calculateAccreditationStats, getPlain, pickObject, getLkaHasilTargetKey, getFpplParameterMetodeKey, getFallbackParameterKey, applyDetailOrder, getExistingLhuBySample, getSampleInfo, getLkaResultRows, getExpectedParameterRows, getBmInfo, isEditableByQcStatus, mapSamplePayload, mapPelangganPayload, mapRequestPayload, buildDefaultDetailRows, buildDetailLhuCreateRow, toTinyIntFlag, getSubkontrakSnapshot, } = require('./lhu-data.service');
+const { calculateAccreditationStats, getPlain, pickObject, getLkaHasilTargetKey, getFallbackParameterKey, sortDetailRowsForLhu, applyDetailOrder, getExistingLhuBySample, getSampleInfo, getLkaResultRows, getExpectedParameterRows, getBmInfo, isEditableByQcStatus, mapSamplePayload, mapPelangganPayload, mapRequestPayload, buildDefaultDetailRows, toTinyIntFlag, getSubkontrakSnapshot, } = require('./lhu-data.service');
 const { findApprovedResultForExpectedParameter, mapDetailRow, } = require('./lhu-detail-row.mapper');
 const { getApprovedLkaRowsForExpectedParameters, } = require('./lhu-approved-lka-rows.service');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
@@ -38,17 +38,55 @@ dedupeLkaResultRows = (rows = []) => {
             .flatMap((item) => Array.isArray(item) ? this.normalizeSampleNoList(item) : String(item || '').split(/[\n,]+/))
             .map((item) => String(item || '').trim())
             .filter(Boolean);
-        return [...new Set(values)];
+        const map = new Map();
+        values.forEach((value) => {
+            const key = this.normalizeSampleNoKey(value);
+            if (key && !map.has(key))
+                map.set(key, value);
+        });
+        return Array.from(map.values()).sort((a, b) => String(a || '').localeCompare(String(b || ''), 'id', { numeric: true, sensitivity: 'base' }));
+    };
+    normalizeSampleNoKey = (value) => String(value || '').trim().replace(/\s*\/\s*/g, '/').toLowerCase();
+    pushSampleNoOnce = (group, noSampel) => {
+        const value = String(noSampel || '').trim();
+        if (!value)
+            return;
+        if (!group.__sampleNoKeySet)
+            group.__sampleNoKeySet = new Set((group.samples || []).map((sampleNo) => this.normalizeSampleNoKey(sampleNo)));
+        const key = this.normalizeSampleNoKey(value);
+        if (group.__sampleNoKeySet.has(key))
+            return;
+        group.__sampleNoKeySet.add(key);
+        group.samples.push(value);
+        group.sampels.push(value);
     };
     dedupeSampleInfos = (sampleInfos = []) => {
         const map = new Map();
         (Array.isArray(sampleInfos) ? sampleInfos : []).forEach((sample) => {
             const noSampel = String(sample?.no_sampel || sample?.noSampel || '').trim();
-            if (!noSampel || map.has(noSampel))
+            const key = this.normalizeSampleNoKey(noSampel);
+            if (!noSampel || !key || map.has(key))
                 return;
-            map.set(noSampel, sample);
+            map.set(key, sample);
         });
-        return Array.from(map.values());
+        return Array.from(map.values()).sort((a, b) => String(a?.no_sampel || a?.noSampel || '').localeCompare(String(b?.no_sampel || b?.noSampel || ''), 'id', { numeric: true, sensitivity: 'base' }));
+    };
+    normalizeDetailOrderInput = (value) => {
+        if (Array.isArray(value))
+            return value;
+        if (!value)
+            return [];
+        if (typeof value === 'string') {
+            try {
+                const parsed = JSON.parse(value);
+                if (Array.isArray(parsed))
+                    return parsed;
+            }
+            catch (error) {
+                return value.split(/[,\n]+/).map((item) => item.trim()).filter(Boolean);
+            }
+        }
+        return [];
     };
     getSamplesForRegistration = async (identifier, transaction = null) => {
         const id = String(identifier || '').trim();
@@ -195,11 +233,12 @@ dedupeLkaResultRows = (rows = []) => {
     };
     getRegistrationQcReadiness = async (identifier, transaction = null) => {
         const samples = await this.getSamplesForRegistration(identifier, transaction);
+        const uniqueSamples = this.dedupeSampleInfos(samples);
         const sampleRows = [];
         let totalParameter = 0;
         let totalSelesai = 0;
         let totalBelumDisetujuiKasi = 0;
-        for (const sample of samples) {
+        for (const sample of uniqueSamples) {
             const readiness = await this.getSampleQcReadiness(sample.no_sampel, transaction);
             totalParameter += readiness.totalParameter || 0;
             totalSelesai += readiness.totalSelesai || 0;
@@ -208,7 +247,7 @@ dedupeLkaResultRows = (rows = []) => {
         }
         const allReady = sampleRows.length > 0 && sampleRows.every(({ readiness }) => readiness.ready);
         return {
-            samples,
+            samples: uniqueSamples,
             sampleRows,
             totalParameter,
             totalSelesai,
@@ -232,9 +271,10 @@ dedupeLkaResultRows = (rows = []) => {
         return readiness;
     };
     buildQcRegistrationQueueRow = async (samples = [], transaction = null) => {
-        if (!samples.length)
+        const uniqueSamples = this.dedupeSampleInfos(samples);
+        if (!uniqueSamples.length)
             return null;
-        const firstSample = samples[0];
+        const firstSample = uniqueSamples[0];
         const firstFpplSampel = pickObject(firstSample, ['fppl_sampel', 'FpplSampel']) || {};
         const firstFppl = pickObject(firstFpplSampel, ['fppl', 'Fppl']) || {};
         const firstPelanggan = pickObject(firstFppl, ['pelanggan', 'Pelanggan']) || {};
@@ -244,7 +284,7 @@ dedupeLkaResultRows = (rows = []) => {
         let totalParameter = 0;
         let totalSelesai = 0;
         let lockedSamples = 0;
-        for (const sample of samples) {
+        for (const sample of uniqueSamples) {
             const readiness = await this.getSampleQcReadiness(sample.no_sampel, transaction);
             const existing = await getExistingLhuBySample(sample.no_sampel, transaction);
             totalParameter += readiness.totalParameter;
@@ -289,14 +329,14 @@ dedupeLkaResultRows = (rows = []) => {
             total_parameter: totalParameter,
             totalSelesai,
             total_selesai: totalSelesai,
-            sampleNos: unassignedSamples.map((sample) => sample.no_sampel),
-            sample_nos: unassignedSamples.map((sample) => sample.no_sampel),
+            sampleNos: this.normalizeSampleNoList(unassignedSamples.map((sample) => sample.no_sampel)),
+            sample_nos: this.normalizeSampleNoList(unassignedSamples.map((sample) => sample.no_sampel)),
             samples: availableSampleRows,
             sampels: availableSampleRows,
             allSamples: sampleRows,
             all_samples: sampleRows,
-            defaultSampleNos: unassignedSamples.map((sample) => sample.no_sampel),
-            default_sample_nos: unassignedSamples.map((sample) => sample.no_sampel),
+            defaultSampleNos: this.normalizeSampleNoList(unassignedSamples.map((sample) => sample.no_sampel)),
+            default_sample_nos: this.normalizeSampleNoList(unassignedSamples.map((sample) => sample.no_sampel)),
             statusLhu: LHU_STATUS.WAIT_QC,
             status_lhu: LHU_STATUS.WAIT_QC,
             statusQcLabel: unassignedSamples.length === sampleRows.length ? 'Semua sampel menunggu QC' : 'Sebagian sampel sudah dibuat LHU',
@@ -457,7 +497,6 @@ dedupeLkaResultRows = (rows = []) => {
     };
     buildLhuPreviewDetails = async (sampleInfos = [], bmInfo, transaction = null) => {
         const grouped = new Map();
-        let fallbackOrder = 1;
         const selectedSampleInfos = this.dedupeSampleInfos(sampleInfos);
         for (const sample of selectedSampleInfos) {
             const lkaRows = await getApprovedLkaRowsForExpectedParameters(sample.no_sampel, transaction);
@@ -479,10 +518,7 @@ dedupeLkaResultRows = (rows = []) => {
                         hasilBySample: {},
                         kode_lka_by_sample: {},
                         kodeLkaBySample: {},
-                        urutan_lhu: fallbackOrder,
-                        urutanLhu: fallbackOrder,
                     });
-                    fallbackOrder += 1;
                 }
                 const group = grouped.get(key);
                 const noSampel = String(row.no_sampel || '').trim();
@@ -490,10 +526,7 @@ dedupeLkaResultRows = (rows = []) => {
                 group.hasilBySample[noSampel] = row.hasil || null;
                 group.kode_lka_by_sample[noSampel] = row.kode_lka || null;
                 group.kodeLkaBySample[noSampel] = row.kode_lka || null;
-                if (!group.samples.includes(noSampel))
-                    group.samples.push(noSampel);
-                if (!group.sampels.includes(noSampel))
-                    group.sampels.push(noSampel);
+                this.pushSampleNoOnce(group, noSampel);
                 // Untuk validasi lama dan tampilan ringkas, hasil disimpan sebagai daftar per sampel.
                 group.hasil = group.samples.map((sampleNo) => `${sampleNo}: ${group.hasil_by_sample[sampleNo] || '-'}`).join('\n');
                 group.hasil_snapshot = group.hasil;
@@ -510,8 +543,11 @@ dedupeLkaResultRows = (rows = []) => {
                 group.isSubkontrakSnapshot = nextSubkontrak;
             });
         }
-        return Array.from(grouped.values()).sort((a, b) => Number(a.urutan_lhu || 0) - Number(b.urutan_lhu || 0) ||
-            String(a.nama_parameter || '').localeCompare(String(b.nama_parameter || '')));
+        const groupedRows = Array.from(grouped.values()).map((row) => {
+            const { __sampleNoKeySet, ...payload } = row;
+            return payload;
+        });
+        return sortDetailRowsForLhu(groupedRows);
     };
     getFinalizationDetail = async (identifier) => {
         const registrationReadiness = await this.assertFullRegistrationReadyForQc(identifier);
@@ -589,6 +625,7 @@ dedupeLkaResultRows = (rows = []) => {
             payload?.noSampel ||
             payload?.no_sampel ||
             null;
+        const detailOrderInput = this.normalizeDetailOrderInput(payload?.detailOrder || payload?.detail_order || []);
         if (!idPktBm)
             throw new Error('Paket baku mutu wajib dipilih.');
         if (!currentNik)
@@ -597,7 +634,7 @@ dedupeLkaResultRows = (rows = []) => {
             const sampleInfos = this.dedupeSampleInfos(await this.resolveSelectedSampleInfos(identifier, sampleNosInput, transaction));
             const bmInfo = await getBmInfo(idPktBm, transaction);
             this.validateSampleCompatibilityForLhu(sampleInfos, bmInfo);
-            const details = await this.buildLhuPreviewDetails(sampleInfos, bmInfo, transaction);
+            const details = applyDetailOrder(await this.buildLhuPreviewDetails(sampleInfos, bmInfo, transaction), detailOrderInput);
             const sampleNos = this.normalizeSampleNoList(sampleInfos.map((sample) => sample.no_sampel));
             const existingRows = [];
             for (const noSampel of sampleNos) {
@@ -637,18 +674,16 @@ dedupeLkaResultRows = (rows = []) => {
             else {
                 lhuInstance = await Lhu.create(lhuPayload, { transaction });
             }
-            await LhuSampel.destroy({ where: { nomor_lhu: nomorLhu }, transaction });
-            await LhuSampel.bulkCreate(sampleNos.map((noSampel, index) => ({ nomor_lhu: nomorLhu, no_sampel: noSampel, urutan_sampel: index + 1 })), { transaction });
-            await DetailLhu.destroy({ where: { nomor_lhu: nomorLhu }, transaction });
-            const orderedDetails = applyDetailOrder(details.map((row, index) => ({ ...row, nomor_lhu: nomorLhu, urutan_lhu: index + 1 })), payload?.detailOrder || payload?.detail_order || payload?.parameterOrder || payload?.parameter_order || []);
-            await DetailLhu.bulkCreate(orderedDetails
-                .map((row) => ({
-                nomor_lhu: nomorLhu,
-                id_fppl_parameter_metode: getFpplParameterMetodeKey(row),
-                urutan_lhu: row.urutan_lhu || row.urutanLhu || 1,
-            }))
-                .filter((row) => row.id_fppl_parameter_metode), { transaction });
-            const pdfResult = await lhuPdfService.generateDraftLhuPdf(nomorLhu, transaction);
+            await Sampel.update({ nomor_lhu: null }, {
+                where: { nomor_lhu: nomorLhu },
+                transaction,
+            });
+            await Sampel.update({ nomor_lhu: nomorLhu }, {
+                where: { no_sampel: { [Op.in]: sampleNos } },
+                transaction,
+            });
+            const orderedDetails = applyDetailOrder(details.map((row) => ({ ...row, nomor_lhu: nomorLhu })), detailOrderInput);
+            const pdfResult = await lhuPdfService.generateDraftLhuPdf(nomorLhu, transaction, { detailOrder: orderedDetails });
             await lhuInstance.update({ file_lhu_path: pdfResult.filePath }, { transaction });
             await WorkflowLogService.logStatusTransition({
                 entityType: 'LHU',

@@ -1,0 +1,56 @@
+    @startuml
+    title Sequence Diagram Mengelola Hasil Uji oleh Analis
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Analis" as Analis
+boundary "AnalisDetailSampelPage" as FE
+control "analisAssignmentApi" as Api
+control "AssignmentController" as Controller
+control "AssignmentService" as AssignmentService
+control "AssignmentWorksheetService" as WorksheetService
+control "AssignmentWorksheetResultHelper
+.upsertWorksheetResults()" as ResultHelper
+database "Sequelize Models
+PenugasanDetail, Lka, LkaHasil" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Analis -> FE: Membuka detail pekerjaan
+FE -> Api: getWorkDetail(idPenugasanDetail)
+Api -> Controller: GET /assignments/work/{idPenugasanDetail}
+Controller -> AssignmentService: getAssignmentWorkDetail(id, analisNik)
+AssignmentService -> WorksheetService: getAssignmentWorkDetail(id, analisNik)
+WorksheetService -> DB: ambil PenugasanDetail, Lka, LkaHasil
+WorksheetService --> FE: data worksheet dan hasil
+
+Analis -> FE: Simpan draft worksheet/hasil
+FE -> Api: saveWorksheet() atau saveResults()
+Api -> Controller: PUT /assignments/work/{id}/worksheet|results
+Controller -> AssignmentService: saveWorksheetDraft/saveWorksheetResults(...)
+AssignmentService -> WorksheetService: saveWorksheetDraft/saveWorksheetResults(...)
+WorksheetService -> DB: lock detail penugasan dan LKA
+WorksheetService -> ResultHelper: upsertWorksheetResults(idDetail, kodeLka, results, transaction)
+ResultHelper -> DB: create/update LkaHasil
+WorksheetService -> DB: update status detail = Sedang Dikerjakan
+WorksheetService --> Controller: kodeLka
+Controller --> FE: draft tersimpan
+
+Analis -> FE: Submit hasil uji
+FE -> Api: submitWorksheet(id, payload)
+Api -> Controller: POST /assignments/work/{id}/submit
+Controller -> AssignmentService: submitWorksheet(id, analisNik, payload)
+AssignmentService -> WorksheetService: submitWorksheet(...)
+WorksheetService -> DB: validasi field worksheet dan hasil
+WorksheetService -> ResultHelper: upsertWorksheetResults(...)
+WorksheetService -> DB: update LkaHasil = Menunggu Verifikasi Penyelia
+WorksheetService -> DB: sync status LKA/detail
+WorksheetService -> Log: logStatusTransition(MENGIRIM_WORKSHEET)
+WorksheetService --> Controller: kodeLka
+Controller -> Notif: notifyAnalisSubmitToSupervisor(...)
+Controller --> FE: submit berhasil
+    @enduml

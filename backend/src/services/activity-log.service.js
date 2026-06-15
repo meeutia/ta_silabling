@@ -18,6 +18,14 @@ normalizeNullable = (value) => {
         const source = this.normalizeNullable(value) || WORKFLOW_SOURCE.SYSTEM;
         return ALLOWED_LOG_SOURCES.has(source) ? source : WORKFLOW_SOURCE.SYSTEM;
     };
+    normalizeActorNik = (value, source = WORKFLOW_SOURCE.SYSTEM) => {
+        if (source === WORKFLOW_SOURCE.SYSTEM)
+            return null;
+        const actorNik = this.safeString(this.normalizeNullable(value), 16);
+        if (!actorNik)
+            return null;
+        return ['SYSTEM', 'SISTEM'].includes(actorNik.toUpperCase()) ? null : actorNik;
+    };
     isValidDateValue = (value) => {
         if (!value)
             return false;
@@ -73,6 +81,8 @@ normalizeNullable = (value) => {
             if (!payload.entityType || !payload.entityId || !payload.action)
                 return null;
             const idLog = await generateId(AktivitasSistemLog, 'id_aktivitas_log', 'LOG-', transaction, 9);
+            const source = this.normalizeLogSource(payload.source);
+            const actorNik = this.normalizeActorNik(payload.actorNik, source);
             const row = await AktivitasSistemLog.create({
                 id_aktivitas_log: idLog,
                 entity_type: this.safeString(payload.entityType, 30),
@@ -80,9 +90,9 @@ normalizeNullable = (value) => {
                 aksi: this.safeString(payload.action, 50),
                 status_sebelumnya: this.safeString(this.normalizeNullable(payload.statusBefore), 50),
                 status_baru: this.safeString(this.normalizeNullable(payload.statusAfter), 50),
-                sumber_aksi: this.normalizeLogSource(payload.source),
+                sumber_aksi: source,
                 catatan: this.normalizeNullable(payload.note),
-                dibuat_oleh: this.safeString(this.normalizeNullable(payload.actorNik), 16),
+                dibuat_oleh: actorNik,
                 dibuat_pada: payload.createdAt || new Date(),
             }, { transaction });
             return row;

@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Sampel, PenugasanItem, Lhu, LhuSampel } = require('../models/Associations');
+const { Sampel, PenugasanItem, Lhu } = require('../models/Associations');
 const ReferenceService = require('../services/reference.service');
 const { fail, asTrimmedText } = require('./common.validator');
 const {
@@ -265,13 +265,10 @@ async function loadLhuSampleRows(nomorLhu) {
   const lhuNo = asTrimmedText(nomorLhu);
   if (!lhuNo) return [];
 
-  return LhuSampel.findAll({
+  return Sampel.findAll({
     where: { nomor_lhu: lhuNo },
-    attributes: ['nomor_lhu', 'no_sampel', 'urutan_sampel'],
-    order: [
-      ['urutan_sampel', 'ASC'],
-      ['no_sampel', 'ASC'],
-    ],
+    attributes: ['nomor_lhu', 'no_sampel'],
+    order: [['no_sampel', 'ASC']],
   });
 }
 

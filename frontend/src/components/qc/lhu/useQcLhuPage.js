@@ -32,7 +32,6 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailData, setDetailData] = useState(null);
   const [previewData, setPreviewData] = useState(null);
-  const [detailOrder, setDetailOrder] = useState([]);
 
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -45,6 +44,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
   const [form, setForm] = useState({
     idPktBm: '',
     sampleNos: [],
+    detailOrder: [],
   });
 
 
@@ -63,31 +63,37 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     const normalizedValues = Array.isArray(values)
       ? values.filter(Boolean)
       : String(values || '').split(/[\n,]+/).map((value) => value.trim()).filter(Boolean);
-    return dedupeTextList(normalizedValues);
+    return dedupeTextList(normalizedValues)
+      .sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }));
   };
+
+  function buildDetailTextKey(row = {}, index = 0) {
+    return [
+      row.id_parameter || row.idParameter || '',
+      row.nama_parameter_snapshot || row.namaParameterSnapshot || row.nama_parameter || row.namaParameter || 'row',
+      row.metode_snapshot || row.metodeSnapshot || row.nama_metode || row.namaMetode || row.metode || '',
+      row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode || '',
+      `idx-${index}`,
+    ]
+      .map((value) => String(value || '').trim().toLowerCase())
+      .filter(Boolean)
+      .join('|');
+  }
 
   function getDetailRowId(row = {}, index = 0) {
     return String(
-      row.id_fppl_parameter_metode ||
+      row.detail_key ||
+        row.detailKey ||
+        row.key ||
+        row.id_fppl_parameter_metode ||
         row.idFpplParameterMetode ||
         row.id_metode_parameter ||
         row.idMetodeParameter ||
         row.id_parameter_metode ||
         row.idParameterMetode ||
-        row.id_parameter ||
-        row.idParameter ||
-        [
-          row.nama_parameter_snapshot || row.namaParameterSnapshot || row.nama_parameter || row.namaParameter || 'row',
-          row.metode_snapshot || row.metodeSnapshot || row.nama_metode || row.namaMetode || row.metode || '',
-          row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode || '',
-        ].join('|') ||
+        buildDetailTextKey(row, index) ||
         `row-${index}`
     );
-  }
-
-  function setDetailOrderFromRows(rows = []) {
-    const nextOrder = (Array.isArray(rows) ? rows : []).map((row, index) => getDetailRowId(row, index));
-    setDetailOrder(nextOrder);
   }
 
   const loadQueue = useCallback(async () => {
@@ -225,7 +231,8 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
   async function loadPreviewFor(identifier, idPktBm, sampleNos = form.sampleNos) {
     const requestId = String(identifier || '').trim();
     const paketId = String(idPktBm || '').trim();
-    const selectedNos = dedupeTextList(Array.isArray(sampleNos) ? sampleNos.filter(Boolean) : []);
+    const selectedNos = dedupeTextList(Array.isArray(sampleNos) ? sampleNos.filter(Boolean) : [])
+      .sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }));
 
     if (!requestId || !paketId || selectedNos.length === 0) {
       setPreviewData(null);
@@ -237,7 +244,6 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     try {
       const data = await lhuReviewApi.getLhuFinalizationPreview(requestId, paketId, selectedNos);
       setPreviewData(data || null);
-      setDetailOrderFromRows(data?.details || data?.detailLhu || data?.detail_lhu || []);
     } catch (error) {
       setPreviewData(null);
       showError(getErrorMessage(error, 'Gagal membuat preview LHU.'));
@@ -260,29 +266,30 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     setDetailMode('finalisasi');
     setDetailData(null);
     setPreviewData(null);
-    setDetailOrder([]);
     setShowDetailModal(true);
     setLoadingDetail(true);
 
     setForm({
       idPktBm: '',
       sampleNos: initialSampleNos,
+      detailOrder: [],
     });
 
     try {
       const detail = await lhuReviewApi.getLhuFinalizationDetail(requestId) || {};
       setDetailData(detail);
-      setDetailOrderFromRows(detail?.details || detail?.detailLhu || detail?.detail_lhu || []);
 
       const detailSamples = detail.samples || detail.sampels || [];
       const availableNos = dedupeTextList(detailSamples.map((sample) => sample.noSampel || sample.no_sampel).filter(Boolean));
-      const selectedNos = initialSampleNos.length
+      const selectedNos = (initialSampleNos.length
         ? dedupeTextList(initialSampleNos.filter((noSampel) => availableNos.includes(noSampel)))
-        : availableNos;
+        : availableNos)
+        .sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }));
 
       const nextForm = {
         idPktBm: detail.lhu?.id_pkt_bm || detail.lhu?.idPktBm || item.idPktBm || item.id_pkt_bm || '',
         sampleNos: selectedNos,
+        detailOrder: [],
       };
 
       setForm(nextForm);
@@ -310,7 +317,6 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     setDetailMode('history');
     setDetailData(null);
     setPreviewData(null);
-    setDetailOrder([]);
 
     setShowDetailModal(true);
     setLoadingDetail(true);
@@ -318,7 +324,6 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     try {
       const data = await lhuReviewApi.getLhuDetailByNomor(nomorLhu);
       setDetailData(data || null);
-      setDetailOrderFromRows(data?.details || data?.detailLhu || data?.detail_lhu || []);
     } catch (error) {
       showError(getErrorMessage(error, 'Gagal memuat detail LHU.'));
       closeDetail();
@@ -333,7 +338,6 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     setShowDetailModal(false);
     setDetailData(null);
     setPreviewData(null);
-    setDetailOrder([]);
     setLoadingDetail(false);
     setLoadingPreview(false);
     setSubmitting(false);
@@ -341,6 +345,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     setForm({
       idPktBm: '',
       sampleNos: [],
+      detailOrder: [],
     });
   }
 
@@ -356,24 +361,6 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     // initialLhuNumber hanya digunakan untuk deep-link pembuka modal riwayat QC.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLhuNumber, loadingHistory]);
-
-  function moveSampleRow(fromIndex, toIndex) {
-    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
-
-    const currentNos = dedupeTextList(Array.isArray(form.sampleNos) ? [...form.sampleNos] : []);
-    if (!currentNos.length || fromIndex >= currentNos.length || toIndex >= currentNos.length) return;
-
-    const nextNos = [...currentNos];
-    const [moved] = nextNos.splice(fromIndex, 1);
-    nextNos.splice(toIndex, 0, moved);
-
-    setForm((prev) => ({ ...prev, sampleNos: nextNos }));
-    setPreviewData(null);
-
-    if (form.idPktBm && nextNos.length) {
-      loadPreviewFor(getRequestId(selectedSample), form.idPktBm, nextNos);
-    }
-  }
 
 
   function handleFinalize() {
@@ -530,24 +517,90 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     [];
 
   const baseDisplayDetails = dedupeDetails(rawDisplayDetails);
-  const displayDetails = [...baseDisplayDetails].sort((a, b) => {
-    const indexA = detailOrder.indexOf(getDetailRowId(a));
-    const indexB = detailOrder.indexOf(getDetailRowId(b));
+  const defaultDisplayDetails = [...baseDisplayDetails].sort((a, b) => {
+    const orderA = Number(a.urutan_lhu || a.urutanLhu || 9999);
+    const orderB = Number(b.urutan_lhu || b.urutanLhu || 9999);
 
-    const orderA = indexA >= 0 ? indexA : Number(a.urutan_lhu || a.urutanLhu || 9999);
-    const orderB = indexB >= 0 ? indexB : Number(b.urutan_lhu || b.urutanLhu || 9999);
+    if (orderA !== orderB) return orderA - orderB;
 
-    return orderA - orderB;
+    return String(a.nama_parameter || a.namaParameter || a.nama_parameter_snapshot || '').localeCompare(
+      String(b.nama_parameter || b.namaParameter || b.nama_parameter_snapshot || ''),
+      'id',
+      { numeric: true, sensitivity: 'base' }
+    );
   });
 
-  function moveDetailRow(fromIndex, toIndex) {
-    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+  function applyDetailOrder(rows = [], detailOrder = []) {
+    const order = Array.isArray(detailOrder) ? detailOrder.map((item) => String(item || '').trim()).filter(Boolean) : [];
+    if (!order.length) {
+      return rows.map((row, index) => ({ ...row, urutan_lhu: index + 1, urutanLhu: index + 1 }));
+    }
 
-    const currentIds = displayDetails.map((row, index) => getDetailRowId(row, index));
-    const nextIds = [...currentIds];
-    const [moved] = nextIds.splice(fromIndex, 1);
-    nextIds.splice(toIndex, 0, moved);
-    setDetailOrder(nextIds);
+    const rowMap = new Map();
+    rows.forEach((row, index) => {
+      rowMap.set(getDetailRowId(row, index), { row, index });
+    });
+
+    const used = new Set();
+    const orderedRows = [];
+    order.forEach((key) => {
+      const matched = rowMap.get(key);
+      if (!matched || used.has(key)) return;
+      used.add(key);
+      orderedRows.push(matched.row);
+    });
+
+    rows.forEach((row, index) => {
+      const key = getDetailRowId(row, index);
+      if (!used.has(key)) orderedRows.push(row);
+    });
+
+    return orderedRows.map((row, index) => ({ ...row, urutan_lhu: index + 1, urutanLhu: index + 1 }));
+  }
+
+  const displayDetails = applyDetailOrder(defaultDisplayDetails, form.detailOrder);
+  const detailOrderSignature = defaultDisplayDetails.map((row, index) => getDetailRowId(row, index)).join('|');
+
+  useEffect(() => {
+    setForm((prev) => {
+      const rowKeys = defaultDisplayDetails.map((row, index) => getDetailRowId(row, index));
+      const rowKeySet = new Set(rowKeys);
+      const current = Array.isArray(prev.detailOrder) ? prev.detailOrder.map((key) => String(key || '').trim()).filter(Boolean) : [];
+      const normalized = [
+        ...current.filter((key) => rowKeySet.has(key)),
+        ...rowKeys.filter((key) => !current.includes(key)),
+      ];
+
+      if (normalized.join('|') === current.join('|')) return prev;
+      return { ...prev, detailOrder: normalized };
+    });
+    // Sinkronisasi order hanya saat set detail preview berubah.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailOrderSignature]);
+
+  function onMoveDetailRow(sourceIndex, targetIndex, sourceKey = '', targetKey = '') {
+    setForm((prev) => {
+      const currentOrder = displayDetails.map((row, index) => getDetailRowId(row, index));
+      const normalizedSourceKey = String(sourceKey || '').trim();
+      const normalizedTargetKey = String(targetKey || '').trim();
+      const resolvedSourceIndex = normalizedSourceKey ? currentOrder.indexOf(normalizedSourceKey) : sourceIndex;
+      const resolvedTargetIndex = normalizedTargetKey ? currentOrder.indexOf(normalizedTargetKey) : targetIndex;
+
+      if (
+        resolvedSourceIndex < 0 ||
+        resolvedTargetIndex < 0 ||
+        resolvedSourceIndex >= currentOrder.length ||
+        resolvedTargetIndex >= currentOrder.length ||
+        resolvedSourceIndex === resolvedTargetIndex
+      ) {
+        return prev;
+      }
+
+      const nextOrder = [...currentOrder];
+      const [moved] = nextOrder.splice(resolvedSourceIndex, 1);
+      nextOrder.splice(resolvedTargetIndex, 0, moved);
+      return { ...prev, detailOrder: nextOrder };
+    });
   }
 
   const displayAkreditasi =
@@ -615,9 +668,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     dedupeDetails,
     rawDisplayDetails,
     displayDetails,
-    detailOrder,
-    moveDetailRow,
-    moveSampleRow,
+    onMoveDetailRow,
     displayAkreditasi,
     previewPaket,
     selectedFilePath,

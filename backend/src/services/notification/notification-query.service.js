@@ -30,7 +30,7 @@ getSampleNotificationContext = async (noSampel) => {
                         },
                     ],
                 },
-                { model: Lhu, as: 'lhus', required: false, through: { attributes: [] } },
+                { model: Lhu, as: 'lhu', required: false },
             ],
         });
         if (!instance) {
@@ -55,7 +55,6 @@ getSampleNotificationContext = async (noSampel) => {
                     model: Sampel,
                     as: 'sampels',
                     required: true,
-                    through: { attributes: [] },
                     include: [
                         {
                             model: FpplSampel,
@@ -101,27 +100,26 @@ getSampleNotificationContext = async (noSampel) => {
                 },
                 {
                     model: Lhu,
-                    as: 'lhus',
+                    as: 'lhu',
                     required: false,
-                    through: { attributes: [] },
                 },
             ],
             order: [['no_sampel', 'ASC']],
         });
         const samples = sampleInstances.map((row) => getPlain(row) || {});
+        const getSampleLhuRows = (sample = {}) => {
+            const list = sample.lhus || sample.Lhus || [];
+            if (Array.isArray(list) && list.length) return list.filter(Boolean);
+            const single = sample.lhu || sample.Lhu || sample.LHU || null;
+            return single ? [single] : [];
+        };
         const incompleteSamples = samples.filter((sample) => {
-            const lhus = sample.lhus || sample.Lhus || [];
-            const approvedFinalLhu = Array.isArray(lhus)
-                ? lhus.find((lhu) => lhu && lhu.status_lhu === LHU_STATUS.APPROVED_FINAL)
-                : null;
+            const approvedFinalLhu = getSampleLhuRows(sample).find((lhu) => lhu && lhu.status_lhu === LHU_STATUS.APPROVED_FINAL);
             return !approvedFinalLhu;
         });
         const lhuRowsMap = new Map();
         samples.forEach((sample) => {
-            const lhus = sample.lhus || sample.Lhus || [];
-            if (!Array.isArray(lhus))
-                return;
-            lhus.forEach((lhu) => {
+            getSampleLhuRows(sample).forEach((lhu) => {
                 if (!lhu || lhu.status_lhu !== LHU_STATUS.APPROVED_FINAL)
                     return;
                 const key = lhu.nomor_lhu || lhu.id_lhu;

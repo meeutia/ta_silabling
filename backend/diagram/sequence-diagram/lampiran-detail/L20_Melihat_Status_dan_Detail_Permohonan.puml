@@ -1,0 +1,40 @@
+    @startuml
+    title Sequence Diagram Melihat Status dan Detail Permohonan
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Pengguna" as User
+boundary "Riwayat/Detail Permohonan Page" as FE
+control "customerRequestApi / adminPermohonanApi / kasiRequestApi" as Api
+control "CustomerRequestController" as Controller
+control "RequestService" as Service
+database "Sequelize Models
+Fppl, Pelanggan, Invoice, JadwalSampel, Sampel, Lhu, JadwalPengambilanLhu" as DB
+control "RequestTransformUtil" as Transform
+
+User -> FE: Membuka daftar atau detail permohonan
+FE -> Api: getRequests() / getDetail(idRegistrasi)
+Api -> Controller: GET /requests atau GET /requests/{id}
+activate Controller
+alt daftar permohonan
+  Controller -> Service: listRequests(userNik, role, status)
+  Service -> DB: query Fppl sesuai role dan status
+  Service -> Transform: deriveCustomerHistoryStatus()/buildPenyeliaRequestSummary()
+  Service --> Controller: daftar permohonan
+else detail permohonan
+  Controller -> Service: detailRequest(id, userNik, role)
+  Service -> DB: Fppl.findByPk(include pelanggan, invoice, jadwal, sampel, LHU)
+  Service -> Service: cek hak akses berdasarkan role
+  Service -> Transform: decorateScheduleFields(), stripCustomerSensitiveLhuData()
+  Service --> Controller: detail lengkap
+end
+Controller --> Api: successResponse(data)
+Api --> FE: data permohonan
+FE --> User: Menampilkan status, timeline, invoice, sampel, LHU
+
+deactivate Controller
+    @enduml

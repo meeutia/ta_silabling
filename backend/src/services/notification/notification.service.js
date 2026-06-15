@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { NotifikasiEmail, JadwalPengambilanLhu, JadwalSampel, Fppl, Pelanggan, User, Pegawai, Lhu, LhuSampel, Sampel, FpplSampel, JenisSampel, Penugasan, PenugasanDetail, PenugasanItem, ParameterMetode, Parameter, Metode, Lka, LkaHasil, Invoice, PengajuanPerubahanJadwal, } = require('../../models/Associations');
+const { NotifikasiEmail, JadwalPengambilanLhu, JadwalSampel, Fppl, Pelanggan, User, Pegawai, Lhu, Sampel, FpplSampel, JenisSampel, Penugasan, PenugasanDetail, PenugasanItem, ParameterMetode, Parameter, Metode, Lka, LkaHasil, Invoice, PengajuanPerubahanJadwal, } = require('../../models/Associations');
 const { NOTIFICATION_TYPE, STATUS_PENGIRIMAN_EMAIL, } = require('../../constants/notification.constant');
 const Roles = require('../../constants/roles');
 const RequestStatus = require('../../constants/request-status');
@@ -108,35 +108,28 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
                     include: [{ model: Pelanggan, as: 'pelanggan', required: false }],
                 },
                 {
-                    model: LhuSampel,
-                    as: 'lhu_sampels',
+                    model: Sampel,
+                    as: 'sampels',
                     required: false,
                     include: [
                         {
-                            model: Sampel,
-                            as: 'sampel',
+                            model: FpplSampel,
+                            as: 'fppl_sampel',
                             required: false,
                             include: [
+                                { model: JenisSampel, required: false },
                                 {
-                                    model: FpplSampel,
-                                    as: 'fppl_sampel',
+                                    model: Fppl,
+                                    as: 'fppl',
                                     required: false,
-                                    include: [
-                                        { model: JenisSampel, required: false },
-                                        {
-                                            model: Fppl,
-                                            as: 'fppl',
-                                            required: false,
-                                            include: [{ model: Pelanggan, as: 'pelanggan', required: false }],
-                                        },
-                                    ],
+                                    include: [{ model: Pelanggan, as: 'pelanggan', required: false }],
                                 },
                             ],
                         },
                     ],
                 },
             ],
-            order: [[{ model: LhuSampel, as: 'lhu_sampels' }, 'urutan_sampel', 'ASC']],
+            order: [[{ model: Sampel, as: 'sampels' }, 'no_sampel', 'ASC']],
         });
         if (!lhuInstance) {
             const err = new Error('LHU tidak ditemukan untuk notifikasi Kepala Lab.');
@@ -144,30 +137,23 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
             throw err;
         }
         const lhu = getPlain(lhuInstance) || {};
-        const lhuSamples = pickArray(lhu, ['lhu_sampels', 'LhuSampels']);
-        const firstLhuSample = lhuSamples[0] || {};
-        const firstSample = pickObject(firstLhuSample, ['sampel', 'Sampel']) || {};
+        const lhuSamples = pickArray(lhu, ['sampels', 'Sampels']);
+        const firstSample = lhuSamples[0] || {};
         const firstFpplSampel = pickObject(firstSample, ['fppl_sampel', 'FpplSampel']) || {};
         const fpplFromSample = pickObject(firstFpplSampel, ['fppl', 'Fppl']) || {};
         const fppl = pickObject(lhu, ['fppl', 'Fppl']) || fpplFromSample || {};
         const pelanggan = pickObject(fppl, ['pelanggan', 'Pelanggan']) || pickObject(fpplFromSample, ['pelanggan', 'Pelanggan']) || {};
         const sampleNos = lhuSamples
-            .map((item) => {
-            const sample = pickObject(item, ['sampel', 'Sampel']) || {};
-            return sample.no_sampel || item.no_sampel || item.noSampel || null;
-        })
+            .map((sample) => sample.no_sampel || sample.noSampel || null)
             .filter(Boolean);
-        const samples = lhuSamples.map((item) => {
-            const sample = pickObject(item, ['sampel', 'Sampel']) || {};
+        const samples = lhuSamples.map((sample) => {
             const fpplSampel = pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
             const jenis = pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
             return {
-                no_sampel: sample.no_sampel || item.no_sampel || item.noSampel || null,
-                noSampel: sample.no_sampel || item.no_sampel || item.noSampel || null,
+                no_sampel: sample.no_sampel || sample.noSampel || null,
+                noSampel: sample.no_sampel || sample.noSampel || null,
                 jenis_sampel: jenis.jenis_sampel || jenis.nama_jenis || null,
                 jenisSampel: jenis.jenis_sampel || jenis.nama_jenis || null,
-                urutan_sampel: item.urutan_sampel || item.urutanSampel || null,
-                urutanSampel: item.urutan_sampel || item.urutanSampel || null,
             };
         }).filter((item) => item.no_sampel || item.noSampel);
         const jenisList = Array.from(new Set(samples
@@ -201,22 +187,15 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
             },
             include: [
                 {
-                    model: LhuSampel,
-                    as: 'lhu_sampels',
+                    model: Sampel,
+                    as: 'sampels',
                     required: false,
                     include: [
                         {
-                            model: Sampel,
-                            as: 'sampel',
+                            model: FpplSampel,
+                            as: 'fppl_sampel',
                             required: false,
-                            include: [
-                                {
-                                    model: FpplSampel,
-                                    as: 'fppl_sampel',
-                                    required: false,
-                                    include: [{ model: JenisSampel, required: false }],
-                                },
-                            ],
+                            include: [{ model: JenisSampel, required: false }],
                         },
                     ],
                 },
@@ -228,13 +207,12 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
         });
         const mapped = rows.map((row) => {
             const lhu = getPlain(row) || {};
-            const lhuSamples = pickArray(lhu, ['lhu_sampels', 'LhuSampels']);
+            const lhuSamples = pickArray(lhu, ['sampels', 'Sampels']);
             const samples = lhuSamples
-                .map((item) => {
-                const sample = pickObject(item, ['sampel', 'Sampel']) || {};
+                .map((sample) => {
                 const fpplSampel = pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
                 const jenis = pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
-                const noSampel = sample.no_sampel || item.no_sampel || item.noSampel || null;
+                const noSampel = sample.no_sampel || sample.noSampel || null;
                 return {
                     no_sampel: noSampel,
                     noSampel,

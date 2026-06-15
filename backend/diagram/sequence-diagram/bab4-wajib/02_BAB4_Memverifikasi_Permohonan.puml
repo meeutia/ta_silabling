@@ -1,0 +1,56 @@
+    @startuml
+    title Sequence Diagram Memverifikasi Permohonan
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Admin" as Admin
+boundary "AdminPermohonanPage
+AdminPermohonanValidationSection" as FE
+control "adminPermohonanApi" as Api
+control "RequestWorkflowController
+.verifyRequest()" as Controller
+control "RequestWorkflowService
+.verifyRequest()" as Service
+database "Sequelize Models
+Fppl, TarifPengambilan" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Admin -> FE: Membuka detail permohonan dan memilih aksi verifikasi
+FE -> FE: Validasi catatan / tarif pengambilan jika petugas
+FE -> Api: verifyRequest(idRegistrasi, body)
+Api -> Controller: PUT /requests/{id}/verify
+activate Controller
+Controller -> Service: verifyRequest(id, action, note, tariffId, adminNik)
+activate Service
+Service -> DB: Fppl.findByPk(id)
+Service -> Service: Pastikan status = Menunggu Verifikasi
+alt action = approve
+  opt jenis_pengambilan_sampel = Petugas
+    Service -> DB: TarifPengambilan.findByPk(id_tarif_pengambilan)
+  end
+  Service -> DB: update Fppl
+status = Menunggu Penentuan Metode
+  Service -> Log: logStatusTransition(MEMVERIFIKASI_PERMOHONAN)
+  Service --> Controller: status Menunggu Penentuan Metode
+else action = reject
+  Service -> DB: update Fppl
+status = Ditolak Admin
+  Service -> Log: logStatusTransition(MENOLAK_PERMOHONAN_ADMIN)
+  Service --> Controller: status Ditolak Admin
+end
+deactivate Service
+Controller -> Notif: notifyRequestStatusChanged(...)
+opt action = approve
+  Controller -> Notif: notifyKasiMetodePerluDitentukan(...)
+end
+Controller --> Api: successResponse
+Api --> FE: data status terbaru
+FE --> Admin: Menampilkan hasil verifikasi
+
+deactivate Controller
+    @enduml

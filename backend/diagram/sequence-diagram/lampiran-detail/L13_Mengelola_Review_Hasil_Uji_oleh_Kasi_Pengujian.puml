@@ -1,0 +1,55 @@
+    @startuml
+    title Sequence Diagram Mengelola Review Hasil Uji oleh Kasi Pengujian
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Kasi Pengujian" as Kasi
+boundary "KasiLhuPage
+KasiLhuReviewModal" as FE
+control "lhuReviewApi" as Api
+control "AssignmentController" as Controller
+control "AssignmentService" as AssignmentService
+control "AssignmentKasiReviewService" as ReviewService
+database "Sequelize Models
+Sampel, LkaHasil, Lka, LkaRevisi" as DB
+control "NotificationService" as Notif
+
+Kasi -> FE: Membuka antrean review hasil
+FE -> Api: getKasiReviewQueue()
+Api -> Controller: GET /assignments/kasi-review/queue
+Controller -> AssignmentService: getKasiReviewQueue()
+AssignmentService -> ReviewService: getKasiReviewQueue()
+ReviewService -> DB: ambil sampel dengan hasil Disetujui Penyelia
+ReviewService --> FE: queue
+
+Kasi -> FE: Membuka detail sampel
+FE -> Api: getKasiReviewDetail(noSampel)
+Api -> Controller: GET /assignments/kasi-review/detail
+Controller -> AssignmentService: getKasiReviewDetail(noSampel)
+AssignmentService -> ReviewService: getKasiReviewDetail(noSampel)
+ReviewService -> DB: ambil LkaHasil siap review Kasi
+ReviewService --> FE: detail hasil
+
+Kasi -> FE: Setujui atau minta revisi
+alt Setujui hasil
+  FE -> Api: approveKasiReview(noSampel)
+  Api -> Controller: POST /assignments/kasi-review/approve
+  Controller -> AssignmentService: approveKasiReview(noSampel, kasiNik)
+  AssignmentService -> ReviewService: approveKasiReview(noSampel, kasiNik)
+  ReviewService -> DB: update LkaHasil = Disetujui Kasi Pengujian
+  ReviewService -> DB: sync LKA/detail
+  ReviewService -> Notif: notifyKasiReviewApprovedToQc(noSampel)
+else Minta revisi
+  FE -> Api: requestKasiReviewRevision({noSampel, revisions})
+  Api -> Controller: POST /assignments/kasi-review/revise
+  Controller -> AssignmentService: reviseKasiReview(noSampel, catatan, kasiNik, targets)
+  AssignmentService -> ReviewService: reviseKasiReview(...)
+  ReviewService -> DB: create LkaRevisi sumber=Kasi Pengujian
+  ReviewService -> DB: update target hasil = Menunggu Persetujuan Penyelia atas Revisi Kasi
+end
+Controller --> FE: successResponse
+    @enduml

@@ -104,6 +104,9 @@ calculateAccreditationStats = (details = []) => {
             '').trim();
     };
     getFallbackParameterKey = (row = {}) => {
+        const explicitKey = String(row.detail_key || row.detailKey || row.key || '').trim();
+        if (explicitKey)
+            return explicitKey;
         const fpplParameterMetodeKey = this.getFpplParameterMetodeKey(row);
         if (fpplParameterMetodeKey)
             return fpplParameterMetodeKey;
@@ -117,22 +120,128 @@ calculateAccreditationStats = (details = []) => {
             row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode,
         ].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean).join('|');
     };
-    applyDetailOrder = (rows = [], orderPayload = []) => {
-        const orderMap = new Map();
-        (Array.isArray(orderPayload) ? orderPayload : []).forEach((item, index) => {
-            const key = this.getFallbackParameterKey(item);
-            if (!key || orderMap.has(key))
-                return;
-            const rawOrder = Number(item?.urutanLhu || item?.urutan_lhu || item?.order || item?.urutan);
-            orderMap.set(key, Number.isFinite(rawOrder) && rawOrder > 0 ? rawOrder : index + 1);
+    compareText = (a, b) => {
+        return String(a || '').localeCompare(String(b || ''), 'id', {
+            sensitivity: 'base',
+            numeric: true,
         });
-        return rows
+    };
+    getDetailSortText = (row = {}, keys = []) => {
+        for (const key of keys) {
+            const value = row?.[key];
+            if (value !== null && value !== undefined && String(value).trim() !== '') {
+                return String(value).trim();
+            }
+        }
+        return '';
+    };
+    compareDetailRowsForLhu = (a = {}, b = {}) => {
+        const kategoriCompare = this.compareText(
+            this.getDetailSortText(a, ['kategori_parameter', 'kategoriParameter', 'kategori_parameter_snapshot', 'kategoriParameterSnapshot']),
+            this.getDetailSortText(b, ['kategori_parameter', 'kategoriParameter', 'kategori_parameter_snapshot', 'kategoriParameterSnapshot'])
+        );
+        if (kategoriCompare)
+            return kategoriCompare;
+        const parameterCompare = this.compareText(
+            this.getDetailSortText(a, ['nama_parameter_snapshot', 'namaParameterSnapshot', 'nama_parameter', 'namaParameter']),
+            this.getDetailSortText(b, ['nama_parameter_snapshot', 'namaParameterSnapshot', 'nama_parameter', 'namaParameter'])
+        );
+        if (parameterCompare)
+            return parameterCompare;
+        const metodeCompare = this.compareText(
+            this.getDetailSortText(a, ['metode_snapshot', 'metodeSnapshot', 'nama_metode', 'namaMetode', 'metode']),
+            this.getDetailSortText(b, ['metode_snapshot', 'metodeSnapshot', 'nama_metode', 'namaMetode', 'metode'])
+        );
+        if (metodeCompare)
+            return metodeCompare;
+        return this.compareText(this.getFallbackParameterKey(a), this.getFallbackParameterKey(b));
+    };
+    getDetailOrderDescriptor = (row = {}) => {
+        return {
+            key: this.getFallbackParameterKey(row),
+            detail_key: row.detail_key || row.detailKey || row.key || null,
+            id_fppl_parameter_metode: row.id_fppl_parameter_metode || row.idFpplParameterMetode || null,
+            id_metode_parameter: row.id_metode_parameter || row.idMetodeParameter || row.id_parameter_metode || row.idParameterMetode || null,
+            id_parameter: row.id_parameter || row.idParameter || null,
+            nama_parameter: row.nama_parameter_snapshot || row.namaParameterSnapshot || row.nama_parameter || row.namaParameter || null,
+            metode: row.metode_snapshot || row.metodeSnapshot || row.nama_metode || row.namaMetode || row.metode || null,
+            acuan_metode: row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode || null,
+        };
+    };
+    getDetailOrderCandidateKeys = (row = {}) => {
+        const descriptor = this.getDetailOrderDescriptor(row);
+        const textKey = [descriptor.nama_parameter, descriptor.metode, descriptor.acuan_metode]
+            .map((value) => String(value || '').trim().toLowerCase())
+            .filter(Boolean)
+            .join('|');
+        return [
+            descriptor.detail_key,
+            descriptor.key,
+            descriptor.id_fppl_parameter_metode,
+            descriptor.id_metode_parameter,
+            descriptor.id_parameter,
+            textKey,
+        ]
+            .map((value) => String(value || '').trim())
+            .filter(Boolean);
+    };
+    normalizeDetailOrderInput = (detailOrder = []) => {
+        const items = Array.isArray(detailOrder) ? detailOrder : String(detailOrder || '').split(/[,\n]+/);
+        const keys = [];
+        items.forEach((item) => {
+            if (item && typeof item === 'object') {
+                keys.push(...this.getDetailOrderCandidateKeys(item));
+                return;
+            }
+            const text = String(item || '').trim();
+            if (text)
+                keys.push(text);
+        });
+        const seen = new Set();
+        return keys.filter((key) => {
+            const normalized = key.toLowerCase();
+            if (!normalized || seen.has(normalized))
+                return false;
+            seen.add(normalized);
+            return true;
+        });
+    };
+    sortDetailRowsForLhu = (rows = []) => {
+        return (Array.isArray(rows) ? [...rows] : [])
+            .sort(this.compareDetailRowsForLhu)
             .map((row, index) => ({
-            ...row,
-            urutan_lhu: orderMap.get(this.getFallbackParameterKey(row)) || row.urutan_lhu || index + 1,
-        }))
-            .sort((a, b) => Number(a.urutan_lhu || 0) - Number(b.urutan_lhu || 0) ||
-            String(a.nama_parameter_snapshot || a.nama_parameter || '').localeCompare(String(b.nama_parameter_snapshot || b.nama_parameter || '')));
+                ...row,
+                // Kolom urutan_lhu tidak lagi disimpan di tabel detail_lhu.
+                // Nilai ini hanya urutan virtual untuk tampilan dan generate PDF.
+                urutan_lhu: index + 1,
+                urutanLhu: index + 1,
+            }));
+    };
+    applyDetailOrder = (rows = [], detailOrder = []) => {
+        const defaultRows = this.sortDetailRowsForLhu(rows);
+        const orderKeys = this.normalizeDetailOrderInput(detailOrder);
+        if (!orderKeys.length)
+            return defaultRows;
+        const orderIndexByKey = new Map(orderKeys.map((key, index) => [key.toLowerCase(), index]));
+        const matched = [];
+        const unmatched = [];
+        defaultRows.forEach((row, defaultIndex) => {
+            const candidateKeys = this.getDetailOrderCandidateKeys(row);
+            const matchedIndex = candidateKeys
+                .map((key) => orderIndexByKey.get(String(key).toLowerCase()))
+                .find((index) => Number.isInteger(index));
+            const payload = { ...row, __matchedOrderIndex: matchedIndex, __defaultIndex: defaultIndex };
+            if (Number.isInteger(matchedIndex))
+                matched.push(payload);
+            else
+                unmatched.push(payload);
+        });
+        return [...matched.sort((a, b) => a.__matchedOrderIndex - b.__matchedOrderIndex || a.__defaultIndex - b.__defaultIndex), ...unmatched]
+            .map(({ __matchedOrderIndex, __defaultIndex, ...row }, index) => ({
+                ...row,
+                urutan_lhu: index + 1,
+                urutanLhu: index + 1,
+            }));
     };
     toTinyIntFlag = (value) => {
         if (value === true || value === 1)

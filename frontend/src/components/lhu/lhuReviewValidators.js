@@ -20,52 +20,6 @@ function getNoSampelListFromSelection(selectedSample = {}, form = {}) {
   return [...new Set(values.map((item) => String(item || '').trim()).filter(Boolean))];
 }
 
-function getDetailOrderKey(row = {}) {
-  return String(
-    row.id_fppl_parameter_metode ||
-      row.idFpplParameterMetode ||
-      row.id_fppl_pm ||
-      row.idFpplPm ||
-      row.id_metode_parameter ||
-      row.idMetodeParameter ||
-      row.id_parameter_metode ||
-      row.idParameterMetode ||
-      [
-        row.id_parameter || row.idParameter,
-        row.nama_parameter_snapshot || row.namaParameterSnapshot || row.nama_parameter || row.namaParameter,
-        row.metode_snapshot || row.metodeSnapshot || row.nama_metode || row.namaMetode || row.metode,
-        row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode,
-      ]
-        .map((value) => String(value || '').trim().toLowerCase())
-        .filter(Boolean)
-        .join('|')
-  ).trim();
-}
-
-function buildDetailOrderPayload(detailRows = []) {
-  return (Array.isArray(detailRows) ? detailRows : [])
-    .map((row, index) => ({
-      kodeLka: row.kodeLka || row.kode_lka || null,
-      kode_lka: row.kode_lka || row.kodeLka || null,
-      noSampel: row.noSampel || row.no_sampel || null,
-      no_sampel: row.no_sampel || row.noSampel || null,
-      idFpplParameterMetode: row.id_fppl_parameter_metode || row.idFpplParameterMetode || row.id_fppl_pm || row.idFpplPm || null,
-      id_fppl_parameter_metode: row.id_fppl_parameter_metode || row.idFpplParameterMetode || row.id_fppl_pm || row.idFpplPm || null,
-      idMetodeParameter: row.id_metode_parameter || row.idMetodeParameter || row.id_parameter_metode || row.idParameterMetode || null,
-      id_metode_parameter: row.id_metode_parameter || row.idMetodeParameter || row.id_parameter_metode || row.idParameterMetode || null,
-      idParameter: row.id_parameter || row.idParameter || null,
-      id_parameter: row.id_parameter || row.idParameter || null,
-      namaParameter: row.nama_parameter_snapshot || row.namaParameterSnapshot || row.nama_parameter || row.namaParameter || null,
-      nama_parameter: row.nama_parameter_snapshot || row.namaParameterSnapshot || row.nama_parameter || row.namaParameter || null,
-      metode: row.metode_snapshot || row.metodeSnapshot || row.nama_metode || row.namaMetode || row.metode || null,
-      acuanMetode: row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode || null,
-      acuan_metode: row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode || null,
-      urutanLhu: index + 1,
-      urutan_lhu: index + 1,
-    }))
-    .filter(getDetailOrderKey);
-}
-
 export function validateKasiApprove({ noSampel, resultRows } = {}) {
   if (isBlank(noSampel)) return 'Nomor sampel tidak valid.';
 
@@ -112,9 +66,8 @@ export function validateQcFinalize({ selectedSample, form, detailRows } = {}) {
   return '';
 }
 
-export function buildQcFinalizePayload({ selectedSample, form, detailRows = [] } = {}) {
+export function buildQcFinalizePayload({ selectedSample, form } = {}) {
   const noSampelList = getNoSampelListFromSelection(selectedSample, form);
-  const detailOrder = buildDetailOrderPayload(detailRows);
 
   return {
     idRegistrasi: selectedSample?.idRegistrasi || selectedSample?.id_registrasi || null,
@@ -124,10 +77,10 @@ export function buildQcFinalizePayload({ selectedSample, form, detailRows = [] }
     sample_nos: noSampelList,
     noSampelList,
     no_sampel_list: noSampelList,
+    detailOrder: Array.isArray(form?.detailOrder) ? form.detailOrder : [],
+    detail_order: Array.isArray(form?.detailOrder) ? form.detailOrder : [],
     idPktBm: form?.idPktBm,
     keteranganSampel: asTrimmedText(form?.keteranganSampel) || null,
-    detailOrder,
-    detail_order: detailOrder,
   };
 }
 

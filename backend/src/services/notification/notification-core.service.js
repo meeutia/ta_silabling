@@ -66,24 +66,67 @@ class NotificationCoreService {
         return date;
     };
 
-    normalizeRecipient = ({ penerimaTipe = null, penerimaId = null, penerimaUserNik = null, penerimaPelangganId = null, } = {}) => {
+    resolveRecipientSnapshot = async ({ nikPenerima = null, penerimaTipe = null, penerimaId = null, penerimaUserNik = null, penerimaPelangganId = null, requireEmail = false, } = {}) => {
         const explicitType = safeString(penerimaTipe).trim().toUpperCase();
         const explicitId = safeString(penerimaId).trim();
-        if (explicitType && explicitId) {
-            return { penerima_tipe: explicitType, penerima_id: explicitId };
-        }
+        const directNik = safeString(nikPenerima || penerimaUserNik || (explicitType === NOTIFICATION_RECIPIENT_TYPE.USER ? explicitId : null)).trim();
+        const pelangganId = safeString(penerimaPelangganId || (explicitType === NOTIFICATION_RECIPIENT_TYPE.PELANGGAN ? explicitId : null)).trim();
 
-        const userNik = safeString(penerimaUserNik).trim();
-        if (userNik) {
-            return { penerima_tipe: NOTIFICATION_RECIPIENT_TYPE.USER, penerima_id: userNik };
-        }
+        let pelanggan = null;
+        let user = null;
+        let nik = directNik;
 
-        const pelangganId = safeString(penerimaPelangganId).trim();
         if (pelangganId) {
-            return { penerima_tipe: NOTIFICATION_RECIPIENT_TYPE.PELANGGAN, penerima_id: pelangganId };
+            pelanggan = await Pelanggan.findOne({ where: { id_pelanggan: pelangganId } });
+            if (!pelanggan) {
+                const err = new Error('Data pelanggan penerima tidak ditemukan.');
+                err.statusCode = 400;
+                throw err;
+            }
+            nik = safeString(pelanggan.get('nik')).trim();
         }
 
-        return { penerima_tipe: null, penerima_id: null };
+        if (!nik) {
+            const err = new Error('NIK penerima notifikasi belum ditentukan.');
+            err.statusCode = 400;
+            throw err;
+        }
+
+        user = await User.findOne({ where: { nik } });
+        if (!user) {
+            const err = new Error('User penerima notifikasi tidak ditemukan.');
+            err.statusCode = 400;
+            throw err;
+        }
+
+        if (!pelanggan) {
+            pelanggan = await Pelanggan.findOne({ where: { nik } });
+        }
+
+        const emailTujuan = safeString(pelanggan?.get('email_kontak')).trim() || safeString(user.get('email')).trim();
+        if (!emailTujuan && requireEmail) {
+            const err = new Error('Email penerima tidak ditemukan pada pelanggan.email_kontak atau user.email.');
+            err.statusCode = 400;
+            throw err;
+        }
+
+        const namaPenerima = safeString(pelanggan?.get('pic')).trim() ||
+            safeString(pelanggan?.get('nama_instansi')).trim() ||
+            safeString(user.get('username')).trim() ||
+            nik;
+
+        return {
+            nik_penerima: safeString(nik, 16),
+            email_tujuan: emailTujuan ? safeString(emailTujuan, 100) : null,
+            nama_penerima: safeString(namaPenerima, 100),
+        };
+    };
+
+    normalizeRecipient = ({ nikPenerima = null, penerimaTipe = null, penerimaId = null, penerimaUserNik = null, } = {}) => {
+        const explicitType = safeString(penerimaTipe).trim().toUpperCase();
+        const explicitId = safeString(penerimaId).trim();
+        const directNik = safeString(nikPenerima || penerimaUserNik || (explicitType === NOTIFICATION_RECIPIENT_TYPE.USER ? explicitId : null)).trim();
+        return { nik_penerima: directNik ? safeString(directNik, 16) : null };
     };
 
     normalizeReference = ({ referensiTipe = null, referensiId = null, idRegistrasi = null, idJadwalLhu = null, nomorLhu = null, idPenugasan = null, } = {}) => {
@@ -116,13 +159,12 @@ class NotificationCoreService {
         return { referensi_tipe: null, referensi_id: null };
     };
 
-    buildEmailLogWhere = ({ idTipeNotifikasi, penerimaTipe = null, penerimaId = null, penerimaUserNik = null, penerimaPelangganId = null, referensiTipe = null, referensiId = null, idRegistrasi = null, idJadwalLhu = null, nomorLhu = null, idPenugasan = null, } = {}) => {
-        const recipient = this.normalizeRecipient({ penerimaTipe, penerimaId, penerimaUserNik, penerimaPelangganId });
+    buildEmailLogWhere = ({ idTipeNotifikasi, nikPenerima = null, penerimaTipe = null, penerimaId = null, penerimaUserNik = null, referensiTipe = null, referensiId = null, idRegistrasi = null, idJadwalLhu = null, nomorLhu = null, idPenugasan = null, } = {}) => {
+        const recipient = this.normalizeRecipient({ nikPenerima, penerimaTipe, penerimaId, penerimaUserNik });
         const reference = this.normalizeReference({ referensiTipe, referensiId, idRegistrasi, idJadwalLhu, nomorLhu, idPenugasan });
         return {
             id_tipe_notifikasi: idTipeNotifikasi,
-            penerima_tipe: recipient.penerima_tipe,
-            penerima_id: recipient.penerima_id,
+            nik_penerima: recipient.nik_penerima,
             referensi_tipe: reference.referensi_tipe,
             referensi_id: reference.referensi_id,
         };
@@ -178,8 +220,8 @@ class NotificationCoreService {
             error?.original?.code === 'ER_DUP_ENTRY';
     };
 
-    createEmailLog = async ({ idTipeNotifikasi, penerimaTipe = null, penerimaId = null, penerimaUserNik = null, penerimaPelangganId = null, referensiTipe = null, referensiId = null, idRegistrasi = null, idJadwalLhu = null, nomorLhu = null, idPenugasan = null, }) => {
-        const recipient = this.normalizeRecipient({ penerimaTipe, penerimaId, penerimaUserNik, penerimaPelangganId });
+    createEmailLog = async ({ idTipeNotifikasi, nikPenerima = null, penerimaTipe = null, penerimaId = null, penerimaUserNik = null, penerimaPelangganId = null, referensiTipe = null, referensiId = null, idRegistrasi = null, idJadwalLhu = null, nomorLhu = null, idPenugasan = null, }) => {
+        const recipient = await this.resolveRecipientSnapshot({ nikPenerima, penerimaTipe, penerimaId, penerimaUserNik, penerimaPelangganId });
         const reference = this.normalizeReference({ referensiTipe, referensiId, idRegistrasi, idJadwalLhu, nomorLhu, idPenugasan });
         let lastError = null;
 
@@ -189,8 +231,9 @@ class NotificationCoreService {
                 return await NotifikasiEmail.create({
                     id_notifikasi_email: id,
                     id_tipe_notifikasi: idTipeNotifikasi,
-                    penerima_tipe: recipient.penerima_tipe,
-                    penerima_id: recipient.penerima_id,
+                    nik_penerima: recipient.nik_penerima,
+                    email_tujuan: recipient.email_tujuan,
+                    nama_penerima: recipient.nama_penerima,
                     referensi_tipe: reference.referensi_tipe,
                     referensi_id: reference.referensi_id,
                     status_pengiriman: STATUS_PENGIRIMAN_EMAIL.MENUNGGU,
@@ -210,42 +253,9 @@ class NotificationCoreService {
         throw lastError || new Error('Gagal membuat log notifikasi email.');
     };
 
-    resolveRecipientEmail = async ({ penerimaTipe = null, penerimaId = null, penerimaUserNik = null, penerimaPelangganId = null, } = {}) => {
-        const recipient = this.normalizeRecipient({ penerimaTipe, penerimaId, penerimaUserNik, penerimaPelangganId });
-        if (recipient.penerima_tipe === NOTIFICATION_RECIPIENT_TYPE.USER) {
-            const user = await User.findOne({ where: { nik: recipient.penerima_id } });
-            const email = user?.get('email');
-            if (!email) {
-                const err = new Error('Email penerima user tidak ditemukan.');
-                err.statusCode = 400;
-                throw err;
-            }
-            return email;
-        }
-        if (recipient.penerima_tipe === NOTIFICATION_RECIPIENT_TYPE.PELANGGAN) {
-            const pelanggan = await Pelanggan.findOne({
-                where: { id_pelanggan: recipient.penerima_id },
-            });
-            if (!pelanggan) {
-                const err = new Error('Data pelanggan penerima tidak ditemukan.');
-                err.statusCode = 400;
-                throw err;
-            }
-            const pelangganEmail = pelanggan.get('email_kontak');
-            const nik = pelanggan.get('nik');
-            const user = nik ? await User.findOne({ where: { nik } }) : null;
-            const userEmail = user?.get('email');
-            const email = pelangganEmail || userEmail;
-            if (!email) {
-                const err = new Error('Email penerima tidak ditemukan pada pelanggan.email_kontak atau user.email.');
-                err.statusCode = 400;
-                throw err;
-            }
-            return email;
-        }
-        const err = new Error('Penerima notifikasi belum ditentukan.');
-        err.statusCode = 400;
-        throw err;
+    resolveRecipientEmail = async ({ nikPenerima = null, penerimaTipe = null, penerimaId = null, penerimaUserNik = null, penerimaPelangganId = null, } = {}) => {
+        const recipient = await this.resolveRecipientSnapshot({ nikPenerima, penerimaTipe, penerimaId, penerimaUserNik, penerimaPelangganId, requireEmail: true });
+        return recipient.email_tujuan;
     };
 
     sendNotificationEmail = async ({ to, subject, body, html = null }) => {

@@ -1,0 +1,53 @@
+    @startuml
+    title Sequence Diagram Mengesahkan LHU
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Kepala Laboratorium" as Kalab
+boundary "KalabLhuPage" as FE
+control "lhuReviewApi" as Api
+control "LhuController
+.approveByKalab()" as Controller
+control "LhuService
+.approveByKalab()" as Service
+control "LhuPdfService
+.generateFinalLhuPdf()" as PdfService
+database "Sequelize Models
+Lhu, Fppl" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Kalab -> FE: Membuka antrean LHU dan klik sahkan
+FE -> Api: approveKalabLhu(nomorLhu)
+Api -> Controller: POST /lhu/kalab/approve
+activate Controller
+Controller -> Service: approveByKalab(nomorLhu, kalabNik)
+activate Service
+Service -> DB: begin transaction
+Service -> DB: Lhu.findOne(nomor_lhu) with lock
+Service -> Service: Pastikan status_lhu = Menunggu Kalab
+Service -> DB: update Lhu
+tanggal_penerbitan, kalab_by, kalab_at, status = Disahkan
+Service -> PdfService: generateFinalLhuPdf(nomorLhu, transaction)
+activate PdfService
+PdfService -> DB: ambil data LHU final dan detail hasil
+PdfService --> Service: final filePath
+deactivate PdfService
+Service -> DB: update Lhu.file_lhu_path
+Service -> Log: logStatusTransition(KALAB_MENGESAHKAN_LHU)
+Service -> Service: updateRequestStatusAfterLhuApproval(idRegistrasi)
+Service -> DB: update Fppl jika seluruh LHU sudah final
+Service -> DB: commit transaction
+Service --> Controller: nomorLhu, status final, filePath
+deactivate Service
+Controller -> Notif: notifyAdminWhenRequestLhusComplete(nomorLhu)
+Controller --> Api: successResponse
+Api --> FE: LHU tersahkan
+FE --> Kalab: Menampilkan PDF final siap
+
+deactivate Controller
+    @enduml

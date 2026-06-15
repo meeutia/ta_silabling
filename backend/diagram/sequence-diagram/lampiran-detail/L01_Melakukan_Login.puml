@@ -1,0 +1,47 @@
+    @startuml
+    title Sequence Diagram Melakukan Login
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Pengguna" as User
+boundary "LoginPage" as FE
+control "authApi" as Api
+control "AuthController
+.login()" as Controller
+control "AuthService
+.login()" as Service
+database "Sequelize Models
+User, Role, Pelanggan" as DB
+control "bcrypt" as Bcrypt
+control "JWT/Refresh Token" as Token
+
+User -> FE: Input identifier dan password
+FE -> Api: login(identifier, password)
+Api -> Controller: POST /auth/login
+activate Controller
+Controller -> Service: login(loginIdentifier, password)
+activate Service
+Service -> DB: User.findOne(email/username/nik, include Role/Pelanggan)
+Service -> Service: validasi akun aktif
+Service -> Bcrypt: compare(password, user.password)
+Bcrypt --> Service: match / tidak match
+alt kredensial valid
+  Service -> Token: generateRefreshToken(), generateToken(user)
+  Service -> DB: update refresh_token_hash, expires_at
+  Service --> Controller: user, token, refreshToken
+  Controller -> Controller: set httpOnly refresh cookie
+  Controller --> Api: 200 successResponse
+  Api --> FE: user + access token
+  FE --> User: Masuk ke dashboard sesuai role
+else kredensial tidak valid
+  Service --> Controller: throw Error
+  Controller --> Api: errorResponse(401/403/404)
+  Api --> FE: tampilkan pesan gagal login
+end
+deactivate Service
+deactivate Controller
+    @enduml

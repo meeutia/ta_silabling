@@ -18,6 +18,10 @@ const Sampel = sequelize.define('sampel', {
     type: DataTypes.STRING(6),
     allowNull: false,
   },
+  nomor_lhu: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
   tanggal_pengambilan_sampel: {
     type: DataTypes.DATEONLY,
     allowNull: true,

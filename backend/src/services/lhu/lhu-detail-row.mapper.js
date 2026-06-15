@@ -1,4 +1,4 @@
-const { getFallbackParameterKey, getSubkontrakSnapshot, isResultApprovedByKasi, toDateOnly, toTinyIntFlag, } = require('./lhu-data-utils');
+const { getFallbackParameterKey, getSubkontrakSnapshot, isResultApprovedByKasi, sortDetailRowsForLhu, toDateOnly, toTinyIntFlag, } = require('./lhu-data-utils');
 class LhuDetailRowMapper {
 normalizeBmText = (value) => {
         if (value === null || value === undefined)
@@ -13,6 +13,20 @@ normalizeBmText = (value) => {
         if (!text || text === '-' || text === '(-)')
             return '(-)';
         return text;
+    };
+    normalizeSampleNoKey = (value) => String(value || '').trim().replace(/\s*\/\s*/g, '/').toLowerCase();
+    pushSampleNoOnce = (group, noSampel) => {
+        const value = String(noSampel || '').trim();
+        if (!value)
+            return;
+        if (!group.__sampleNoKeySet)
+            group.__sampleNoKeySet = new Set((group.samples || []).map((sampleNo) => this.normalizeSampleNoKey(sampleNo)));
+        const key = this.normalizeSampleNoKey(value);
+        if (group.__sampleNoKeySet.has(key))
+            return;
+        group.__sampleNoKeySet.add(key);
+        group.samples.push(value);
+        group.sampels.push(value);
     };
     findApprovedResultForExpectedParameter = (expected = {}, resultRows = []) => {
         const expectedFpmId = String(expected.id_fppl_parameter_metode || '').trim();
@@ -44,7 +58,7 @@ normalizeBmText = (value) => {
         const adaDiBm = Boolean(bm);
         const nilaiBm = this.normalizeNilaiBmForLhu(bm?.nilai_bm);
         const satuanBm = this.normalizeBmText(bm?.satuan_bm);
-        return {
+        const payload = {
             nomor_lhu: null,
             no_sampel: resultRow.no_sampel,
             noSampel: resultRow.no_sampel,
@@ -67,7 +81,6 @@ normalizeBmText = (value) => {
             satuanBm: satuanBm,
             ada_di_bm: adaDiBm ? 1 : 0,
             adaDiBm: adaDiBm ? 1 : 0,
-            urutan_lhu: null,
             is_insitu: toTinyIntFlag(resultRow.is_insitu),
             isInsitu: toTinyIntFlag(resultRow.is_insitu),
             is_insitu_snapshot: toTinyIntFlag(resultRow.is_insitu),
@@ -79,6 +92,12 @@ normalizeBmText = (value) => {
             tanggal_sampling: toDateOnly(sample?.tanggal_pengambilan_sampel),
             nilai_bm: nilaiBm,
             catatan_hasil: resultRow.catatan_hasil || null,
+        };
+        const detailKey = getFallbackParameterKey(payload);
+        return {
+            ...payload,
+            detail_key: detailKey,
+            detailKey,
         };
     };
     groupLhuDetailRowsByParameter = (rows = []) => {
@@ -108,18 +127,18 @@ normalizeBmText = (value) => {
             group.hasilBySample[noSampel] = group.hasil_by_sample[noSampel];
             group.kode_lka_by_sample[noSampel] = row.kode_lka || row.kodeLka || null;
             group.kodeLkaBySample[noSampel] = group.kode_lka_by_sample[noSampel];
-            if (!group.samples.includes(noSampel))
-                group.samples.push(noSampel);
-            if (!group.sampels.includes(noSampel))
-                group.sampels.push(noSampel);
+            this.pushSampleNoOnce(group, noSampel);
             group.hasil = group.samples
                 .map((sampleNo) => `${sampleNo}: ${group.hasil_by_sample[sampleNo] || '-'}`)
                 .join('\n');
             group.hasil_snapshot = group.hasil;
             group.hasilSnapshot = group.hasil;
         });
-        return Array.from(map.values()).sort((a, b) => Number(a.urutan_lhu || 0) - Number(b.urutan_lhu || 0) ||
-            String(a.nama_parameter || a.nama_parameter_snapshot || '').localeCompare(String(b.nama_parameter || b.nama_parameter_snapshot || '')));
+        const groupedRows = Array.from(map.values()).map((row) => {
+            const { __sampleNoKeySet, ...payload } = row;
+            return payload;
+        });
+        return sortDetailRowsForLhu(groupedRows);
     };
 }
 module.exports = new LhuDetailRowMapper();

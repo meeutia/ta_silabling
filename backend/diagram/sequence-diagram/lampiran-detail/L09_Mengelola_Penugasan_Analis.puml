@@ -1,0 +1,56 @@
+    @startuml
+    title Sequence Diagram Mengelola Penugasan Analis
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Penyelia" as Penyelia
+boundary "PenyeliaPenugasanPage" as FE
+control "penyeliaPenugasanApi" as Api
+control "AssignmentController
+.createAssignment()" as Controller
+control "AssignmentService
+.createAssignment()" as AssignmentService
+control "AssignmentCreateService
+.createAssignment()" as CreateService
+database "Sequelize Models
+User, FpplParameterMetode, Penugasan, PenugasanDetail, PenugasanItem" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Penyelia -> FE: Memilih analis dan pasangan parameter-sampel
+FE -> Api: saveAssignments(payload)
+Api -> Controller: POST /assignments
+activate Controller
+Controller -> AssignmentService: createAssignment(payload, penyeliaNik)
+AssignmentService -> CreateService: createAssignment(payload, penyeliaNik)
+activate CreateService
+CreateService -> CreateService: normalizeAssignmentPayload(assignments)
+CreateService -> DB: begin transaction
+CreateService -> DB: assertSamplesEditableBeforeLhu(sampleNos)
+CreateService -> DB: User.findOne(analis aktif)
+CreateService -> DB: FpplParameterMetode.findAll(...)
+CreateService -> DB: cek duplikasi penugasan per metode-sampel
+CreateService -> DB: create Penugasan
+loop setiap detail penugasan
+  CreateService -> DB: create PenugasanDetail
+  loop setiap sampel target
+    CreateService -> DB: create PenugasanItem
+  end
+end
+CreateService -> Log: logStatusTransition(MEMBUAT_PENUGASAN)
+CreateService -> Log: logStatusTransition(MEMBUAT_DETAIL_PENUGASAN)
+CreateService -> DB: commit transaction
+CreateService -> Notif: notifyPenugasanAnalisBaru(idPenugasan)
+CreateService --> AssignmentService: result
+deactivate CreateService
+AssignmentService --> Controller: result
+Controller --> Api: successResponse
+Api --> FE: penugasan tersimpan
+FE --> Penyelia: Tampilkan daftar penugasan terbaru
+
+deactivate Controller
+    @enduml

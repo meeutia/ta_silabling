@@ -1,0 +1,55 @@
+    @startuml
+    title Sequence Diagram Membuat Permohonan Pengujian
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Pelanggan" as Pelanggan
+boundary "PelangganRegistrasiPage
+useRegistrationPage" as FE
+control "registrationApi" as Api
+control "CustomerRequestController
+.createRequest()" as Controller
+control "RequestService
+.createRequest()" as Service
+database "Sequelize Models
+Pelanggan, Fppl,
+FpplSampel, FpplParameterMetode" as DB
+control "WorkflowLogService
+.logStatusTransition()" as Log
+control "NotificationService
+.notifyAdminPermohonanBaru()" as Notif
+
+Pelanggan -> FE: Mengisi form pelanggan, sampel, standar, parameter
+FE -> FE: Validasi field wajib dan komposisi sampel
+FE -> Api: createRequest(payload)
+Api -> Controller: POST /requests
+activate Controller
+Controller -> Service: createRequest(req.user.nik, req.body)
+activate Service
+Service -> DB: begin transaction
+Service -> DB: find/update/create Pelanggan
+Service -> DB: create Fppl
+status = Menunggu Verifikasi
+Service -> Log: logStatusTransition(MEMBUAT_PERMOHONAN)
+loop setiap sampleEntries
+  Service -> DB: create FpplSampel
+  loop setiap parameter
+    Service -> DB: create FpplParameterMetode
+id_metode_parameter = null
+  end
+end
+Service -> Service: validateCompositionPersisted()
+Service -> DB: commit transaction
+Service --> Controller: { id_registrasi, status }
+deactivate Service
+Controller -> Notif: notifyAdminPermohonanBaru(idRegistrasi)
+Controller --> Api: 201 successResponse
+Api --> FE: data permohonan baru
+FE --> Pelanggan: Menampilkan notifikasi berhasil
+
+deactivate Controller
+    @enduml

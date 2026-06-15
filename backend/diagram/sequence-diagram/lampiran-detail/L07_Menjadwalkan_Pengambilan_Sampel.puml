@@ -1,0 +1,51 @@
+    @startuml
+    title Sequence Diagram Menjadwalkan Pengambilan Sampel
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Admin" as Admin
+boundary "AdminPermohonanPage
+AdminPermohonanScheduleSection" as FE
+control "adminPermohonanApi" as Api
+control "RequestWorkflowController
+.createOrUpdateSamplingSchedule()" as Controller
+control "RequestWorkflowService
+.createOrUpdateSamplingSchedule()" as Service
+database "Sequelize Models
+Fppl, Pegawai, JadwalSampel" as DB
+control "NotificationService" as Notif
+
+Admin -> FE: Isi tanggal, jam, dan PCC jika pengambilan oleh petugas
+FE -> Api: saveSamplingSchedule(idRegistrasi, isUpdate, body)
+Api -> Controller: POST/PUT /requests/{id}/sampling-schedule
+activate Controller
+Controller -> Service: createOrUpdateSamplingSchedule({idRegistrasi, tanggalPengambilan, jamPengambilan, idPegawaiPcc})
+activate Service
+Service -> DB: begin transaction
+Service -> DB: lock Fppl
+Service -> Service: normalizeLegacyPaymentVerificationIfSettled()
+Service -> Service: isSampleScheduleEditableStatus(status_fppl)
+Service -> Service: normalize date/time dan validasi hari kerja
+alt jenis_pengambilan_sampel = Petugas
+  Service -> DB: Pegawai.findOne(id_pegawai_pcc, is_pcc=1)
+end
+Service -> DB: find active JadwalSampel
+alt jadwal sudah ada
+  Service -> DB: update JadwalSampel tanggal/jam/PCC
+else jadwal belum ada
+  Service -> DB: create JadwalSampel status Terjadwal
+end
+Service -> DB: commit transaction
+Service --> Controller: data jadwal
+deactivate Service
+Controller -> Notif: notifyJadwalSampel(idRegistrasi, idJadwal)
+Controller --> Api: successResponse
+Api --> FE: jadwal berhasil disimpan
+FE --> Admin: Modal jadwal ditutup dan daftar diperbarui
+
+deactivate Controller
+    @enduml

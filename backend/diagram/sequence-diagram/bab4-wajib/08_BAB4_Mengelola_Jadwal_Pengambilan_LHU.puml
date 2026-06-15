@@ -1,0 +1,64 @@
+    @startuml
+    title Sequence Diagram Mengelola Jadwal Pengambilan LHU
+    autonumber
+    skinparam sequenceMessageAlign center
+    skinparam responseMessageBelowArrow true
+    skinparam BoxPadding 10
+    skinparam ParticipantPadding 18
+    hide footbox
+
+    actor "Admin" as Admin
+actor "Pelanggan" as Pelanggan
+boundary "AdminPermohonanPage
+AdminLhuPickupModal" as FE
+control "adminPermohonanApi" as Api
+control "LhuPickupController" as Controller
+control "LhuPickupService" as Service
+database "Sequelize Models
+Fppl, Lhu, JadwalPengambilanLhu" as DB
+control "WorkflowLogService" as Log
+control "NotificationService" as Notif
+
+Admin -> FE: Membuka antrean pengambilan LHU
+FE -> Api: getPickupQueue()
+Api -> Controller: GET /lhu/pickup/queue
+Controller -> Service: getPickupQueue()
+Service -> DB: ambil FPPL dengan LHU final
+Service --> FE: daftar permohonan siap dijadwalkan
+
+Admin -> FE: Mengisi tanggal dan jam pengambilan LHU
+FE -> Api: savePickupSchedule(body)
+Api -> Controller: POST /lhu/pickup/schedule
+activate Controller
+Controller -> Service: schedulePickup({idRegistrasi, tanggal, jam, catatan}, adminNik)
+activate Service
+Service -> Service: validateScheduleDateOrThrow()
+Service -> DB: begin transaction
+Service -> Service: assertAllLhuFinalForRegistrasi(idRegistrasi)
+Service -> DB: find/create/update JadwalPengambilanLhu
+status = Dijadwalkan
+Service -> Service: moveRequestToWaitingLhuPickup()
+Service -> DB: update Fppl status = Menunggu Pengambilan LHU
+Service -> Log: logStatusTransition(MENUNGGU_PENGAMBILAN_LHU)
+Service -> DB: commit transaction
+Service -> Notif: notifyJadwalPengambilanLhu(idJadwalLhu) <<background>>
+Service --> Controller: data jadwal
+deactivate Service
+Controller --> Api: successResponse
+Api --> FE: jadwal tersimpan dan modal ditutup
+FE --> Admin: Menampilkan jadwal berhasil
+Notif --> Pelanggan: Email jadwal pengambilan LHU
+
+deactivate Controller
+
+opt Saat LHU sudah diambil
+  Admin -> FE: Input nama pengambil
+  FE -> Api: completePickup(body)
+  Api -> Controller: POST /lhu/pickup/complete
+  Controller -> Service: completePickup({idRegistrasi, namaPengambil}, adminNik)
+  Service -> DB: update JadwalPengambilanLhu = Sudah Diambil
+  Service -> DB: update Fppl status = Selesai
+  Service -> Log: logStatusTransition(MENYELESAIKAN_PENGAMBILAN_LHU)
+  Controller --> FE: successResponse
+end
+    @enduml

@@ -205,9 +205,8 @@ class LhuPickupService {
                             include: [
                                 {
                                     model: Lhu,
-                                    as: 'lhus',
+                                    as: 'lhu',
                                     required: false,
-                                    through: { attributes: [] },
                                     attributes: ['nomor_lhu', 'id_registrasi', 'status_lhu'],
                                 },
                             ],
@@ -268,9 +267,8 @@ class LhuPickupService {
                             include: [
                                 {
                                     model: Lhu,
-                                    as: 'lhus',
+                                    as: 'lhu',
                                     required: false,
-                                    through: { attributes: [] },
                                     attributes: ['nomor_lhu', 'id_registrasi', 'status_lhu'],
                                 },
                             ],

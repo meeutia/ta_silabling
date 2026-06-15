@@ -153,9 +153,8 @@ getKasiReviewQueue = async () => {
                 },
                 {
                     model: Lhu,
-                    as: 'lhus',
+                    as: 'lhu',
                     required: false,
-                    through: { attributes: [] },
                     include: [{ model: PktBm, required: false, include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }] }],
                 },
             ],
@@ -186,7 +185,7 @@ getKasiReviewQueue = async () => {
                         .slice(-1)[0] ||
                     null,
             });
-            const lhu = pickArray(sample, ['lhus', 'Lhus'])[0] || {};
+            const lhu = pickObject(sample, ['lhu', 'Lhu', 'LHU']) || {};
             const pktBm = withPaketBmDisplayFields(pickObject(lhu, ['pkt_bm', 'PktBm']) || {});
             rows.push({
                 noSampel: sampleHeader.noSampel,

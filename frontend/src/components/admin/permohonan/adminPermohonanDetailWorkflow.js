@@ -197,15 +197,16 @@ export const getLhuApprovedDateValue = (lhu) => pickFirstFilledValue(
 
 export const getLhuSampleRows = (lhu) => {
   const rows =
+    lhu?.samples ||
+    lhu?.sampels ||
+    lhu?.Sampels ||
     lhu?.lhu_sampels ||
     lhu?.LhuSampels ||
     lhu?.lhuSampels ||
-    lhu?.samples ||
-    lhu?.sampels ||
     [];
 
   return Array.isArray(rows)
-    ? [...rows].sort((a, b) => Number(a?.urutan_sampel || a?.urutanSampel || 999) - Number(b?.urutan_sampel || b?.urutanSampel || 999))
+    ? [...rows].sort((a, b) => String(getSampleNoFromLhuSampleRow(a)).localeCompare(String(getSampleNoFromLhuSampleRow(b)), 'id', { numeric: true }))
     : [];
 };
 
