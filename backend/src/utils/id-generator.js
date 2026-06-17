@@ -196,39 +196,103 @@ const generateNoSampelBatch = async (
  * VI       = bulan terbit dalam romawi
  * LAB-2026 = pengujian lab tahun 2026
  */
-const generateNomorLhu = async (LhuModel, transaction = null, date = new Date()) => {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const romanMonth = getRomanMonth(month);
+const parseNomorLhuSequence = (nomorLhu) => {
+  const match = String(nomorLhu || '').match(/^(\d+)\/LHU\/[IVXLCDM]+\/LAB-\d{4}$/i);
+  const sequence = match ? Number.parseInt(match[1], 10) : 0;
 
-  const startOfYear = new Date(year, 0, 1);
-  const startOfNextYear = new Date(year + 1, 0, 1);
+  return Number.isFinite(sequence) ? sequence : 0;
+};
 
-  const last = await LhuModel.findOne({
+/**
+ * Generate Nomor Draft LHU internal.
+ * Format: DLHU-YYMMDD-0001
+ *
+ * Nomor ini hanya dipakai sebagai PK sementara supaya draft LHU dapat
+ * disimpan sebelum Kepala Laboratorium mengesahkan nomor LHU resmi.
+ */
+const generateDraftNomorLhu = async (LhuModel, transaction = null, date = new Date()) => {
+  const draftDate = date instanceof Date ? date : new Date(date);
+
+  if (Number.isNaN(draftDate.getTime())) {
+    throw new Error('Tanggal draft LHU tidak valid.');
+  }
+
+  const yy = String(draftDate.getFullYear()).slice(-2);
+  const mm = String(draftDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(draftDate.getDate()).padStart(2, '0');
+  const prefix = `DLHU-${yy}${mm}${dd}-`;
+
+  const rows = await LhuModel.findAll({
     where: {
-      created_at: {
-        [Op.gte]: startOfYear,
-        [Op.lt]: startOfNextYear,
+      nomor_lhu: {
+        [Op.like]: `${prefix}%`,
       },
     },
-    attributes: ['nomor_lhu', 'created_at'],
-    order: [
-      ['created_at', 'DESC'],
-      ['nomor_lhu', 'DESC'],
-    ],
+    attributes: ['nomor_lhu'],
     transaction,
     lock: transaction ? transaction.LOCK.UPDATE : undefined,
   });
 
-  let nextSeq = 1;
+  const lastSequence = rows.reduce((max, row) => {
+    const nomorLhu =
+      typeof row.get === 'function'
+        ? row.get('nomor_lhu')
+        : row.nomor_lhu;
+    const match = String(nomorLhu || '').match(/-(\d+)$/);
+    const sequence = match ? Number.parseInt(match[1], 10) : 0;
 
-  if (last?.nomor_lhu) {
-    const match = String(last.nomor_lhu).match(/^(\d+)\//);
-    const lastSeq = match ? Number(match[1]) : 0;
-    nextSeq = Number.isFinite(lastSeq) ? lastSeq + 1 : 1;
+    return Math.max(max, Number.isFinite(sequence) ? sequence : 0);
+  }, 0);
+
+  return `${prefix}${String(lastSequence + 1).padStart(4, '0')}`;
+};
+
+/**
+ * Generate Nomor LHU resmi.
+ * Format: 01/LHU/VI/LAB-2026
+ *
+ * Nomor resmi hanya dihitung dari LHU yang sudah disahkan pada tahun
+ * berjalan. Draft DLHU-* dan LHU yang belum disahkan tidak ikut dihitung,
+ * sehingga urutan mengikuti waktu persetujuan Kepala Laboratorium.
+ */
+const generateNomorLhu = async (LhuModel, transaction = null, date = new Date()) => {
+  const approvalDate = date instanceof Date ? date : new Date(date);
+
+  if (Number.isNaN(approvalDate.getTime())) {
+    throw new Error('Tanggal penerbitan LHU tidak valid.');
   }
 
-  return `${String(nextSeq).padStart(2, '0')}/LHU/${romanMonth}/LAB-${year}`;
+  const year = approvalDate.getFullYear();
+  const month = approvalDate.getMonth() + 1;
+  const romanMonth = getRomanMonth(month);
+  const suffix = `/LHU/${romanMonth}/LAB-${year}`;
+
+  const rows = await LhuModel.findAll({
+    where: {
+      nomor_lhu: {
+        [Op.like]: `%/LHU/%/LAB-${year}`,
+      },
+      [Op.or]: [
+        { status_lhu: 'Disahkan' },
+        { kalab_by: { [Op.ne]: null } },
+        { tanggal_penerbitan: { [Op.ne]: null } },
+      ],
+    },
+    attributes: ['nomor_lhu'],
+    transaction,
+    lock: transaction ? transaction.LOCK.UPDATE : undefined,
+  });
+
+  const lastSequence = rows.reduce((max, row) => {
+    const nomorLhu =
+      typeof row.get === 'function'
+        ? row.get('nomor_lhu')
+        : row.nomor_lhu;
+
+    return Math.max(max, parseNomorLhuSequence(nomorLhu));
+  }, 0);
+
+  return `${String(lastSequence + 1).padStart(2, '0')}${suffix}`;
 };
 
 const parseNomorFpplSequence = (nomorFppl) => {
@@ -293,6 +357,7 @@ const generateNomorFppl = async (
 module.exports = {
   generateId,
   generateNomorLhu,
+  generateDraftNomorLhu,
   generateNomorFppl,
   getRomanMonth,
   buildMatrixCode,

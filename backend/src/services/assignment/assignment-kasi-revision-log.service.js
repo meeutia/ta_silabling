@@ -1,5 +1,6 @@
 const sequelize = require('../../config/database');
 const { LkaRevisi } = require('../../models/Associations');
+const { SNAPSHOT_BEFORE_ACTION, logRevisionResultSnapshotFromCurrentResult } = require('./assignment-revision-snapshot.helper');
 
 const LKA_REVISION_STATUSES = new Set([
     'Diajukan',
@@ -123,6 +124,16 @@ nextRunningId = async (tableName, fieldName, prefix, padLength, transaction) => 
                 created_at: new Date(),
                 updated_at: new Date(),
             }, { transaction });
+            if (row.no_sampel) {
+                await logRevisionResultSnapshotFromCurrentResult({
+                    idRevisiLka: revisionId,
+                    action: SNAPSHOT_BEFORE_ACTION,
+                    kodeLka: row.kode_lka || kodeLka,
+                    noSampel: row.no_sampel,
+                    actorNik: diajukanOleh,
+                    source: sumberRevisi === 'KASI_PENGUJIAN' ? 'Kasi' : 'Penyelia',
+                }, transaction);
+            }
             createdIds.push(revisionId);
         }
         return createdIds[0] || null;

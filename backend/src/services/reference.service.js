@@ -1,4 +1,4 @@
-const { JenisSampel, TarifPengambilan, RegBm, PktBm, PktBmKelompok, PktBmParam, PktBmNilai, Parameter, KategoriParameter, ParameterMetode, Metode, Pegawai, User, Role, sequelize, } = require('../models/Associations');
+const { JenisSampel, TarifPengambilan, RegBm, PktBm, Klasifikasi, PktBmKelompok, PktBmParam, Satuan, PktBmNilai, Parameter, KategoriParameter, ParameterMetode, Metode, Pegawai, User, Role, sequelize, } = require('../models/Associations');
 const { withPaketBmDisplayFields } = require('../utils/bm-format.util');
 const { Op } = require('sequelize');
 class ReferenceService {
@@ -59,7 +59,9 @@ plain = (row) => {
             kategori_parameter: parameterPayload.kategori_parameter,
             parameter: parameterPayload.parameter,
             nilai_bm: rowJson.nilai_bm,
-            satuan_bm: rowJson.satuan_bm,
+            id_satuan: rowJson.id_satuan || rowJson.satuan?.id_satuan || rowJson.Satuan?.id_satuan || null,
+            satuan: rowJson.satuan?.satuan || rowJson.Satuan?.satuan || rowJson.satuan || rowJson.satuan_bm || null,
+            satuan_bm: rowJson.satuan?.satuan || rowJson.Satuan?.satuan || rowJson.satuan || rowJson.satuan_bm || null,
             ket_bm: rowJson.ket_bm,
         };
     };
@@ -143,12 +145,13 @@ plain = (row) => {
                 id_jenis_sampel,
                 id_reg_bm: { [Op.in]: idRegBmList },
             },
-            attributes: ['id_pkt_bm', 'id_jenis_sampel', 'id_reg_bm', 'klasifikasi'],
+            attributes: ['id_pkt_bm', 'id_jenis_sampel', 'id_reg_bm', 'id_klasifikasi'],
             include: [
                 { model: RegBm, attributes: ['id_reg_bm', 'instansi', 'ref_reg'], where: { is_active: 1 }, required: true },
                 { model: JenisSampel, attributes: ['id_jenis_sampel', 'jenis_sampel'], required: false },
+                { model: Klasifikasi, attributes: ['id_klasifikasi', 'klasifikasi'], required: false },
             ],
-            order: [['klasifikasi', 'ASC'], ['id_pkt_bm', 'ASC']],
+            order: [[Klasifikasi, 'klasifikasi', 'ASC'], ['id_pkt_bm', 'ASC']],
         });
         return rows.map(this.mapPaketBm);
     };
@@ -243,6 +246,7 @@ plain = (row) => {
                 id_jenis_sampel: paket.id_jenis_sampel,
                 id_parameter: { [Op.in]: visibleParameterIds },
             },
+            include: [{ model: Satuan, attributes: ['id_satuan', 'satuan'], required: false }],
         });
         const metaMap = new Map(metaRows.map((row) => [String(row.id_parameter), row.toJSON ? row.toJSON() : row]));
         return nilaiRows
@@ -276,12 +280,13 @@ plain = (row) => {
                     id_jenis_sampel: row.id_jenis_sampel,
                 })),
             },
-            attributes: ['id_pkt_bm', 'id_jenis_sampel', 'id_reg_bm', 'klasifikasi'],
+            attributes: ['id_pkt_bm', 'id_jenis_sampel', 'id_reg_bm', 'id_klasifikasi'],
             include: [
                 { model: RegBm, attributes: ['id_reg_bm', 'instansi', 'ref_reg'], where: { is_active: 1 }, required: true },
                 { model: JenisSampel, attributes: ['id_jenis_sampel', 'jenis_sampel'], required: false },
+                { model: Klasifikasi, attributes: ['id_klasifikasi', 'klasifikasi'], required: false },
             ],
-            order: [['id_jenis_sampel', 'ASC'], ['klasifikasi', 'ASC'], ['id_pkt_bm', 'ASC']],
+            order: [['id_jenis_sampel', 'ASC'], [Klasifikasi, 'klasifikasi', 'ASC'], ['id_pkt_bm', 'ASC']],
         });
         return rows.map(this.mapPaketBm);
     };
@@ -314,7 +319,7 @@ plain = (row) => {
                 model: Parameter,
                 attributes: ['id_parameter', 'id_kategori_parameter', 'nama_parameter'],
                 include: [{ model: KategoriParameter, as: 'kategori', attributes: ['id_kategori_parameter', 'nama_kategori'], required: false }],
-            }],
+            }, { model: Satuan, attributes: ['id_satuan', 'satuan'], required: false }],
             order: [[Parameter, 'nama_parameter', 'ASC']],
         });
         if (rows.length === 0)

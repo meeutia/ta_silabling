@@ -20,6 +20,7 @@ import {
 } from '../../lhu/lhuSampleDisplayUtils';
 import { getPktLabel, getPktValue } from './qcLhuUtils';
 import { isQcEditableLhuStatus } from '../../../utils/workflowAccessRules';
+import { showWarning } from '../../../utils/feedback';
 
 import { AccreditationInfo, DetailLhuTable, InfoRow, isSampleAlreadyInLhu, isSampleLockedForQc } from './QcLhuDetailSections.jsx';
 
@@ -60,6 +61,19 @@ export function QcLhuDetailModal({
   const sampleRows = detailMode === 'finalisasi'
     ? normalizedSampleRows.filter((sample) => !isSampleAlreadyInLhu(sample))
     : normalizedSampleRows;
+  const getSampleCompatibilityKey = (sample = {}) => {
+    const idRegistrasi = sample.idRegistrasi || sample.id_registrasi || selectedSample?.idRegistrasi || selectedSample?.id_registrasi || '';
+    const idJenisSampel = sample.idJenisSampel || sample.id_jenis_sampel || '';
+    const idRegBm = sample.idRegBm || sample.id_reg_bm || '';
+    return [idRegistrasi, idJenisSampel, idRegBm].map((value) => String(value || '').trim()).join('|');
+  };
+
+  const getSampleCompatibilityLabel = (sample = {}) => {
+    const jenis = sample.jenisSampel || sample.jenis_sampel || 'jenis sampel tidak diketahui';
+    const regBm = sample.regBm || sample.reg_bm || sample.standar || 'regulasi tidak diketahui';
+    return `${jenis} - ${regBm}`;
+  };
+
   const selectedSampleNos = dedupeTextList(
     Array.isArray(form.sampleNos)
       ? form.sampleNos.filter((noSampel) => sampleRows.some((sample) => (sample.noSampel || sample.no_sampel) === noSampel))
@@ -72,11 +86,16 @@ export function QcLhuDetailModal({
   const selectedJenisLabels = Array.from(
     new Set(selectedSampleRows.map((sample) => sample.jenisSampel || sample.jenis_sampel).filter(Boolean))
   ).join(', ');
+  const selectedRegLabels = Array.from(
+    new Set(selectedSampleRows.map((sample) => sample.regBm || sample.reg_bm || sample.standar).filter(Boolean))
+  ).join(', ');
   const selectedJenisKeys = Array.from(
-    new Set(selectedSampleRows.map((sample) => `${sample.idJenisSampel || sample.id_jenis_sampel || ''}|${sample.idRegBm || sample.id_reg_bm || ''}`).filter((key) => key !== '|'))
+    new Set(selectedSampleRows.map(getSampleCompatibilityKey).filter((key) => key && key !== '||'))
   );
   const selectedSampleTypesCompatible = selectedJenisKeys.length <= 1;
-  const selectedJenisKey = selectedSampleTypesCompatible ? selectedJenisKeys[0] : '';
+  const selectedPaketKey = selectedSampleTypesCompatible && selectedSampleRows[0]
+    ? `${selectedSampleRows[0].idJenisSampel || selectedSampleRows[0].id_jenis_sampel || ''}|${selectedSampleRows[0].idRegBm || selectedSampleRows[0].id_reg_bm || ''}`
+    : '';
   const canFinalizeCurrentStatus = canFinalizeSelectedLhu ?? isQcEditableLhuStatus(selectedStatus);
   const finalizeDisabledReason = !canFinalizeCurrentStatus
     ? 'LHU sudah masuk approval Kepala Lab atau sudah disahkan.'
@@ -88,8 +107,8 @@ export function QcLhuDetailModal({
           ? 'Pilih paket baku mutu terlebih dahulu.'
           : '';
 
-  const filteredPaketBmOptions = hasSelectedSamples && selectedJenisKey
-    ? paketBmOptions.filter((pkt) => `${pkt.idJenisSampel || pkt.id_jenis_sampel || ''}|${pkt.idRegBm || pkt.id_reg_bm || ''}` === selectedJenisKey)
+  const filteredPaketBmOptions = hasSelectedSamples && selectedPaketKey
+    ? paketBmOptions.filter((pkt) => `${pkt.idJenisSampel || pkt.id_jenis_sampel || ''}|${pkt.idRegBm || pkt.id_reg_bm || ''}` === selectedPaketKey)
     : [];
   const selectedSampleNoItems = dedupeTextList([
     ...selectedSampleRows.map((sample) => sample.noSampel || sample.no_sampel).filter(Boolean),
@@ -307,6 +326,7 @@ export function QcLhuDetailModal({
                     <InfoRow
                       label="Paket Baku Mutu"
                       value={pickRealValue(
+                        selectedRegLabels,
                         sampleInfo.regBm,
                         sampleInfo.reg_bm,
                         sampleInfo.standar,
@@ -372,6 +392,16 @@ export function QcLhuDetailModal({
                                 checked={checked}
                                 disabled={lockedForQc}
                                 onChange={(event) => {
+                                  if (event.target.checked) {
+                                    const sampleKey = getSampleCompatibilityKey(sample);
+                                    const currentKeys = new Set(selectedSampleRows.map(getSampleCompatibilityKey).filter((key) => key && key !== '||'));
+
+                                    if (currentKeys.size > 0 && sampleKey && !currentKeys.has(sampleKey)) {
+                                      showWarning(`Sampel ${noSampel} tidak bisa digabung dalam LHU ini karena berbeda jenis sampel/regulasi (${getSampleCompatibilityLabel(sample)}).`);
+                                      return;
+                                    }
+                                  }
+
                                   const nextNos = event.target.checked
                                     ? dedupeTextList([...selectedSampleNos, noSampel]).sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }))
                                     : selectedSampleNos.filter((item) => item !== noSampel);

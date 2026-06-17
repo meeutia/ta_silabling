@@ -18,6 +18,9 @@ import {
   getKalabStatusBadge as getStatusBadge,
   getKalabStatusLhu as getStatusLhu,
   getNomorLhu,
+  getNomorLhuDisplay,
+  getNomorLhuResmiDisplay,
+  isDraftNomorLhu,
   getNoSampel,
   getTanggalPenerimaanSampel,
   getTanggalPengambilanSampel,
@@ -162,7 +165,7 @@ export function KalabLhuTable({
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
-                Nomor LHU
+                ID Draft / Nomor LHU
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                 Nomor Sampel
@@ -212,7 +215,7 @@ export function KalabLhuTable({
                 return (
                   <tr key={nomorLhu} className="transition-all hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      {nomorLhu || '-'}
+                      {getNomorLhuDisplay(item) || '-'}
                     </td>
 
                     <td className="px-6 py-4 text-sm text-gray-700">
@@ -374,7 +377,7 @@ export function KalabLhuDetailModal({
               Persetujuan LHU - {selectedNomorLhu || '-'}
             </h3>
             <p className="text-sm text-emerald-100">
-              Review draft PDF dan detail LHU sebelum disahkan.
+              Review PDF draft dan detail LHU sebelum disahkan. Nomor LHU resmi baru dibuat saat persetujuan Kepala Lab.
             </p>
           </div>
 
@@ -557,7 +560,10 @@ export function KalabLhuDetailModal({
                       Informasi LHU
                     </h4>
 
-                    <InfoRow label="Nomor LHU" value={selectedNomorLhu} />
+                    <InfoRow label="Nomor LHU Resmi" value={getNomorLhuResmiDisplay({ nomor_lhu: selectedNomorLhu })} />
+                    {isDraftNomorLhu(selectedNomorLhu) && (
+                      <InfoRow label="ID Draft LHU" value={selectedNomorLhu} />
+                    )}
 
                     <InfoRow label="Status">
                       {(() => {
@@ -651,7 +657,7 @@ export function KalabLhuDetailModal({
                 </h4>
                 <p className="text-sm text-blue-800">
                   Jika disetujui, sistem akan mengisi tanggal penerbitan, mencatat persetujuan Kepala Lab,
-                  dan membuat PDF final tanpa watermark draft.
+                  menerbitkan nomor LHU resmi dan membuat PDF final tanpa watermark draft.
                 </p>
               </div>
             </div>
@@ -672,7 +678,7 @@ export function KalabLhuDetailModal({
               ) : (
                 <CheckCircle className="h-5 w-5" />
               )}
-              Setujui & Buat PDF Final
+              Setujui, Terbitkan Nomor & Buat PDF Final
             </button>
           )}
         </div>

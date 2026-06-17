@@ -4,7 +4,7 @@ import {
   TestTube2,
   Truck,
 } from 'lucide-react';
-import { ConfirmDeleteModal } from '../../components/admin/parameter/AdminKelolaParameterFormControls';
+import { ConfirmDeleteModal, ConfirmStatusModal } from '../../components/admin/parameter/AdminKelolaParameterFormControls';
 import { ManagePaketParameterModal } from '../../components/admin/parameter/ManagePaketParameterModal';
 import { PaketModal } from '../../components/admin/parameter/PaketModal';
 import { ParameterMetodeModal } from '../../components/admin/parameter/ParameterMetodeModal';
@@ -55,12 +55,14 @@ export function AdminKelolaParameterPage() {
     selectedItem,
     formData,
     confirmDelete,
+    confirmStatusChange,
     paketParamForm,
     editingPaketParam,
     paketParameters,
     parametersOption,
     methodsOption,
     kategoriParameterOptions,
+    satuanOptions,
     regulasiData,
     jenisSampelOptions,
     handleChangeTab,
@@ -71,6 +73,7 @@ export function AdminKelolaParameterPage() {
     handleAddCurrentTab,
     handleKelolaPaket,
     handleToggleMasterStatus,
+    handleConfirmToggleStatus,
     handlePaketParamFormChange,
     handleAddPaketParameter,
     handleEditPaketParamChange,
@@ -81,6 +84,7 @@ export function AdminKelolaParameterPage() {
     setSearchQuery,
     setFilterStatus,
     setConfirmDelete,
+    setConfirmStatusChange,
     setEditingPaketParam,
   } = useAdminKelolaParameter();
 
@@ -107,6 +111,7 @@ export function AdminKelolaParameterPage() {
             selectedItem={selectedItem}
             paketParameters={paketParameters}
             parametersOption={parametersOption}
+            satuanOptions={satuanOptions}
             isModalLoading={isModalLoading}
             paketParamForm={paketParamForm}
             editingPaketParam={editingPaketParam}
@@ -190,6 +195,15 @@ export function AdminKelolaParameterPage() {
           />
         )}
       </div>
+
+
+      {confirmStatusChange && (
+        <ConfirmStatusModal
+          confirmStatusChange={confirmStatusChange}
+          onClose={() => setConfirmStatusChange(null)}
+          onConfirm={handleConfirmToggleStatus}
+        />
+      )}
 
       {confirmDelete && (
         <ConfirmDeleteModal

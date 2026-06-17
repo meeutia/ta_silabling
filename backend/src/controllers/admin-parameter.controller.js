@@ -44,6 +44,24 @@ class AdminParameterController {
             res.status(500).json({ success: false, message: 'Gagal mengambil data metode.' });
         }
     };
+    getKlasifikasi = async (req, res) => {
+        try {
+            const data = await this.adminParameterService.getAllKlasifikasi();
+            res.json({ success: true, data });
+        }
+        catch (error) {
+            res.status(500).json({ success: false, message: error.message || 'Gagal mengambil data klasifikasi.' });
+        }
+    };
+    getSatuan = async (req, res) => {
+        try {
+            const data = await this.adminParameterService.getAllSatuan();
+            res.json({ success: true, data });
+        }
+        catch (error) {
+            res.status(500).json({ success: false, message: error.message || 'Gagal mengambil data satuan.' });
+        }
+    };
     getJenisSampel = async (req, res) => {
         try {
             const data = await this.adminParameterService.getJenisSampel();
@@ -196,10 +214,17 @@ class AdminParameterController {
     createPaket = async (req, res) => {
         try {
             const data = await this.adminParameterService.createPaket(req.body);
-            res.status(201).json({ success: true, data, message: 'Berhasil menambahkan paket baku mutu.' });
+            const totalCreated = Array.isArray(data) ? data.length : 1;
+            res.status(201).json({
+                success: true,
+                data,
+                message: totalCreated > 1
+                    ? `Berhasil menambahkan ${totalCreated} klasifikasi paket baku mutu.`
+                    : 'Berhasil menambahkan paket baku mutu.',
+            });
         }
         catch (error) {
-            res.status(500).json({ success: false, message: 'Gagal menambahkan paket baku mutu.' });
+            res.status(400).json({ success: false, message: error.message || 'Gagal menambahkan paket baku mutu.' });
         }
     };
     updatePaket = async (req, res) => {

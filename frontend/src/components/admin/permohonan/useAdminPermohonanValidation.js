@@ -85,7 +85,7 @@ export function useAdminPermohonanValidation({
         action,
         note: cleanValidationNote,
         id_tarif_pengambilan:
-          selectedRequest.jenis_pengambilan_sampel === 'Petugas'
+          action === 'approve' && selectedRequest.jenis_pengambilan_sampel === 'Petugas'
             ? selectedSamplingTariffId
             : null,
       });

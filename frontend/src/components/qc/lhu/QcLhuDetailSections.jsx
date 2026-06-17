@@ -5,6 +5,7 @@ import {
   getSatuanBm,
   getInsituLabel,
   getSubkontrakLabel,
+  formatParameterDisplayName,
 } from '../../lhu/lhuReviewUtils';
 import {
   getDisplayNoSampel,
@@ -258,12 +259,13 @@ function DetailLhuTable({
 
           <tbody className="divide-y divide-gray-200 bg-white">
             {details.map((row, index) => {
-              const parameter =
+              const parameter = formatParameterDisplayName(
                 row.nama_parameter_snapshot ||
                 row.namaParameterSnapshot ||
                 row.nama_parameter ||
                 row.namaParameter ||
-                '-';
+                '-'
+              );
 
               const metode =
                 row.metode_snapshot ||

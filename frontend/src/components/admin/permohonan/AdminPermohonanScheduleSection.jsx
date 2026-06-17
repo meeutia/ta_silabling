@@ -195,12 +195,6 @@ export function AdminPermohonanScheduleSection({
                     Jadwal hanya dapat dipilih pada hari kerja, bukan tanggal merah, dan dalam jam operasional 08:00-16:00 WIB.
                   </p>
 
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 mb-4">
-                    <p className="text-sm font-medium text-emerald-800">
-                      Admin dapat menyetujui jadwal yang diusulkan pelanggan atau menggantinya sesuai ketersediaan setelah permohonan diverifikasi. Jadwal ini boleh ditetapkan sebelum metode dan pembayaran selesai, tetapi penerimaan sampel tetap menunggu pembayaran lunas atau Bayar Nanti.
-                    </p>
-                  </div>
-
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
                     <button
                       onClick={handleSaveSamplingSchedule}

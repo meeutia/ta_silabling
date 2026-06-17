@@ -1,4 +1,5 @@
-const { Op } = require('sequelize');
+const { Op, QueryTypes } = require('sequelize');
+const sequelize = require('../../config/database');
 const { Fppl, FpplSampel, JenisSampel, Lhu, Lka, LkaHasil, Metode, Parameter, ParameterMetode, Pelanggan, Pegawai, Penugasan, PenugasanDetail, PenugasanItem, Sampel, User, } = require('../../models/Associations');
 const { NOTIFICATION_TYPE } = require('../../constants/notification.constant');
 const RequestStatus = require('../../constants/request-status');
@@ -46,6 +47,141 @@ getSampleNotificationContext = async (noSampel) => {
         const lhu = pickObject(sample, ['lhu', 'Lhu']) || {};
         return { sample, fpplSampel, jenis, fppl, pelanggan, lhu };
     };
+
+    getKasiQcRequestNotificationContext = async (noSampel) => {
+        const baseContext = await this.getSampleNotificationContext(noSampel);
+        const idRegistrasi = safeString(baseContext.fpplSampel?.id_registrasi || baseContext.fppl?.id_registrasi || baseContext.sample?.id_registrasi).trim();
+        if (!idRegistrasi) {
+            const err = new Error('ID registrasi permohonan tidak ditemukan dari nomor sampel.');
+            err.statusCode = 400;
+            throw err;
+        }
+
+        const requestInstance = await Fppl.findOne({
+            where: { id_registrasi: idRegistrasi },
+            include: [
+                { model: Pelanggan, as: 'pelanggan', required: false },
+            ],
+        });
+        const fppl = getPlain(requestInstance) || baseContext.fppl || {};
+        const pelanggan = pickObject(fppl, ['pelanggan', 'Pelanggan']) || baseContext.pelanggan || {};
+
+        const rows = await sequelize.query(`
+            SELECT
+              s.no_sampel,
+              fs.id_registrasi,
+              fs.id_jenis_sampel,
+              fs.id_reg_bm,
+              js.jenis_sampel,
+              sp.id_fppl_parameter_metode,
+              fpm.id_metode_parameter,
+              CASE
+                WHEN EXISTS (
+                  SELECT 1
+                  FROM lka_hasil lh
+                  INNER JOIN lka l
+                    ON l.kode_lka = lh.kode_lka
+                  INNER JOIN penugasan_detail pd
+                    ON pd.id_penugasan_detail = l.id_penugasan_detail
+                  INNER JOIN penugasan_item pi
+                    ON pi.id_penugasan_detail = pd.id_penugasan_detail
+                  INNER JOIN penugasan p
+                    ON p.id_penugasan = pd.id_penugasan
+                  WHERE lh.no_sampel = s.no_sampel
+                    AND pi.no_sampel = s.no_sampel
+                    AND pd.id_metode_parameter = fpm.id_metode_parameter
+                    AND p.status_penugasan <> 'Dibatalkan'
+                    AND TRIM(COALESCE(lh.hasil, '')) <> ''
+                    AND lh.status_review_hasil = 'Disetujui Kasi Pengujian'
+                  LIMIT 1
+                ) THEN 1
+                ELSE 0
+              END AS is_approved_by_kasi
+            FROM fppl_sampel fs
+            INNER JOIN sampel s
+              ON s.id_registrasi = fs.id_registrasi
+             AND s.id_jenis_sampel = fs.id_jenis_sampel
+             AND s.id_reg_bm = fs.id_reg_bm
+            INNER JOIN sampel_parameter sp
+              ON sp.no_sampel = s.no_sampel
+            INNER JOIN fppl_parameter_metode fpm
+              ON fpm.id_fppl_parameter_metode = sp.id_fppl_parameter_metode
+            LEFT JOIN jenis_sampel js
+              ON js.id_jenis_sampel = fs.id_jenis_sampel
+            WHERE fs.id_registrasi = :idRegistrasi
+              AND fpm.id_metode_parameter IS NOT NULL
+            ORDER BY
+              fs.id_jenis_sampel ASC,
+              s.no_sampel ASC,
+              sp.id_fppl_parameter_metode ASC
+        `, {
+            replacements: { idRegistrasi },
+            type: QueryTypes.SELECT,
+        });
+
+        const sampleMap = new Map();
+        const incompleteSampleMap = new Map();
+        for (const row of rows) {
+            const no = safeString(row.no_sampel).trim();
+            if (!no) continue;
+            if (!sampleMap.has(no)) {
+                sampleMap.set(no, {
+                    no_sampel: no,
+                    noSampel: no,
+                    id_registrasi: row.id_registrasi || idRegistrasi,
+                    idRegistrasi: row.id_registrasi || idRegistrasi,
+                    id_jenis_sampel: row.id_jenis_sampel || null,
+                    idJenisSampel: row.id_jenis_sampel || null,
+                    id_reg_bm: row.id_reg_bm || null,
+                    idRegBm: row.id_reg_bm || null,
+                    jenis_sampel: row.jenis_sampel || null,
+                    jenisSampel: row.jenis_sampel || null,
+                    total_parameter: 0,
+                    totalParameter: 0,
+                    total_approved_kasi: 0,
+                    totalApprovedKasi: 0,
+                });
+            }
+            const sample = sampleMap.get(no);
+            sample.total_parameter += 1;
+            sample.totalParameter += 1;
+            if (Number(row.is_approved_by_kasi) === 1) {
+                sample.total_approved_kasi += 1;
+                sample.totalApprovedKasi += 1;
+            } else {
+                incompleteSampleMap.set(no, sample);
+            }
+        }
+
+        const samples = Array.from(sampleMap.values()).sort((a, b) => safeString(a.no_sampel).localeCompare(safeString(b.no_sampel), 'id', { numeric: true }));
+        const incompleteSamples = Array.from(incompleteSampleMap.values()).sort((a, b) => safeString(a.no_sampel).localeCompare(safeString(b.no_sampel), 'id', { numeric: true }));
+        const sampleNos = samples.map((sample) => sample.no_sampel).filter(Boolean);
+        const totalParameter = rows.length;
+        const totalApprovedKasi = rows.filter((row) => Number(row.is_approved_by_kasi) === 1).length;
+        const isComplete = totalParameter > 0 && totalApprovedKasi === totalParameter;
+
+        return {
+            ...baseContext,
+            idRegistrasi,
+            id_registrasi: idRegistrasi,
+            fppl,
+            pelanggan,
+            sampleNos,
+            sample_nos: sampleNos,
+            samples,
+            totalSamples: samples.length,
+            total_sampel: samples.length,
+            totalParameter,
+            total_parameter: totalParameter,
+            totalApprovedKasi,
+            total_approved_kasi: totalApprovedKasi,
+            incompleteSamples,
+            incomplete_samples: incompleteSamples,
+            isComplete,
+            is_complete: isComplete,
+        };
+    };
+
     getRequestLhuCompletionContext = async (nomorLhu) => {
         const lhuNo = safeString(nomorLhu).trim();
         const lhuInstance = await Lhu.findOne({

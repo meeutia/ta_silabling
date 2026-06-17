@@ -1,4 +1,4 @@
-const { User, Pegawai, PktBm, RegBm, JenisSampel } = require('../../models/Associations');
+const { User, Pegawai, PktBm, RegBm, JenisSampel, Klasifikasi } = require('../../models/Associations');
 const { isLhuEditableByQc } = require('../../constants/lhu-status.constant');
 const { getPlain, pickObject, toDateOnly, buildAcuanBmSnapshot, getFpplParameterMetodeKey, getFallbackParameterKey, toTinyIntFlag, getSubkontrakSnapshot, } = require('./lhu-data-utils');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
@@ -149,7 +149,7 @@ isEditableByQcStatus = (status) => {
             return {};
         const instance = await PktBm.findOne({
             where: { id_pkt_bm: idPktBm },
-            include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }],
+            include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }, { model: Klasifikasi, required: false }],
         });
         if (!instance)
             return {};

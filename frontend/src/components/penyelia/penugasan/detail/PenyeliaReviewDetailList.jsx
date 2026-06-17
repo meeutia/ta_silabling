@@ -10,6 +10,7 @@ import {
   getKoordinatSampel,
   getKondisiSampel,
   getPenyeliaResponseNote,
+  getRevisionResultComparison,
   getSampleKasiPengujianRevisionNote,
   getSamplePenyeliaRevisionNote,
   getSampleReviewStatus,
@@ -216,6 +217,7 @@ function PenyeliaReviewSamplesTable({
               const penyeliaRevisionNote = getSamplePenyeliaRevisionNote(sample, detail);
               const kasiRevisionNote = getSampleKasiPengujianRevisionNote(sample, detail);
               const penyeliaResponseNote = getPenyeliaResponseNote(sample);
+              const revisionResultComparison = getRevisionResultComparison(sample);
               const pendingKasiRevision = getPendingKasiRevisionForSample(
                 detail,
                 sample,
@@ -260,7 +262,26 @@ function PenyeliaReviewSamplesTable({
                   </td>
 
                   <td className="bg-emerald-50/50 px-4 py-3 text-sm font-semibold text-gray-900 align-top">
-                    {sample.hasHasil || sample.has_hasil ? sample.hasil : '-'}
+                    {revisionResultComparison ? (
+                      <div className="min-w-[240px] space-y-2">
+                        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Hasil sebelum revisi</p>
+                          <p className="mt-1 text-sm font-semibold text-gray-900">{revisionResultComparison.hasilSebelum}</p>
+                          {revisionResultComparison.catatanSebelum && (
+                            <p className="mt-1 text-xs font-normal text-gray-500">{revisionResultComparison.catatanSebelum}</p>
+                          )}
+                        </div>
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Hasil revisi sekarang</p>
+                          <p className="mt-1 text-sm font-semibold text-emerald-900">{revisionResultComparison.hasilSetelah}</p>
+                          {revisionResultComparison.catatanSetelah && (
+                            <p className="mt-1 text-xs font-normal text-emerald-700">{revisionResultComparison.catatanSetelah}</p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      sample.hasHasil || sample.has_hasil ? sample.hasil : '-'
+                    )}
                   </td>
 
                   <td className="px-4 py-3 text-sm text-gray-700 align-top">

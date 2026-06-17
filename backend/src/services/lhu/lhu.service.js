@@ -211,35 +211,58 @@ getLhuDetail = async (nomorLhu) => {
             if (lhu.status_lhu !== LHU_STATUS.WAIT_KALAB) {
                 throw new Error('LHU ini tidak berada pada tahap persetujuan Kepala Lab.');
             }
-            await lhu.update({
-                tanggal_penerbitan: new Date(),
+            const approvedAt = new Date();
+            const officialNomorLhu = await generateNomorLhu(Lhu, transaction, approvedAt);
+            const duplicate = await Lhu.findOne({
+                where: { nomor_lhu: officialNomorLhu },
+                transaction,
+                lock: transaction.LOCK.UPDATE,
+            });
+            if (duplicate && duplicate.nomor_lhu !== lhuNo) {
+                throw new Error(`Nomor LHU resmi ${officialNomorLhu} sudah digunakan. Silakan ulangi persetujuan.`);
+            }
+            await Lhu.update({
+                nomor_lhu: officialNomorLhu,
+                tanggal_penerbitan: approvedAt,
                 kalab_by: userNik,
-                kalab_at: new Date(),
+                kalab_at: approvedAt,
                 status_lhu: LHU_STATUS.APPROVED_FINAL,
-            }, { transaction });
-            const pdfResult = await lhuPdfService.generateFinalLhuPdf(lhuNo, transaction);
-            await lhu.update({
+            }, {
+                where: { nomor_lhu: lhuNo },
+                transaction,
+            });
+            const approvedLhu = await Lhu.findOne({
+                where: { nomor_lhu: officialNomorLhu },
+                transaction,
+                lock: transaction.LOCK.UPDATE,
+            });
+            const pdfResult = await lhuPdfService.generateFinalLhuPdf(officialNomorLhu, transaction);
+            await approvedLhu.update({
                 file_lhu_path: pdfResult.filePath,
             }, { transaction });
             await WorkflowLogService.logStatusTransition({
                 entityType: 'LHU',
-                entityId: lhuNo,
+                entityId: officialNomorLhu,
                 action: 'KALAB_MENGESAHKAN_LHU',
                 statusBefore: LHU_STATUS.WAIT_KALAB,
                 statusAfter: LHU_STATUS.APPROVED_FINAL,
                 source: 'Kalab',
-                note: 'LHU disahkan oleh Kepala Laboratorium.',
+                note: lhuNo !== officialNomorLhu
+                    ? `LHU draft ${lhuNo} disahkan menjadi nomor resmi ${officialNomorLhu}.`
+                    : 'LHU disahkan oleh Kepala Laboratorium.',
                 actorNik: userNik,
                 transaction,
             });
             await this.updateRequestStatusAfterLhuApproval({
-                idRegistrasi: lhu.id_registrasi,
+                idRegistrasi: approvedLhu.id_registrasi,
                 actorNik: userNik,
                 transaction,
             });
             return {
-                nomorLhu: lhuNo,
-                nomor_lhu: lhuNo,
+                nomorLhu: officialNomorLhu,
+                nomor_lhu: officialNomorLhu,
+                nomorDraftLhu: lhuNo,
+                nomor_draft_lhu: lhuNo,
                 statusLhu: LHU_STATUS.APPROVED_FINAL,
                 status_lhu: LHU_STATUS.APPROVED_FINAL,
                 fileLhuPath: pdfResult.filePath,

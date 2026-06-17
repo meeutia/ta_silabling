@@ -58,6 +58,25 @@ export function pickRealValue(...values) {
   );
 }
 
+
+export function formatParameterDisplayName(value) {
+  const raw = String(value || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  if (!raw || raw === '-') return '-';
+
+  const upper = raw.toUpperCase();
+  const normalized = upper.replace(/[₀-₉]/g, (char) => ({ '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9' }[char] || char));
+
+  if (/\bBOD\s*5\b/.test(normalized) || /BOD₅/i.test(raw)) return 'BOD5';
+  if (/\(\s*BOD\s*\)/i.test(raw) || /KEBUTUHAN OKSIGEN BIOKIMIAWI|BIOCHEMICAL OXYGEN DEMAND/.test(normalized)) return 'BOD';
+  if (/\(\s*COD\s*\)/i.test(raw) || /KEBUTUHAN OKSIGEN KIMIAWI|CHEMICAL OXYGEN DEMAND/.test(normalized)) return 'COD';
+  if (/\(\s*TSS\s*\)/i.test(raw) || /PADATAN TERSUSPENSI TOTAL|TOTAL SUSPENDED SOLID/.test(normalized)) return 'TSS';
+  if (/\(\s*TDS\s*\)/i.test(raw) || /PADATAN TERLARUT TOTAL|TOTAL DISSOLVED SOLID|TOTAL DISOLVE SOLID/.test(normalized)) return 'TDS';
+  if (/\(\s*DO\s*\)/i.test(raw) || /OKSIGEN TERLARUT|DISSOLVED OXYGEN/.test(normalized)) return 'DO';
+  if (/DERAJAT KEASAMAN|\(\s*PH\s*\)/i.test(raw)) return 'pH';
+
+  return raw;
+}
+
 export function getErrorMessage(error, fallback) {
   return error?.message || fallback;
 }

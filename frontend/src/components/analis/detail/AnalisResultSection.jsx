@@ -3,6 +3,7 @@ import {
   getKasiPengujianRevisionNote,
   getPenyeliaResponseNote,
   getPenyeliaRevisionNote,
+  getRevisionResultComparison,
   getRowReviewStatus,
   getStatusBadgeClass,
   normalizeScientificResultInput,
@@ -130,6 +131,7 @@ export function AnalisResultSection({
                   const rowRevisionNotePenyelia = getPenyeliaRevisionNote(row);
                   const rowRevisionNoteKasi = getKasiPengujianRevisionNote(row);
                   const rowPenyeliaResponseNote = getPenyeliaResponseNote(row);
+                  const revisionResultComparison = getRevisionResultComparison(row);
 
                   return (
                     <tr key={row.noSampel || index} className="hover:bg-gray-50">
@@ -139,16 +141,36 @@ export function AnalisResultSection({
 
                       <td className="px-4 py-3">
                         {!rowEditable ? (
-                          <span
-                            className={`text-sm ${
-                              isFilled
-                                ? 'font-medium text-gray-900'
-                                : 'italic text-gray-400'
-                            }`}
-                          >
-                            {row.hasil || 'Belum ada hasil'}
-                          </span>
+                          revisionResultComparison ? (
+                            <div className="min-w-[240px] space-y-2">
+                              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sebelum revisi</p>
+                                <p className="mt-1 text-sm font-semibold text-gray-900">{revisionResultComparison.hasilSebelum}</p>
+                              </div>
+                              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Revisi sekarang</p>
+                                <p className="mt-1 text-sm font-semibold text-emerald-900">{revisionResultComparison.hasilSetelah}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <span
+                              className={`text-sm ${
+                                isFilled
+                                  ? 'font-medium text-gray-900'
+                                  : 'italic text-gray-400'
+                              }`}
+                            >
+                              {row.hasil || 'Belum ada hasil'}
+                            </span>
+                          )
                         ) : (
+                          <>
+                            {revisionResultComparison && (
+                              <div className="mb-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Hasil sebelum revisi</p>
+                                <p className="mt-1 text-sm font-semibold text-gray-900">{revisionResultComparison.hasilSebelum}</p>
+                              </div>
+                            )}
                           <input
                             type="text"
                             inputMode="text"
@@ -164,6 +186,7 @@ export function AnalisResultSection({
                             placeholder="Masukkan nilai hasil pengujian..."
                             className="min-w-[180px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-emerald-500"
                           />
+                          </>
                         )}
                       </td>
 

@@ -400,27 +400,47 @@ safeString = (value) => {
     };
     buildKasiReviewApprovedToQcEmail = ({ penerima = {}, context = {} }) => {
         const { sample = {}, fppl = {}, pelanggan = {}, jenis = {}, lhu = {} } = context;
-        const nomorSampel = sample.no_sampel || sample.noSampel || '-';
-        const nomorFppl = fppl.nomor_fppl || fppl.nomorFppl || fppl.id_registrasi || '-';
-        const nomorLhu = lhu.nomor_lhu || lhu.nomorLhu || '-';
+        const requestId = context.idRegistrasi || context.id_registrasi || fppl.id_registrasi || '-';
+        const nomorFppl = fppl.nomor_fppl || fppl.nomorFppl || fppl.id_registrasi || requestId;
         const namaPelanggan = pelanggan.nama_instansi || pelanggan.nama_pelanggan || pelanggan.nama || '-';
-        const jenisSampel = jenis.jenis_sampel || jenis.jenisSampel || '-';
         const namaPenerima = penerima.nama_pegawai || penerima.username || penerima.nik || 'Pengendalian Mutu';
+        const samples = Array.isArray(context.samples) ? context.samples : [];
+        const sampleNos = Array.isArray(context.sampleNos || context.sample_nos)
+            ? (context.sampleNos || context.sample_nos).filter(Boolean)
+            : [sample.no_sampel || sample.noSampel].filter(Boolean);
+        const nomorSampel = this.formatSampleNosForDisplay(sampleNos);
+        const jenisSampel = samples.length
+            ? this.formatSampleTypesForDisplay(samples, '-')
+            : (jenis.jenis_sampel || jenis.jenisSampel || '-');
+        const totalSampel = context.totalSamples || context.total_sampel || sampleNos.length || 1;
+        const totalParameter = context.totalParameter || context.total_parameter || 0;
         const detailLink = this.buildQcVerificationLink(lhu.nomor_lhu || lhu.nomorLhu || '');
-        const subject = `Hasil sampel menunggu verifikasi QC - ${nomorSampel}`;
+        const daftarSampel = samples.length
+            ? samples.map((row, index) => {
+                const no = row.no_sampel || row.noSampel || '-';
+                const jenisRow = row.jenis_sampel || row.jenisSampel || '-';
+                const totalParam = row.total_parameter || row.totalParameter || 0;
+                return `${index + 1}. ${no} | ${jenisRow} | ${totalParam} parameter`;
+            })
+            : [`1. ${nomorSampel}`];
+        const subject = `Permohonan menunggu verifikasi QC - ${nomorFppl}`;
         const body = [
             `Yth. ${namaPenerima},`,
             '',
-            'Kasi Pengujian telah menyetujui hasil pengujian sampel berikut.',
+            'Kasi Pengujian telah menyetujui seluruh hasil pengujian pada satu permohonan.',
             '',
-            `Nomor sampel: ${nomorSampel}`,
-            `Nomor FPPL: ${nomorFppl}`,
-            `Jenis sampel: ${jenisSampel}`,
-            `Pelanggan: ${namaPelanggan}`,
-            nomorLhu !== '-' ? `Nomor LHU: ${nomorLhu}` : null,
+            `Nomor permohonan : ${requestId}`,
+            `Nomor FPPL       : ${nomorFppl}`,
+            `Pelanggan        : ${namaPelanggan}`,
+            `Jenis sampel     : ${jenisSampel}`,
+            `Total sampel     : ${totalSampel}`,
+            totalParameter ? `Total parameter  : ${totalParameter}` : null,
+            '',
+            'Daftar sampel:',
+            ...daftarSampel,
             '',
             detailLink ? `Buka halaman QC: ${detailLink}` : null,
-            'Silakan lakukan verifikasi hasil uji/LHU pada sistem.',
+            'Silakan lakukan verifikasi Pengendalian Mutu dan finalisasi LHU pada sistem.',
             '',
             'Terima kasih.',
         ].filter(Boolean).join('\n');
@@ -428,7 +448,7 @@ safeString = (value) => {
             subject,
             body,
             title: subject,
-            preheader: `Sampel ${nomorSampel} menunggu verifikasi Pengendalian Mutu.`,
+            preheader: `Seluruh sampel pada permohonan ${nomorFppl} menunggu verifikasi Pengendalian Mutu.`,
             actionUrl: detailLink,
             actionLabel: 'Buka Verifikasi QC',
         });

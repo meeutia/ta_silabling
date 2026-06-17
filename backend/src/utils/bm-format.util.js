@@ -24,9 +24,16 @@ const buildPaketBmLabel = (pktBm = {}) => {
   const data = toPlain(pktBm) || {};
   const reg = pick(data, ['reg_bm', 'RegBm']) || {};
   const jenis = pick(data, ['jenis_sampel', 'JenisSampel']) || data.jenis_sampel_row || {};
+  const klasifikasiRaw = data.klasifikasi;
+  const klasifikasiRow = (klasifikasiRaw && typeof klasifikasiRaw === 'object' ? klasifikasiRaw : null) || pick(data, ['klasifikasi_row', 'Klasifikasi', 'klasifikasiRelasi']) || {};
   const jenisName = jenis.jenis_sampel || jenis.nama_jenis_sampel || data.jenis_sampel || data.nama_jenis_sampel || '';
   const jenisAir = formatJenisAir(jenisName);
-  const klasifikasi = String(data.klasifikasi || '').trim();
+  const klasifikasi = String(
+    (typeof data.klasifikasi === 'string' ? data.klasifikasi : null) ||
+    klasifikasiRow.klasifikasi ||
+    data.nama_klasifikasi ||
+    ''
+  ).trim();
   return [jenisAir, klasifikasi].filter(Boolean).join(' ') || data.id_pkt_bm || '';
 };
 
@@ -40,10 +47,15 @@ const buildPaketBmTeksLhu = (pktBm = {}) => {
 
 const withPaketBmDisplayFields = (pktBm = {}) => {
   const data = toPlain(pktBm) || {};
-  const namaPkt = buildPaketBmLabel(data);
+  const klasifikasiRaw = data.klasifikasi;
+  const klasifikasiRow = (klasifikasiRaw && typeof klasifikasiRaw === 'object' ? klasifikasiRaw : null) || pick(data, ['klasifikasi_row', 'Klasifikasi', 'klasifikasiRelasi']) || {};
+  const klasifikasi = (typeof data.klasifikasi === 'string' ? data.klasifikasi : null) || klasifikasiRow.klasifikasi || null;
+  const namaPkt = buildPaketBmLabel({ ...data, klasifikasi });
   const teksLhu = buildPaketBmTeksLhu(data);
   return {
     ...data,
+    klasifikasi,
+    id_klasifikasi: data.id_klasifikasi || klasifikasiRow.id_klasifikasi || null,
     nama_pkt: namaPkt,
     namaPkt,
     teks_lhu: teksLhu,

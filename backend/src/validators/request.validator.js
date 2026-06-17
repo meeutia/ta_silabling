@@ -316,11 +316,19 @@ const validateReceiveSamples = (req, res, next) => {
     return errorResponse(res, 'Data sampel yang diterima wajib dikirim.', 400);
   }
 
+  const useLegacyTopLevelFallback = rows.length <= 1;
+  const pickRowValue = (row, snakeKey, camelKey) => {
+    const rowValue = row?.[snakeKey] ?? row?.[camelKey];
+    if (rowValue !== undefined && rowValue !== null && String(rowValue).trim() !== '') return rowValue;
+    if (!useLegacyTopLevelFallback) return '';
+    return payload?.[snakeKey] ?? payload?.[camelKey] ?? '';
+  };
+
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index] || {};
     const label = row.no_sampel || row.sample_label || row.sampleLabel || `sampel #${index + 1}`;
 
-    const tanggalPengambilan = row.tanggal_pengambilan_sampel || row.tanggalPengambilanSampel || payload.tanggal_pengambilan_sampel || payload.tanggalPengambilanSampel;
+    const tanggalPengambilan = pickRowValue(row, 'tanggal_pengambilan_sampel', 'tanggalPengambilanSampel');
 
     const sampleDateError = validateYmdField({
       value: tanggalPengambilan,
@@ -330,17 +338,17 @@ const validateReceiveSamples = (req, res, next) => {
     });
     if (sampleDateError) return errorResponse(res, sampleDateError, 400);
 
-    const condition = row.kondisi_sampel || row.kondisiSampel || row.kondisi || payload.kondisi_sampel || payload.kondisiSampel;
+    const condition = pickRowValue(row, 'kondisi_sampel', 'kondisiSampel') || row.kondisi;
     if (!asTrimmedText(condition)) {
       return errorResponse(res, `Kondisi sampel ${label} wajib diisi.`, 400);
     }
 
-    const acuan = row.acuan_pengambilan_sampel || row.acuanPengambilanSampel || payload.acuan_pengambilan_sampel || payload.acuanPengambilanSampel;
+    const acuan = pickRowValue(row, 'acuan_pengambilan_sampel', 'acuanPengambilanSampel');
     if (!asTrimmedText(acuan)) {
       return errorResponse(res, `Acuan pengambilan sampel ${label} wajib diisi.`, 400);
     }
 
-    const lokasiSpesifik = row.lokasi_spesifik || row.lokasiSpesifik || payload.lokasi_spesifik || payload.lokasiSpesifik;
+    const lokasiSpesifik = pickRowValue(row, 'lokasi_spesifik', 'lokasiSpesifik');
     if (!asTrimmedText(lokasiSpesifik)) {
       return errorResponse(res, `Lokasi spesifik sampel ${label} wajib diisi.`, 400);
     }
@@ -349,7 +357,7 @@ const validateReceiveSamples = (req, res, next) => {
       return errorResponse(res, `Lokasi spesifik sampel ${label} maksimal 150 karakter.`, 400);
     }
 
-    const koordinat = row.koordinat || payload.koordinat;
+    const koordinat = pickRowValue(row, 'koordinat', 'koordinat');
     if (!asTrimmedText(koordinat)) {
       return errorResponse(res, `Koordinat sampel ${label} wajib diisi.`, 400);
     }

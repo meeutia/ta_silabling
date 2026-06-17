@@ -240,4 +240,74 @@ function ConfirmDeleteModal({ confirmDelete, onClose, onConfirm }) {
   );
 }
 
-export { ConfirmDeleteModal, ScientificInput, ScientificTextarea };
+
+function ConfirmStatusModal({ confirmStatusChange, onClose, onConfirm }) {
+  const isDeactivate = Boolean(confirmStatusChange?.isCurrentlyActive);
+  const actionLabel = isDeactivate ? 'Nonaktifkan' : 'Aktifkan';
+  const label = confirmStatusChange?.label || 'data';
+  const description = confirmStatusChange?.description || '-';
+  const toneClass = isDeactivate
+    ? {
+        bg: 'bg-red-100',
+        icon: 'text-red-600',
+        button: 'bg-red-600 hover:bg-red-700',
+      }
+    : {
+        bg: 'bg-emerald-100',
+        icon: 'text-emerald-600',
+        button: 'bg-emerald-600 hover:bg-emerald-700',
+      };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-12 h-12 ${toneClass.bg} rounded-full flex items-center justify-center shrink-0`}>
+              <AlertCircle className={`w-6 h-6 ${toneClass.icon}`} />
+            </div>
+
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {actionLabel} {label}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Konfirmasi perubahan status
+              </p>
+            </div>
+          </div>
+
+          <p className="text-gray-600 mb-5">
+            Yakin ingin {actionLabel.toLowerCase()} <strong>{description}</strong>?
+            <br />
+            <span className="text-sm text-gray-500">
+              {isDeactivate
+                ? 'Data tidak akan muncul pada pilihan baru, tetapi riwayat transaksi lama tetap aman.'
+                : 'Data akan dapat dipilih kembali pada proses baru.'}
+            </span>
+          </p>
+
+          <div className="flex flex-col-reverse sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
+            >
+              Batal
+            </button>
+
+            <button
+              type="button"
+              onClick={onConfirm}
+              className={`flex-1 px-6 py-2.5 text-white rounded-lg transition-all font-medium shadow-sm ${toneClass.button}`}
+            >
+              {actionLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { ConfirmDeleteModal, ConfirmStatusModal, ScientificInput, ScientificTextarea };

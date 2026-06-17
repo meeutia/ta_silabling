@@ -57,6 +57,17 @@ export function AdminPermohonanValidationSection({
   setDeferredPaymentNote,
   handleDeferredPaymentByAdmin,
 }) {
+  const isOfficerSampling = usesOfficerSampling(selectedRequest);
+  const shouldShowSamplingTariff = isOfficerSampling && validationDecision === 'setujui';
+
+  const handleDecisionChange = (decision) => {
+    setValidationDecision(decision);
+
+    if (decision === 'tolak') {
+      setSelectedSamplingTariffId('');
+    }
+  };
+
   return (
     <>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 transition-all">
@@ -79,7 +90,7 @@ export function AdminPermohonanValidationSection({
 
                   {(() => {
                     const requestSamples = getRequestSamples(selectedRequest);
-                    const isOfficer = usesOfficerSampling(selectedRequest);
+                    const isOfficer = isOfficerSampling;
                     const plannedDate = isOfficer
                       ? pickFirstFilled(
                           selectedRequest.tanggal_rencana_pengambilan_sampel,
@@ -178,7 +189,7 @@ export function AdminPermohonanValidationSection({
                   {normalizeFpplStatus(selectedRequest.status_fppl) === FPPL_STATUSES.MENUNGGU_VERIFIKASI && (                  <div className="border-t border-gray-200 pt-6">
                     <h3 className="font-semibold text-gray-900 mb-4">Keputusan Validasi</h3>
 
-                    {usesOfficerSampling(selectedRequest) && (
+                    {shouldShowSamplingTariff && (
                       <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Keterangan Jarak <span className="text-red-500">*</span>
@@ -206,7 +217,7 @@ export function AdminPermohonanValidationSection({
                           name="keputusan"
                           value="setujui"
                           checked={validationDecision === 'setujui'}
-                          onChange={() => setValidationDecision('setujui')}
+                          onChange={() => handleDecisionChange('setujui')}
                           className="w-5 h-5 text-emerald-600"
                         />
                         <div>
@@ -222,7 +233,7 @@ export function AdminPermohonanValidationSection({
                           name="keputusan"
                           value="tolak"
                           checked={validationDecision === 'tolak'}
-                          onChange={() => setValidationDecision('tolak')}
+                          onChange={() => handleDecisionChange('tolak')}
                           className="w-5 h-5 text-red-600"
                         />
                         <div>
@@ -252,7 +263,7 @@ export function AdminPermohonanValidationSection({
                       disabled={
                         !validationDecision ||
                         (validationDecision === 'tolak' && !validationNote.trim()) ||
-                        (validationDecision === 'setujui' && usesOfficerSampling(selectedRequest) && !selectedSamplingTariffId) ||
+                        (validationDecision === 'setujui' && isOfficerSampling && !selectedSamplingTariffId) ||
                         saving
                       }
                       className="w-full px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

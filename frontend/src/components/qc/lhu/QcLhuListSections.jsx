@@ -11,6 +11,7 @@ import {
   formatDateTime,
   getFilePath,
   getNomorLhu,
+  getNomorLhuDisplay,
   getNoSampel,
   getStatusBadge,
   getStatusLhu,
@@ -216,7 +217,7 @@ export function QcLhuHistoryTable({ loadingHistory, filteredHistoryRows, openHis
         <table className="w-full min-w-[1150px]">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">Nomor LHU</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">ID Draft / Nomor LHU</th>
               <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">Daftar Sampel</th>
               <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">Nomor FPPL</th>
               <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">Finalisasi QC</th>
@@ -248,7 +249,7 @@ export function QcLhuHistoryTable({ loadingHistory, filteredHistoryRows, openHis
 
                 return (
                   <tr key={nomorLhu} className="transition-all hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">{nomorLhu || '-'}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">{getNomorLhuDisplay(item) || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">{getNoSampel(item) || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">{item.nomorFppl || item.nomor_fppl || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">{formatDateTime(item.qcAt || item.qc_at)}</td>

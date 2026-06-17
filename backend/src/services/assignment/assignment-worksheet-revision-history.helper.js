@@ -1,4 +1,5 @@
 const { LkaRevisi, User, } = require('../../models/Associations');
+const { enrichRevisionRowsWithResultSnapshots } = require('./assignment-revision-snapshot.helper');
 const { getPlain, pickObject } = require('./assignment-object.helper');
 class AssignmentWorksheetRevisionHistoryHelper {
 loadRevisionRowsForLka = async (kodeLka, transaction = null) => {
@@ -16,7 +17,7 @@ loadRevisionRowsForLka = async (kodeLka, transaction = null) => {
             ],
             transaction: transaction || undefined,
         });
-        return rows.map(getPlain).filter(Boolean);
+        return enrichRevisionRowsWithResultSnapshots(rows, transaction);
     };
     getLkaRevisionHistory = async (kodeLka) => {
         const kode = String(kodeLka || '').trim();
@@ -35,8 +36,8 @@ loadRevisionRowsForLka = async (kodeLka, transaction = null) => {
                 ['no_sampel', 'ASC'],
             ],
         });
-        return rows.map((instance) => {
-            const row = getPlain(instance);
+        const enrichedRows = await enrichRevisionRowsWithResultSnapshots(rows);
+        return enrichedRows.map((row) => {
             const items = row.no_sampel ? [{
                 kodeLka: row.kode_lka || null,
                 kode_lka: row.kode_lka || null,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Lock, X } from 'lucide-react';
+import { AlertTriangle, Lock, Plus, Trash2, X } from 'lucide-react';
 
 function normalizeBool(value) {
   if (typeof value === 'boolean') return value;
@@ -19,6 +19,31 @@ function disabledInputClass(isDisabled) {
   return isDisabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white';
 }
 
+function getKlasifikasiList(formData = {}, selectedItem = null) {
+  if (selectedItem) {
+    return [formData.klasifikasi || selectedItem.klasifikasi || ''];
+  }
+
+  if (Array.isArray(formData.klasifikasi_list) && formData.klasifikasi_list.length > 0) {
+    return formData.klasifikasi_list;
+  }
+
+  if (Array.isArray(formData.klasifikasi) && formData.klasifikasi.length > 0) {
+    return formData.klasifikasi;
+  }
+
+  return [formData.klasifikasi || ''];
+}
+
+function emitKlasifikasiListChange(onChange, nextList) {
+  onChange({
+    target: {
+      name: 'klasifikasi_list',
+      value: nextList,
+    },
+  });
+}
+
 export function PaketModal({
   selectedItem,
   formData,
@@ -31,6 +56,27 @@ export function PaketModal({
   const isLocked = Boolean(selectedItem && (selectedItem.is_locked || formData.is_locked));
   const usage = selectedItem?.usage || formData.usage || {};
   const regulasiOptions = buildRegulasiOptions(regulasiData, formData.id_reg_bm);
+  const klasifikasiList = getKlasifikasiList(formData, selectedItem);
+  const isEditMode = Boolean(selectedItem);
+
+  const handleKlasifikasiChange = (index, value) => {
+    if (isEditMode) {
+      onChange({ target: { name: 'klasifikasi', value } });
+      return;
+    }
+
+    const nextList = klasifikasiList.map((item, itemIndex) => (itemIndex === index ? value : item));
+    emitKlasifikasiListChange(onChange, nextList);
+  };
+
+  const handleAddKlasifikasi = () => {
+    emitKlasifikasiListChange(onChange, [...klasifikasiList, '']);
+  };
+
+  const handleRemoveKlasifikasi = (index) => {
+    const nextList = klasifikasiList.filter((_, itemIndex) => itemIndex !== index);
+    emitKlasifikasiListChange(onChange, nextList.length > 0 ? nextList : ['']);
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-stretch justify-center z-50 p-4">
@@ -139,19 +185,55 @@ export function PaketModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Klasifikasi
-              </label>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  Klasifikasi <span className="text-red-500">*</span>
+                </label>
+                {!isEditMode && !isLocked && (
+                  <button
+                    type="button"
+                    onClick={handleAddKlasifikasi}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-100"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Tambah Klasifikasi
+                  </button>
+                )}
+              </div>
 
-              <input
-                type="text"
-                name="klasifikasi"
-                value={formData.klasifikasi || ''}
-                onChange={onChange}
-                disabled={isLocked}
-                className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none ${disabledInputClass(isLocked)}`}
-                placeholder="Contoh: Kelas I / Kelas II / Umum"
-              />
+              <div className="space-y-3">
+                {klasifikasiList.map((value, index) => (
+                  <div key={`klasifikasi-${index}`} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      name={isEditMode ? 'klasifikasi' : `klasifikasi_list.${index}`}
+                      value={value || ''}
+                      onChange={(event) => handleKlasifikasiChange(index, event.target.value)}
+                      disabled={isLocked}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none ${disabledInputClass(isLocked)}`}
+                      placeholder={index === 0 ? 'Contoh: Kelas I / Umum' : 'Contoh: Kelas II'}
+                      required={index === 0}
+                    />
+
+                    {!isEditMode && !isLocked && klasifikasiList.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveKlasifikasi(index)}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition-all hover:bg-red-100"
+                        title="Hapus klasifikasi ini"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {!isEditMode && (
+                <p className="mt-2 text-xs text-gray-500">
+                  Setiap baris akan dibuat menjadi satu klasifikasi paket baku mutu pada regulasi dan jenis sampel yang sama.
+                </p>
+              )}
             </div>
 
           </div>

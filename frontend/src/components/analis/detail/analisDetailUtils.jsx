@@ -140,6 +140,41 @@ function firstExtractedResponseText(values = []) {
   return '';
 }
 
+export function getRevisionResultComparison(row = {}) {
+  const source = row.revisionComparison || row.revision_comparison || row;
+  const hasilSebelum = String(
+    source.hasilSebelumRevisi ||
+      source.hasil_sebelum_revisi ||
+      ''
+  ).trim();
+  const hasilSetelah = String(
+    source.hasilSetelahRevisi ||
+      source.hasil_setelah_revisi ||
+      ''
+  ).trim();
+  const catatanSebelum = String(
+    source.catatanHasilSebelumRevisi ||
+      source.catatan_hasil_sebelum_revisi ||
+      ''
+  ).trim();
+  const catatanSetelah = String(
+    source.catatanHasilSetelahRevisi ||
+      source.catatan_hasil_setelah_revisi ||
+      ''
+  ).trim();
+
+  if (!hasilSebelum && !hasilSetelah && !catatanSebelum && !catatanSetelah) {
+    return null;
+  }
+
+  return {
+    hasilSebelum: hasilSebelum || '-',
+    hasilSetelah: hasilSetelah || '-',
+    catatanSebelum,
+    catatanSetelah,
+  };
+}
+
 export function getPenyeliaRevisionNote(row = {}) {
   const specificNote = String(
     row.catatanRevisiHasilPenyelia ||

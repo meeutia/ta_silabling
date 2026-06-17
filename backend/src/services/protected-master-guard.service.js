@@ -20,11 +20,25 @@ buildUsageMessage = (label, usages, operation = 'diubah/dihapus') => {
     };
     getRegBmUsage = async (idRegBm, options = {}) => {
         const transaction = options.transaction || null;
-        const [fpplSamples, paketBm] = await Promise.all([
+        const [fpplSamples, paketRows] = await Promise.all([
             FpplSampel.count({ where: { id_reg_bm: idRegBm }, transaction }),
-            PktBm.count({ where: { id_reg_bm: idRegBm }, transaction }),
+            PktBm.findAll({
+                where: { id_reg_bm: idRegBm },
+                attributes: ['id_pkt_bm'],
+                raw: true,
+                transaction,
+            }),
         ]);
-        return { fppl_sampel: fpplSamples, pkt_bm: paketBm };
+        const paketIds = [...new Set((paketRows || []).map((row) => row.id_pkt_bm).filter(Boolean))];
+        const lhuRows = paketIds.length > 0
+            ? await Lhu.count({ where: { id_pkt_bm: { [Op.in]: paketIds } }, transaction })
+            : 0;
+        return {
+            fppl_sampel: fpplSamples,
+            pkt_bm: paketIds.length,
+            lhu: lhuRows,
+            lhu_dengan_regulasi_ini: lhuRows,
+        };
     };
     getPktBmUsage = async (idPktBm, options = {}) => {
         const transaction = options.transaction || null;
@@ -46,16 +60,25 @@ buildUsageMessage = (label, usages, operation = 'diubah/dihapus') => {
         let nilaiRows = 0;
         let lhuRowsInGroup = 0;
         if (idRegBm && idJenisSampel && idParameter) {
-            const nilaiInstances = await PktBmNilai.findAll({
-                where: { id_reg_bm: idRegBm, id_jenis_sampel: idJenisSampel, id_parameter: idParameter },
+            const paketRows = await PktBm.findAll({
+                where: { id_reg_bm: idRegBm, id_jenis_sampel: idJenisSampel },
                 attributes: ['id_pkt_bm'],
                 raw: true,
                 transaction,
             });
-            const paketIds = [...new Set(nilaiInstances.map((row) => row.id_pkt_bm).filter(Boolean))];
+            const paketIds = [...new Set(paketRows.map((row) => row.id_pkt_bm).filter(Boolean))];
+            const nilaiInstances = paketIds.length > 0
+                ? await PktBmNilai.findAll({
+                    where: { id_pkt_bm: { [Op.in]: paketIds }, id_parameter: idParameter },
+                    attributes: ['id_pkt_bm'],
+                    raw: true,
+                    transaction,
+                })
+                : [];
             nilaiRows = nilaiInstances.length;
-            lhuRowsInGroup = paketIds.length > 0
-                ? await Lhu.count({ where: { id_pkt_bm: { [Op.in]: paketIds } }, transaction })
+            const nilaiPaketIds = [...new Set(nilaiInstances.map((row) => row.id_pkt_bm).filter(Boolean))];
+            lhuRowsInGroup = nilaiPaketIds.length > 0
+                ? await Lhu.count({ where: { id_pkt_bm: { [Op.in]: nilaiPaketIds } }, transaction })
                 : 0;
         }
         return {

@@ -27,7 +27,7 @@ const { buildKasiRevisionRejectedEmail, } = require('../../templates/email/kasi-
 const { notifyJadwalPengambilanLhu, notifyJadwalSampel, notifyScheduleChangeApprovedToCustomer, notifyScheduleChangeRejectedToCustomer, notifyScheduleChangeSubmittedToAdmin, } = require('./notification-schedule.service');
 const { notifyAdminPermohonanBaru, notifyDeferredPaymentMarked, notifyInvoiceReady, notifyKasiMetodePerluDitentukan, notifyLhuReady, notifyPenyeliaPenugasanSampelMasuk, notifyRequestStatusChanged, notifySamplesReceived, } = require('./notification-request.service');
 const { notifyAnalisSubmitKePenyelia, notifyDeadlineAnalisDekat, notifyPenugasanAnalisBaru, notifyPenyeliaApproveKeKasi, } = require('./notification-assignment-event.service');
-const { findRevisionTargetsBySample, getActiveUsersByRole, getPenugasanParameterMethodGroups, getPenugasanSampleNos, getRequestAndCustomer, getRequestLhuCompletionContext, getRequestWithCustomerAndSamples, getSampleNotificationContext, resolveRequestStatusNotificationType, } = require('./notification-query.service');
+const { findRevisionTargetsBySample, getActiveUsersByRole, getPenugasanParameterMethodGroups, getPenugasanSampleNos, getKasiQcRequestNotificationContext, getRequestAndCustomer, getRequestLhuCompletionContext, getRequestWithCustomerAndSamples, getSampleNotificationContext, resolveRequestStatusNotificationType, } = require('./notification-query.service');
 class NotificationService {
 notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
         const context = await getSampleNotificationContext(noSampel);
@@ -64,9 +64,21 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
         return results;
     };
     notifyKasiReviewApprovedToQc = async ({ noSampel } = {}) => {
-        const context = await getSampleNotificationContext(noSampel);
+        const context = await getKasiQcRequestNotificationContext(noSampel);
+        if (!context.isComplete) {
+            return {
+                skipped: true,
+                reason: 'Belum seluruh sampel dan parameter dalam permohonan disetujui Kasi Pengujian.',
+                id_registrasi: context.idRegistrasi,
+                no_sampel_trigger: noSampel,
+                total_sampel: context.totalSamples,
+                total_parameter: context.totalParameter,
+                total_approved_kasi: context.totalApprovedKasi,
+                sampel_belum_lengkap: (context.incompleteSamples || []).map((sample) => sample.no_sampel || sample.noSampel).filter(Boolean),
+            };
+        }
         const tipe = await findOrCreateNotificationTypeById(NOTIFICATION_TYPE.HASIL_KASI_MENUNGGU_QC, {
-            deskripsi: 'Hasil yang disetujui Kasi Pengujian menunggu verifikasi QC',
+            deskripsi: 'Seluruh hasil satu permohonan disetujui Kasi Pengujian dan menunggu verifikasi QC',
             konteks: 'LHU',
         });
         const recipients = await getActiveUsersByRole(Roles.QC);
@@ -79,9 +91,9 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
                 idTipeNotifikasi: tipe.get('id_tipe_notifikasi'),
                 penerimaUserNik: nik,
                 penerimaPelangganId: null,
-                idRegistrasi: context.fpplSampel?.id_registrasi || context.fppl?.id_registrasi || null,
+                idRegistrasi: context.idRegistrasi,
                 idJadwalLhu: null,
-                nomorLhu: context.lhu?.nomor_lhu || null,
+                nomorLhu: null,
                 idPenugasan: null,
             });
             try {

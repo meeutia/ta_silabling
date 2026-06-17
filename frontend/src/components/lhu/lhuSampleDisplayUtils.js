@@ -37,9 +37,16 @@ export function dedupeTextList(items = []) {
   return result;
 }
 
+export function normalizeDisplayText(value) {
+  if (value === null || value === undefined) return '';
+  const text = String(value).trim();
+  if (!text || ['null', 'undefined'].includes(text.toLowerCase())) return '';
+  return text;
+}
+
 export function joinIndentedLines(lines = [], indent = '                ') {
   const filtered = (Array.isArray(lines) ? lines : [])
-    .map((line) => String(line || '').trim())
+    .map(normalizeDisplayText)
     .filter(Boolean);
   if (!filtered.length) return '-';
   return filtered.map((line, index) => (index === 0 ? line : `${indent}${line}`)).join('\n');
@@ -122,7 +129,7 @@ export function formatSampleFieldLines(sampleRows = [], getter, fallbackValue = 
   const rowLines = rows
     .map((row) => {
       const noSampel = getDisplayNoSampel(row.noSampel || row.no_sampel);
-      const value = String(typeof getter === 'function' ? getter(row) : row?.[getter] || '').trim();
+      const value = normalizeDisplayText(typeof getter === 'function' ? getter(row) : row?.[getter]);
       return value && value !== '-' && noSampel !== '-' ? { noSampel, value } : null;
     })
     .filter(Boolean);
@@ -147,7 +154,7 @@ export function formatSampleFieldLines(sampleRows = [], getter, fallbackValue = 
     return uniquePrefixedValues[0] || '-';
   }
 
-  const fallbackLines = String(fallbackValue || '').replace(/\r/g, '\n').split(/\n+|;+/).map((line) => String(line || '').trim()).filter(Boolean);
+  const fallbackLines = normalizeDisplayText(fallbackValue).replace(/\r/g, '\n').split(/\n+|;+/).map(normalizeDisplayText).filter(Boolean);
   if (!fallbackLines.length) return '-';
   if (fallbackRows.length > 1 && repeatShared && fallbackLines.length === 1) return joinIndentedLines(fallbackRows.map((row) => `${getDisplayNoSampel(row.noSampel || row.no_sampel)} : ${fallbackLines[0]}`));
   if (fallbackRows.length > 1 && assignFallbackByOrder && fallbackLines.length === fallbackRows.length) return joinIndentedLines(fallbackRows.map((row, index) => `${getDisplayNoSampel(row.noSampel || row.no_sampel)} : ${fallbackLines[index]}`));

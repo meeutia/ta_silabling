@@ -2,8 +2,8 @@ const { Op } = require('sequelize');
 const sequelize = require('../../config/database');
 const lhuPdfService = require('./lhu-pdf.service');
 const WorkflowLogService = require('../workflow/workflow-log.service');
-const { generateNomorLhu } = require('../../utils/id-generator');
-const { Fppl, FpplSampel, Pelanggan, JadwalSampel, JenisSampel, RegBm, PktBm, PktBmParam, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, Lhu, } = require('../../models/Associations');
+const { generateDraftNomorLhu } = require('../../utils/id-generator');
+const { Fppl, FpplSampel, Pelanggan, JadwalSampel, JenisSampel, RegBm, PktBm, Klasifikasi, PktBmParam, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, Lhu, } = require('../../models/Associations');
 const { LHU_STATUS, LHU_EDITABLE_BY_QC_STATUSES, LHU_NEXT_STATUS, } = require('../../constants/lhu-status.constant');
 const { calculateAccreditationStats, getPlain, pickObject, getLkaHasilTargetKey, getFallbackParameterKey, sortDetailRowsForLhu, applyDetailOrder, getExistingLhuBySample, getSampleInfo, getLkaResultRows, getExpectedParameterRows, getBmInfo, isEditableByQcStatus, mapSamplePayload, mapPelangganPayload, mapRequestPayload, buildDefaultDetailRows, toTinyIntFlag, getSubkontrakSnapshot, } = require('./lhu-data.service');
 const { findApprovedResultForExpectedParameter, mapDetailRow, } = require('./lhu-detail-row.mapper');
@@ -95,33 +95,24 @@ dedupeLkaResultRows = (rows = []) => {
         let registrationId = id;
         const sampleByNo = await Sampel.findOne({
             where: { no_sampel: id },
-            include: [{ model: FpplSampel, as: 'fppl_sampel', required: false }],
             transaction,
         });
         if (sampleByNo) {
             const sample = getPlain(sampleByNo);
-            const fpplSampel = pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
-            registrationId = fpplSampel.id_registrasi || id;
+            registrationId = sample.id_registrasi || id;
         }
         const rows = await Sampel.findAll({
+            where: { id_registrasi: registrationId },
             include: [
+                { model: JenisSampel, as: 'jenis_sampel', required: false },
+                { model: RegBm, as: 'reg_bm', required: false },
                 {
-                    model: FpplSampel,
-                    as: 'fppl_sampel',
+                    model: Fppl,
+                    as: 'fppl',
                     required: true,
-                    where: { id_registrasi: registrationId },
                     include: [
-                        { model: JenisSampel, required: false },
-                        { model: RegBm, required: false },
-                        {
-                            model: Fppl,
-                            as: 'fppl',
-                            required: true,
-                            include: [
-                                { model: Pelanggan, as: 'pelanggan', required: true },
-                                { model: JadwalSampel, as: 'jadwal_sampels', required: false },
-                            ],
-                        },
+                        { model: Pelanggan, as: 'pelanggan', required: true },
+                        { model: JadwalSampel, as: 'jadwal_sampels', required: false },
                     ],
                 },
             ],
@@ -132,22 +123,22 @@ dedupeLkaResultRows = (rows = []) => {
     };
     mapQcSampleRowFromPlain = (sample = {}, readiness = {}, existing = null) => {
         const fpplSampel = pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
-        const fppl = pickObject(fpplSampel, ['fppl', 'Fppl']) || {};
-        const jenis = pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
-        const regBm = pickObject(fpplSampel, ['reg_bm', 'RegBm']) || {};
+        const fppl = pickObject(sample, ['fppl', 'Fppl']) || pickObject(fpplSampel, ['fppl', 'Fppl']) || {};
+        const jenis = pickObject(sample, ['jenis_sampel', 'JenisSampel']) || pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
+        const regBm = pickObject(sample, ['reg_bm', 'RegBm']) || pickObject(fpplSampel, ['reg_bm', 'RegBm']) || {};
         return {
             noSampel: sample.no_sampel,
             no_sampel: sample.no_sampel,
-            idRegistrasi: fpplSampel.id_registrasi || null,
-            id_registrasi: fpplSampel.id_registrasi || null,
+            idRegistrasi: sample.id_registrasi || fpplSampel.id_registrasi || null,
+            id_registrasi: sample.id_registrasi || fpplSampel.id_registrasi || null,
             nomorFppl: fppl.nomor_fppl || null,
             nomor_fppl: fppl.nomor_fppl || null,
-            idJenisSampel: fpplSampel.id_jenis_sampel || null,
-            id_jenis_sampel: fpplSampel.id_jenis_sampel || null,
+            idJenisSampel: sample.id_jenis_sampel || fpplSampel.id_jenis_sampel || null,
+            id_jenis_sampel: sample.id_jenis_sampel || fpplSampel.id_jenis_sampel || null,
             jenisSampel: jenis.jenis_sampel || null,
             jenis_sampel: jenis.jenis_sampel || null,
-            idRegBm: fpplSampel.id_reg_bm || null,
-            id_reg_bm: fpplSampel.id_reg_bm || null,
+            idRegBm: sample.id_reg_bm || fpplSampel.id_reg_bm || null,
+            id_reg_bm: sample.id_reg_bm || fpplSampel.id_reg_bm || null,
             regBm: [regBm.instansi, regBm.ref_reg].filter(Boolean).join(' - '),
             reg_bm: [regBm.instansi, regBm.ref_reg].filter(Boolean).join(' - '),
             tanggalPengambilanSampel: sample.tanggal_pengambilan || sample.tanggal_pengambilan_sampel || null,
@@ -276,10 +267,13 @@ dedupeLkaResultRows = (rows = []) => {
             return null;
         const firstSample = uniqueSamples[0];
         const firstFpplSampel = pickObject(firstSample, ['fppl_sampel', 'FpplSampel']) || {};
-        const firstFppl = pickObject(firstFpplSampel, ['fppl', 'Fppl']) || {};
+        const firstFppl = pickObject(firstSample, ['fppl', 'Fppl']) || pickObject(firstFpplSampel, ['fppl', 'Fppl']) || {};
         const firstPelanggan = pickObject(firstFppl, ['pelanggan', 'Pelanggan']) || {};
-        const firstJenis = pickObject(firstFpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
-        const firstRegBm = pickObject(firstFpplSampel, ['reg_bm', 'RegBm']) || {};
+        const firstJenis = pickObject(firstSample, ['jenis_sampel', 'JenisSampel']) || pickObject(firstFpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
+        const firstRegBm = pickObject(firstSample, ['reg_bm', 'RegBm']) || pickObject(firstFpplSampel, ['reg_bm', 'RegBm']) || {};
+        const firstIdRegistrasi = firstSample.id_registrasi || firstFpplSampel.id_registrasi || null;
+        const firstIdJenisSampel = firstSample.id_jenis_sampel || firstFpplSampel.id_jenis_sampel || null;
+        const firstIdRegBm = firstSample.id_reg_bm || firstFpplSampel.id_reg_bm || null;
         const sampleRows = [];
         let totalParameter = 0;
         let totalSelesai = 0;
@@ -307,18 +301,18 @@ dedupeLkaResultRows = (rows = []) => {
         const unassignedSamples = availableSampleRows;
         const jenisLabels = [...new Set(sampleRows.map((sample) => sample.jenis_sampel).filter(Boolean))];
         return {
-            idRegistrasi: firstFpplSampel.id_registrasi,
-            id_registrasi: firstFpplSampel.id_registrasi,
+            idRegistrasi: firstIdRegistrasi,
+            id_registrasi: firstIdRegistrasi,
             nomorFppl: firstFppl.nomor_fppl || null,
             nomor_fppl: firstFppl.nomor_fppl || null,
             namaPelanggan: firstPelanggan.nama_instansi || null,
             nama_pelanggan: firstPelanggan.nama_instansi || null,
             jenisSampel: jenisLabels.join(', ') || firstJenis.jenis_sampel || null,
             jenis_sampel: jenisLabels.join(', ') || firstJenis.jenis_sampel || null,
-            idJenisSampel: firstFpplSampel.id_jenis_sampel || null,
-            id_jenis_sampel: firstFpplSampel.id_jenis_sampel || null,
-            idRegBm: firstFpplSampel.id_reg_bm || null,
-            id_reg_bm: firstFpplSampel.id_reg_bm || null,
+            idJenisSampel: firstIdJenisSampel,
+            id_jenis_sampel: firstIdJenisSampel,
+            idRegBm: firstIdRegBm,
+            id_reg_bm: firstIdRegBm,
             regBm: [firstRegBm.instansi, firstRegBm.ref_reg].filter(Boolean).join(' - '),
             reg_bm: [firstRegBm.instansi, firstRegBm.ref_reg].filter(Boolean).join(' - '),
             totalSampel: sampleRows.length,
@@ -394,8 +388,12 @@ dedupeLkaResultRows = (rows = []) => {
                 id_jenis_sampel: sample.id_jenis_sampel,
                 id_reg_bm: sample.id_reg_bm,
             },
-            include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }],
-            order: [['klasifikasi', 'ASC'], ['id_pkt_bm', 'ASC']],
+            include: [
+                { model: RegBm, required: false },
+                { model: JenisSampel, required: false },
+                { model: Klasifikasi, required: false },
+            ],
+            order: [['id_klasifikasi', 'ASC'], ['id_pkt_bm', 'ASC']],
         });
         return rows.map((instance) => {
             const row = withPaketBmDisplayFields(getPlain(instance));
@@ -425,8 +423,12 @@ dedupeLkaResultRows = (rows = []) => {
                     id_jenis_sampel: sample.id_jenis_sampel,
                     id_reg_bm: sample.id_reg_bm,
                 },
-                include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }],
-                order: [['klasifikasi', 'ASC'], ['id_pkt_bm', 'ASC']],
+                include: [
+                    { model: RegBm, required: false },
+                    { model: JenisSampel, required: false },
+                    { model: Klasifikasi, required: false },
+                ],
+                order: [['id_klasifikasi', 'ASC'], ['id_pkt_bm', 'ASC']],
                 transaction,
             });
             rows.map((item) => withPaketBmDisplayFields(getPlain(item))).forEach((row) => {
@@ -654,7 +656,7 @@ dedupeLkaResultRows = (rows = []) => {
             let lhuInstance = existing
                 ? await Lhu.findOne({ where: { nomor_lhu: existing.nomor_lhu }, transaction, lock: transaction.LOCK.UPDATE })
                 : null;
-            const nomorLhu = existing?.nomor_lhu || await generateNomorLhu(Lhu, transaction);
+            const nomorLhu = existing?.nomor_lhu || await generateDraftNomorLhu(Lhu, transaction);
             const firstSample = sampleInfos[0];
             const lhuPayload = {
                 nomor_lhu: nomorLhu,
@@ -688,7 +690,7 @@ dedupeLkaResultRows = (rows = []) => {
             await WorkflowLogService.logStatusTransition({
                 entityType: 'LHU',
                 entityId: nomorLhu,
-                action: existing ? 'MEMPERBARUI_DRAFT_LHU' : 'MEMBUAT_LHU',
+                action: existing ? 'MEMPERBARUI_DRAFT_LHU' : 'MEMBUAT_DRAFT_LHU',
                 statusBefore: existing?.status_lhu || null,
                 statusAfter: LHU_NEXT_STATUS.AFTER_QC_FINALIZE,
                 source: 'QC',

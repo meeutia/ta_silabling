@@ -203,11 +203,15 @@ listRequests = async (userNik, role, queryStatus) => {
                             as: 'sampels',
                             attributes: [
                                 'no_sampel',
+                                'id_registrasi',
+                                'id_jenis_sampel',
+                                'id_reg_bm',
                                 'tanggal_pengambilan_sampel',
                                 'diterima_pada',
                                 'kondisi_sampel',
                                 'abnormalitas_sampel',
                                 'acuan_pengambilan_sampel',
+                                'lokasi_spesifik',
                                 'koordinat',
                                 'status_sample'
                             ],

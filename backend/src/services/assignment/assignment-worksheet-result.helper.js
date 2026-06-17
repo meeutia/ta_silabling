@@ -3,6 +3,7 @@ const { PenugasanItem, Lka, LkaHasil, LkaRevisi, } = require('../../models/Assoc
 const { LKA_HASIL_STATUS } = require('./assignment.constants');
 const { getPlain, pickArray } = require('./assignment-object.helper');
 const { parseWorksheetFiles } = require('./assignment-worksheet-files.helper');
+const { SNAPSHOT_AFTER_ACTION, logRevisionResultSnapshotFromCurrentResult } = require('./assignment-revision-snapshot.helper');
 const { getLkaHasilStatus } = require('./assignment-status.helper');
 const { normalizeRevisionSource } = require('./assignment-revision.helper');
 class AssignmentWorksheetResultHelper {
@@ -171,6 +172,26 @@ isValidResultExpression = (value) => {
             return;
         const activeAnalystRevisionStatuses = ['Disetujui untuk Analis', 'Dikirim ke Analis'];
         if (sampleNos.length > 0) {
+            const activeRevisionRows = await LkaRevisi.findAll({
+                where: {
+                    kode_lka: kode,
+                    no_sampel: { [Op.in]: sampleNos },
+                    status_revisi: { [Op.in]: activeAnalystRevisionStatuses },
+                },
+                attributes: ['id_revisi_lka', 'kode_lka', 'no_sampel'],
+                transaction: transaction || undefined,
+                lock: transaction ? transaction.LOCK.UPDATE : undefined,
+            });
+            for (const revisionRow of activeRevisionRows) {
+                const plain = getPlain(revisionRow);
+                await logRevisionResultSnapshotFromCurrentResult({
+                    idRevisiLka: plain.id_revisi_lka,
+                    action: SNAPSHOT_AFTER_ACTION,
+                    kodeLka: plain.kode_lka || kode,
+                    noSampel: plain.no_sampel,
+                    source: 'Analis',
+                }, transaction);
+            }
             await LkaRevisi.update({
                 status_revisi: 'Diperbaiki Analis',
                 updated_at: new Date(),

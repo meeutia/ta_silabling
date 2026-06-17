@@ -14,6 +14,8 @@ router.get('/', AdminParameterController.getAllParameterMetode);
 router.get('/list-kategori-parameter', AdminParameterController.getKategoriParameters);
 router.get('/list-parameters', AdminParameterController.getParameters);
 router.get('/list-methods', AdminParameterController.getMethods);
+router.get('/list-klasifikasi', AdminParameterController.getKlasifikasi);
+router.get('/list-satuan', AdminParameterController.getSatuan);
 router.get('/list-jenis-sampel', AdminParameterController.getJenisSampel);
 router.post('/', AdminParameterController.createParameterMetode);
 router.put('/:id', AdminParameterController.updateParameterMetode);

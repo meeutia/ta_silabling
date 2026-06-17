@@ -18,6 +18,7 @@ import {
   getTanggalPenerimaanSampel,
   getTanggalPengambilanSampel,
   isSubkontrakResult,
+  formatParameterDisplayName,
 } from '../../lhu/lhuReviewUtils';
 import { WorksheetFilesPreviewPane } from '../../penyelia/penugasan/detail/WorksheetFilesPreviewPane';
 
@@ -134,7 +135,7 @@ function ResultTable({
 
           <tbody className="divide-y divide-gray-200 bg-white">
             {results.map((row, index) => {
-              const parameter = row.namaParameter || row.nama_parameter || '-';
+              const parameter = formatParameterDisplayName(row.namaParameter || row.nama_parameter || '-');
               const kategori = row.kategoriParameter || row.kategori_parameter || '';
               const metode = row.namaMetode || row.nama_metode || '-';
               const acuanMetode = row.acuanMetode || row.acuan_metode || '-';
@@ -600,7 +601,7 @@ function KasiLhuRevisionBox({
             {selectedRevisionRows.map((row, index) => {
               const hasilKey = getLkaHasilTargetKey(row);
               const hasilTarget = getLkaHasilTarget(row);
-              const parameter = row.namaParameter || row.nama_parameter || '-';
+              const parameter = formatParameterDisplayName(row.namaParameter || row.nama_parameter || '-');
               const metode = row.namaMetode || row.nama_metode || '-';
               const acuan = row.acuanMetode || row.acuan_metode || '-';
               return (

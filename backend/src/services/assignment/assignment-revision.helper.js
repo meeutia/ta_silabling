@@ -111,6 +111,26 @@ pickArray = (source, keys = []) => {
         const penyeliaAt = this.firstNonEmpty([row.revisiPenyeliaAt, row.revisi_penyelia_at]);
         const kasiAt = this.firstNonEmpty([row.revisiKasiPengujianAt, row.revisi_kasi_pengujian_at]);
         const combinedAt = this.firstNonEmpty([row.direvisiPada, row.direvisi_pada, penyeliaAt, kasiAt]);
+        const hasilSebelumRevisi = this.firstNonEmpty([row.hasilSebelumRevisi, row.hasil_sebelum_revisi]);
+        const hasilSetelahRevisi = this.firstNonEmpty([row.hasilSetelahRevisi, row.hasil_setelah_revisi]);
+        const catatanHasilSebelumRevisi = this.firstNonEmpty([row.catatanHasilSebelumRevisi, row.catatan_hasil_sebelum_revisi]);
+        const catatanHasilSetelahRevisi = this.firstNonEmpty([row.catatanHasilSetelahRevisi, row.catatan_hasil_setelah_revisi]);
+        const revisionComparison = (hasilSebelumRevisi || hasilSetelahRevisi || catatanHasilSebelumRevisi || catatanHasilSetelahRevisi)
+            ? {
+                idRevisiLka: row.idRevisiLka || row.id_revisi_lka || null,
+                id_revisi_lka: row.id_revisi_lka || row.idRevisiLka || null,
+                idRevisiSebelumnya: row.idRevisiSebelumnya || row.id_revisi_sebelumnya || null,
+                id_revisi_sebelumnya: row.id_revisi_sebelumnya || row.idRevisiSebelumnya || null,
+                hasilSebelumRevisi,
+                hasil_sebelum_revisi: hasilSebelumRevisi,
+                hasilSetelahRevisi,
+                hasil_setelah_revisi: hasilSetelahRevisi,
+                catatanHasilSebelumRevisi,
+                catatan_hasil_sebelum_revisi: catatanHasilSebelumRevisi,
+                catatanHasilSetelahRevisi,
+                catatan_hasil_setelah_revisi: catatanHasilSetelahRevisi,
+            }
+            : null;
         return {
             catatanRevisiHasilPenyelia: penyeliaNote,
             catatan_revisi_hasil_penyelia: penyeliaNote,
@@ -142,6 +162,16 @@ pickArray = (source, keys = []) => {
             direvisi_oleh: combinedBy,
             direvisiPada: combinedAt,
             direvisi_pada: combinedAt,
+            hasilSebelumRevisi,
+            hasil_sebelum_revisi: hasilSebelumRevisi,
+            hasilSetelahRevisi,
+            hasil_setelah_revisi: hasilSetelahRevisi,
+            catatanHasilSebelumRevisi,
+            catatan_hasil_sebelum_revisi: catatanHasilSebelumRevisi,
+            catatanHasilSetelahRevisi,
+            catatan_hasil_setelah_revisi: catatanHasilSetelahRevisi,
+            revisionComparison,
+            revision_comparison: revisionComparison,
         };
     };
     getRevisionItemsFromRow = (revision = {}) => {
@@ -377,7 +407,73 @@ pickArray = (source, keys = []) => {
                 buckets.addPenyeliaReview(revision);
             }
         }
-        return this.buildRevisionNoteResponseFromBuckets(buckets);
+        return {
+            ...this.buildRevisionNoteResponseFromBuckets(buckets),
+            ...this.buildLatestRevisionResultComparison(revisionRows, noSampel, kodeLka, options),
+        };
+    };
+    buildLatestRevisionResultComparison = (revisionRows = [], noSampel, kodeLka = null, options = {}) => {
+        const sampleNo = String(noSampel || '').trim();
+        const kode = String(kodeLka || '').trim();
+        const audience = options.audience || 'analis';
+        const matchingRows = (Array.isArray(revisionRows) ? revisionRows : [])
+            .filter((revision) => {
+                const revisionKode = String(revision.kode_lka || revision.kodeLka || '').trim();
+                const revisionSample = String(revision.no_sampel || revision.noSampel || '').trim();
+                if (!sampleNo || revisionSample !== sampleNo)
+                    return false;
+                if (kode && revisionKode && revisionKode !== kode)
+                    return false;
+                if (!this.isRevisionVisibleForAudience(revision, revision, audience))
+                    return false;
+                return Boolean(
+                    this.firstNonEmpty([revision.hasilSebelumRevisi, revision.hasil_sebelum_revisi]) ||
+                    this.firstNonEmpty([revision.hasilSetelahRevisi, revision.hasil_setelah_revisi]) ||
+                    this.firstNonEmpty([revision.catatanHasilSebelumRevisi, revision.catatan_hasil_sebelum_revisi]) ||
+                    this.firstNonEmpty([revision.catatanHasilSetelahRevisi, revision.catatan_hasil_setelah_revisi])
+                );
+            })
+            .sort((a, b) => {
+                const dateCompare = new Date(b.diajukan_pada || b.diajukanPada || 0) - new Date(a.diajukan_pada || a.diajukanPada || 0);
+                return dateCompare || String(b.id_revisi_lka || b.idRevisiLka || '').localeCompare(String(a.id_revisi_lka || a.idRevisiLka || ''));
+            });
+        const latest = matchingRows[0] || null;
+        if (!latest)
+            return {};
+        const hasilSebelumRevisi = this.firstNonEmpty([latest.hasilSebelumRevisi, latest.hasil_sebelum_revisi]);
+        const hasilSetelahRevisi = this.firstNonEmpty([latest.hasilSetelahRevisi, latest.hasil_setelah_revisi]);
+        const catatanHasilSebelumRevisi = this.firstNonEmpty([latest.catatanHasilSebelumRevisi, latest.catatan_hasil_sebelum_revisi]);
+        const catatanHasilSetelahRevisi = this.firstNonEmpty([latest.catatanHasilSetelahRevisi, latest.catatan_hasil_setelah_revisi]);
+        const revisionComparison = {
+            idRevisiLka: latest.id_revisi_lka || latest.idRevisiLka || null,
+            id_revisi_lka: latest.id_revisi_lka || latest.idRevisiLka || null,
+            idRevisiSebelumnya: latest.id_revisi_sebelumnya || latest.idRevisiSebelumnya || null,
+            id_revisi_sebelumnya: latest.id_revisi_sebelumnya || latest.idRevisiSebelumnya || null,
+            hasilSebelumRevisi,
+            hasil_sebelum_revisi: hasilSebelumRevisi,
+            hasilSetelahRevisi,
+            hasil_setelah_revisi: hasilSetelahRevisi,
+            catatanHasilSebelumRevisi,
+            catatan_hasil_sebelum_revisi: catatanHasilSebelumRevisi,
+            catatanHasilSetelahRevisi,
+            catatan_hasil_setelah_revisi: catatanHasilSetelahRevisi,
+            diajukanPada: latest.diajukan_pada || latest.diajukanPada || null,
+            diajukan_pada: latest.diajukan_pada || latest.diajukanPada || null,
+            sumberRevisi: latest.sumber_revisi || latest.sumberRevisi || null,
+            sumber_revisi: latest.sumber_revisi || latest.sumberRevisi || null,
+        };
+        return {
+            hasilSebelumRevisi,
+            hasil_sebelum_revisi: hasilSebelumRevisi,
+            hasilSetelahRevisi,
+            hasil_setelah_revisi: hasilSetelahRevisi,
+            catatanHasilSebelumRevisi,
+            catatan_hasil_sebelum_revisi: catatanHasilSebelumRevisi,
+            catatanHasilSetelahRevisi,
+            catatan_hasil_setelah_revisi: catatanHasilSetelahRevisi,
+            revisionComparison,
+            revision_comparison: revisionComparison,
+        };
     };
     uniqueSampleNos = (values = []) => {
         return Array.from(new Set((Array.isArray(values) ? values : [values])

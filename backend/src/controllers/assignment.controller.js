@@ -259,13 +259,16 @@ class AssignmentController {
             const currentUserNik = this.getCurrentNik(req);
             const { idPenugasanDetail } = req.params;
             const data = await this.assignmentService.reviewWorksheet(idPenugasanDetail, req.body, currentUserNik);
-            if ((req.body?.action || '').toLowerCase() === 'approve' || data?.status === 'Disetujui') {
-                try {
-                    await this.notificationService.notifyPenyeliaApproveKeKasi(idPenugasanDetail);
-                }
-                catch (notificationError) {
-                    console.error('Gagal kirim notifikasi LKA siap review ke Kasi Pengujian:', notificationError);
-                }
+            // Jalankan juga pada aksi revisi, karena dalam satu LKA/detail penugasan
+            // bisa ada sebagian sampel yang sudah lengkap disetujui Penyelia,
+            // sementara sampel lain masih diminta revisi. Service notifikasi akan
+            // memfilter sendiri: email hanya dikirim untuk sampel yang seluruh
+            // parameternya sudah siap direview Kasi.
+            try {
+                await this.notificationService.notifyPenyeliaApproveKeKasi(idPenugasanDetail);
+            }
+            catch (notificationError) {
+                console.error('Gagal kirim notifikasi LKA siap review ke Kasi Pengujian:', notificationError);
             }
             return res.json({
                 success: true,

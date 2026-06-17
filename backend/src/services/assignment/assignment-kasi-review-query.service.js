@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Fppl, FpplSampel, RegBm, PktBm, PktBmParam, JenisSampel, Parameter, Metode, ParameterMetode, FpplParameterMetode, Penugasan, PenugasanDetail, PenugasanItem, Sampel, Lka, LkaHasil, JadwalSampel, } = require('../../models/Associations');
+const { Fppl, FpplSampel, RegBm, PktBm, PktBmParam, Satuan, JenisSampel, Parameter, Metode, ParameterMetode, FpplParameterMetode, Penugasan, PenugasanDetail, PenugasanItem, Sampel, Lka, LkaHasil, JadwalSampel, } = require('../../models/Associations');
 const { SAMPLE_REVIEW_STATUS, } = require('../../constants/lhu-status.constant');
 const { LKA_HASIL_STATUS, } = require('./assignment.constants');
 const { buildLkaHasilRevisionResponse, collectRevisionNotesForSample, } = require('./assignment-revision.helper');
@@ -25,16 +25,21 @@ getBmParamMap = async (sample = {}) => {
                 id_jenis_sampel: idJenisSampel,
                 id_parameter: { [Op.in]: parameterIds },
             },
+            include: [{ model: Satuan, attributes: ['id_satuan', 'satuan'], required: false }],
         });
         const map = new Map();
         rows.forEach((instance) => {
             const row = getPlain(instance);
             if (!row?.id_parameter)
                 return;
+            const satuanRow = row.satuan || row.Satuan || {};
+            const satuanLabel = satuanRow.satuan || row.satuan || row.satuan_bm || null;
             map.set(String(row.id_parameter), {
                 id_pkt_bm: null,
                 nilai_bm: null,
-                satuan_bm: row.satuan_bm || null,
+                id_satuan: row.id_satuan || satuanRow.id_satuan || null,
+                satuan: satuanLabel,
+                satuan_bm: satuanLabel,
                 ket_bm: row.ket_bm || null,
             });
         });

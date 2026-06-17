@@ -1,4 +1,4 @@
-const { Lhu, Sampel, FpplSampel, JenisSampel, RegBm, Fppl, Pelanggan, PktBm, PktBmParam, PktBmNilai, Parameter, ParameterMetode, Metode, Pegawai, JadwalSampel, Lka, LkaHasil, PenugasanDetail, } = require('../../models/Associations');
+const { Lhu, Sampel, FpplSampel, JenisSampel, RegBm, Fppl, Pelanggan, PktBm, Klasifikasi, PktBmParam, Satuan, PktBmNilai, Parameter, ParameterMetode, Metode, Pegawai, JadwalSampel, Lka, LkaHasil, PenugasanDetail, } = require('../../models/Associations');
 const { formatSampleNoList, formatSampleFieldLines, getSampleOrderValue, sortRowsBySampleOrder, normalizeSampleTypeForLhu, normalizeSampleCollectorForLhu, } = require('./lhu-pdf-format.util');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
 class LhuPdfDataService {
@@ -152,7 +152,7 @@ getPlain = (instance) => {
                 {
                     model: PktBm,
                     required: false,
-                    include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }],
+                    include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }, { model: Klasifikasi, required: false }],
                 },
             ],
             transaction,
@@ -226,6 +226,7 @@ getPlain = (instance) => {
         const [metaRows, nilaiRows] = await Promise.all([
             PktBmParam.findAll({
                 where: { id_reg_bm: paket.id_reg_bm, id_jenis_sampel: paket.id_jenis_sampel },
+                include: [{ model: Satuan, attributes: ['id_satuan', 'satuan'], required: false }],
                 transaction,
             }),
             PktBmNilai.findAll({ where: { id_pkt_bm: id }, transaction }),
@@ -236,10 +237,15 @@ getPlain = (instance) => {
             if (!row?.id_parameter)
                 return;
             const nilai = nilaiMap.get(String(row.id_parameter)) || {};
+            const satuanRow = row.satuan || row.Satuan || {};
+            const satuanLabel = satuanRow.satuan || row.satuan || row.satuan_bm || null;
             map.set(String(row.id_parameter), {
                 ...row,
                 id_pkt_bm: id,
                 nilai_bm: nilai.nilai_bm ?? null,
+                id_satuan: row.id_satuan || satuanRow.id_satuan || null,
+                satuan: satuanLabel,
+                satuan_bm: satuanLabel,
             });
         });
         return map;

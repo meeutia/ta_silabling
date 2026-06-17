@@ -58,22 +58,15 @@ getExistingLhuBySample = async (noSampel, transaction = null) => {
         const sampleInstance = await Sampel.findOne({
             where: { no_sampel: noSampel },
             include: [
+                { model: JenisSampel, as: 'jenis_sampel', required: false },
+                { model: RegBm, as: 'reg_bm', required: false },
                 {
-                    model: FpplSampel,
-                    as: 'fppl_sampel',
+                    model: Fppl,
+                    as: 'fppl',
                     required: true,
                     include: [
-                        { model: JenisSampel, required: false },
-                        { model: RegBm, required: false },
-                        {
-                            model: Fppl,
-                            as: 'fppl',
-                            required: true,
-                            include: [
-                                { model: Pelanggan, as: 'pelanggan', required: true },
-                                { model: JadwalSampel, as: 'jadwal_sampels', required: false },
-                            ],
-                        },
+                        { model: Pelanggan, as: 'pelanggan', required: true },
+                        { model: JadwalSampel, as: 'jadwal_sampels', required: false },
                     ],
                 },
                 { model: Lhu, as: 'lhu', required: false },
@@ -84,10 +77,17 @@ getExistingLhuBySample = async (noSampel, transaction = null) => {
             throw new Error('Sampel tidak ditemukan.');
         }
         const sample = getPlain(sampleInstance);
-        const fpplSampel = pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
-        const jenis = pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
-        const regBm = pickObject(fpplSampel, ['reg_bm', 'RegBm']) || {};
-        const fppl = pickObject(fpplSampel, ['fppl', 'Fppl']) || {};
+        const fpplSampel = await FpplSampel.findOne({
+            where: {
+                id_registrasi: sample.id_registrasi,
+                id_jenis_sampel: sample.id_jenis_sampel,
+                id_reg_bm: sample.id_reg_bm,
+            },
+            transaction,
+        }).then(getPlain);
+        const jenis = pickObject(sample, ['jenis_sampel', 'JenisSampel']) || {};
+        const regBm = pickObject(sample, ['reg_bm', 'RegBm']) || {};
+        const fppl = pickObject(sample, ['fppl', 'Fppl']) || {};
         const pelanggan = pickObject(fppl, ['pelanggan', 'Pelanggan']) || {};
         const jadwal = getActiveJadwalFromFppl(fppl);
         return {
@@ -111,10 +111,10 @@ getExistingLhuBySample = async (noSampel, transaction = null) => {
             lokasi_pengambilan_sampel: sample.lokasi_spesifik || fppl.lokasi_pengambilan_sampel || null,
             koordinat: sample.koordinat || null,
             status_sample: sample.status_sample || null,
-            id_registrasi: fpplSampel.id_registrasi || sample.id_registrasi || null,
-            id_jenis_sampel: fpplSampel.id_jenis_sampel || sample.id_jenis_sampel || null,
-            id_reg_bm: fpplSampel.id_reg_bm || sample.id_reg_bm || null,
-            jumlah_sampel: fpplSampel.jumlah_sampel || null,
+            id_registrasi: sample.id_registrasi || fpplSampel?.id_registrasi || null,
+            id_jenis_sampel: sample.id_jenis_sampel || fpplSampel?.id_jenis_sampel || null,
+            id_reg_bm: sample.id_reg_bm || fpplSampel?.id_reg_bm || null,
+            jumlah_sampel: fpplSampel?.jumlah_sampel || null,
             jenis_sampel: jenis.jenis_sampel || null,
             jenisSampel: jenis.jenis_sampel || null,
             reg_bm_instansi: regBm.instansi || null,

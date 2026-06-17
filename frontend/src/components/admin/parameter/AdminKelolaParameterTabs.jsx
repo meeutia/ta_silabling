@@ -12,6 +12,127 @@ import {
 import { SafeHtml } from './SafeHtml';
 import { formatCurrency, normalizeBool } from './parameterFormatters';
 
+const ADMIN_TOGGLE_SWITCH_CSS = `
+.cl-toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cl-switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.cl-switch > input {
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  z-index: -1;
+  position: absolute;
+  right: 6px;
+  top: -8px;
+  display: block;
+  margin: 0;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  background-color: rgb(0, 0, 0, 0.38);
+  outline: none;
+  opacity: 0;
+  transform: scale(1);
+  pointer-events: none;
+  transition: opacity 0.3s 0.1s, transform 0.2s 0.1s;
+}
+
+.cl-switch > span::before {
+  content: "";
+  float: right;
+  display: inline-block;
+  margin: 5px 0 5px 10px;
+  border-radius: 7px;
+  width: 36px;
+  height: 14px;
+  background-color: rgb(0, 0, 0, 0.38);
+  vertical-align: top;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.cl-switch > span::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 16px;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  background-color: #fff;
+  box-shadow: 0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12);
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.cl-switch > input:checked {
+  right: -10px;
+  background-color: #85b8b7;
+}
+
+.cl-switch > input:checked + span::before {
+  background-color: #85b8b7;
+}
+
+.cl-switch > input:checked + span::after {
+  background-color: #018786;
+  transform: translateX(16px);
+}
+
+.cl-switch:hover > input {
+  opacity: 0.04;
+}
+
+.cl-switch > input:focus {
+  opacity: 0.12;
+}
+
+.cl-switch:hover > input:focus {
+  opacity: 0.16;
+}
+
+.cl-switch > input:active {
+  opacity: 1;
+  transform: scale(0);
+  transition: transform 0s, opacity 0s;
+}
+
+.cl-switch > input:active + span::before {
+  background-color: #8f8f8f;
+}
+
+.cl-switch > input:checked:active + span::before {
+  background-color: #85b8b7;
+}
+
+.cl-switch > input:disabled {
+  opacity: 0;
+}
+
+.cl-switch > input:disabled + span::before {
+  background-color: #ddd;
+}
+
+.cl-switch > input:checked:disabled + span::before {
+  background-color: #bfdbda;
+}
+
+.cl-switch > input:checked:disabled + span::after {
+  background-color: #61b5b4;
+}
+`;
+
+
 function CategoryBadge({ category }) {
   const normalized = String(category || '-').toUpperCase();
   const colorMap = {
@@ -27,20 +148,6 @@ function CategoryBadge({ category }) {
       }`}
     >
       {category || '-'}
-    </span>
-  );
-}
-
-function ActiveStatusBadge({ isActive }) {
-  return normalizeBool(isActive) ? (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-      <CheckCircle2 className="w-3.5 h-3.5" />
-      Aktif
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-      <XCircle className="w-3.5 h-3.5" />
-      Nonaktif
     </span>
   );
 }
@@ -108,19 +215,15 @@ function StatusToggleButton({ item, onToggle }) {
   const isActive = normalizeBool(item?.is_active);
 
   return (
-    <div className="flex justify-end">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`inline-flex items-center justify-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
-          isActive
-            ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
-            : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-        }`}
-        title={isActive ? 'Nonaktifkan acuan' : 'Aktifkan kembali acuan'}
-      >
-        {isActive ? 'Nonaktifkan' : 'Aktifkan'}
-      </button>
+    <div className="cl-toggle-switch" title={isActive ? 'Nonaktifkan' : 'Aktifkan'}>
+      <label className="cl-switch" aria-label={isActive ? 'Nonaktifkan data' : 'Aktifkan data'}>
+        <input
+          type="checkbox"
+          checked={isActive}
+          onChange={onToggle}
+        />
+        <span />
+      </label>
     </div>
   );
 }
@@ -258,19 +361,16 @@ function ParameterMetodeTable({ rows, onEdit, onDelete, onToggleStatus }) {
               </td>
 
               <td className="px-4 py-3">
-                <ActiveStatusBadge isActive={item.is_active ?? true} />
+                <StatusToggleButton item={item} onToggle={() => onToggleStatus('param_metode', item)} />
               </td>
 
               <td className="px-4 py-3">
-                <div className="flex items-center justify-end gap-1">
-                  <StatusToggleButton item={item} onToggle={() => onToggleStatus('param_metode', item)} />
-                  <ActionButtons
-                    onEdit={() => onEdit(item)}
-                    onDelete={() => onDelete(item)}
-                    showEdit={item.can_edit !== false}
-                    showDelete={item.can_delete !== false}
-                  />
-                </div>
+                <ActionButtons
+                  onEdit={() => onEdit(item)}
+                  onDelete={() => onDelete(item)}
+                  showEdit={item.can_edit !== false}
+                  showDelete={item.can_delete !== false}
+                />
               </td>
             </tr>
           ))}
@@ -311,22 +411,29 @@ function RegulasiTable({ rows, onEdit, onDelete, onToggleStatus }) {
                 {item.is_locked && (
                   <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700">
                     <Lock className="h-3.5 w-3.5" />
-                    Acuan dikunci, hanya status yang bisa diubah
+                    Sudah digunakan pada LHU, hanya status yang bisa diubah
+                  </p>
+                )}
+                {!item.is_locked && item.can_delete === false && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Acuan sudah punya relasi. Perubahan status dilakukan melalui switch aktif/nonaktif.
                   </p>
                 )}
               </td>
 
               <td className="px-4 py-3">
-                <ActiveStatusBadge isActive={item.is_active} />
+                <StatusToggleButton item={item} onToggle={() => onToggleStatus('regulasi', item)} />
               </td>
 
               <td className="px-4 py-3">
-                {item.is_locked || item.can_delete === false ? (
-                  <StatusToggleButton item={item} onToggle={() => onToggleStatus('regulasi', item)} />
+                {item.is_locked ? (
+                  <span className="block text-right text-xs text-gray-400">-</span>
                 ) : (
                   <ActionButtons
                     onEdit={() => onEdit(item)}
-                    onDelete={() => onDelete(item)}
+                    onDelete={() => {}}
+                    showEdit={item.can_edit_master !== false}
+                    showDelete={false}
                   />
                 )}
               </td>
@@ -385,7 +492,7 @@ function PaketGroupTable({ rows, onManage, onToggleStatus }) {
               </td>
 
               <td className="px-4 py-3">
-                <ActiveStatusBadge isActive={item.is_active} />
+                <StatusToggleButton item={item} onToggle={() => onToggleStatus('paket_group', item)} />
                 {item.is_locked && (
                   <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700">
                     <Lock className="h-3.5 w-3.5" />
@@ -395,16 +502,13 @@ function PaketGroupTable({ rows, onManage, onToggleStatus }) {
               </td>
 
               <td className="px-4 py-3 text-right">
-                <div className="flex flex-wrap justify-end gap-2">
-                  <StatusToggleButton item={item} onToggle={() => onToggleStatus('paket_group', item)} />
-                  <button
-                    type="button"
-                    onClick={() => onManage(item)}
-                    className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-medium transition-colors"
-                  >
-                    Kelola Matrix
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onManage(item)}
+                  className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-medium transition-colors"
+                >
+                  Kelola Matrix
+                </button>
               </td>
             </tr>
           ))}
@@ -523,8 +627,10 @@ export function AdminKelolaParameterTabs({
   onToggleStatus,
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
-      <div className="border-b border-gray-200">
+    <>
+      <style>{ADMIN_TOGGLE_SWITCH_CSS}</style>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+        <div className="border-b border-gray-200">
         <div className="flex overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -583,6 +689,7 @@ export function AdminKelolaParameterTabs({
           </>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

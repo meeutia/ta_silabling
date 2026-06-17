@@ -42,13 +42,19 @@ function buildSupervisorApprovedToKasiEmail({
   const registrasi = idRegistrasi || fppl?.id_registrasi || '-';
   const fpplNo = nomorFppl || fppl?.nomor_fppl || registrasi;
   const daftarSampel = formatSampleList(sampleNos);
-  const subject = `Permohonan siap direview Kasi Pengujian - ${fpplNo}`;
+  const subject = sampleNos.length === 1
+    ? `Sampel siap direview Kasi Pengujian - ${sampleNos[0]}`
+    : `Permohonan siap direview Kasi Pengujian - ${fpplNo}`;
 
   const body = [
     `Yth. ${namaKasi},`,
     '',
-    'Penyelia telah menyetujui seluruh hasil pengujian untuk satu permohonan.',
-    'Permohonan ini sudah siap direview oleh Kasi Pengujian.',
+    sampleNos.length === 1
+      ? `Penyelia telah menyetujui seluruh hasil pengujian untuk sampel ${sampleNos[0]}.`
+      : 'Penyelia telah menyetujui seluruh hasil pengujian untuk satu permohonan.',
+    sampleNos.length === 1
+      ? 'Sampel ini sudah siap direview oleh Kasi Pengujian.'
+      : 'Permohonan ini sudah siap direview oleh Kasi Pengujian.',
     '',
     `ID Registrasi      : ${registrasi}`,
     `Nomor FPPL         : ${fpplNo}`,
@@ -66,7 +72,9 @@ function buildSupervisorApprovedToKasiEmail({
     subject,
     body,
     title: subject,
-    preheader: `Permohonan ${fpplNo} sudah lengkap dan siap direview Kasi Pengujian.`,
+    preheader: sampleNos.length === 1
+      ? `Sampel ${sampleNos[0]} sudah lengkap dan siap direview Kasi Pengujian.`
+      : `Permohonan ${fpplNo} sudah lengkap dan siap direview Kasi Pengujian.`,
     actionUrl: reviewLink,
     actionLabel: 'Buka Review Kasi',
   });

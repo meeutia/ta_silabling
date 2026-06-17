@@ -557,7 +557,7 @@ class RequestWorkflowService {
             const diterimaPada = `${tanggalPenerimaan} ${jamPenerimaan}`;
             let nextSequence = await getNextSampleSequence(transaction);
             const generatedSamples = [];
-            for (const fpplSampel of fpplSampelRows) {
+            for (const [groupIndex, fpplSampel] of fpplSampelRows.entries()) {
                 const fpplSampelJson = filterFpplSampelCompositeChildren(fpplSampel.toJSON());
                 const jenisSampel = fpplSampelJson.jenis_sampel?.jenis_sampel ||
                     fpplSampelJson.JenisSampel?.jenis_sampel ||
@@ -567,16 +567,34 @@ class RequestWorkflowService {
                     fpplSampelJson.FpplParameterMetodes ||
                     fpplSampelJson.fpplParameterMetodes ||
                     [];
-                const payloadForThisGroup = sampelsPayload.filter((item) => {
+                let payloadForThisGroup = sampelsPayload.filter((item) => {
                     const itemKey = normalizeFpplSampelCompositePayload({ ...item, id_registrasi: item.id_registrasi || item.idRegistrasi || idRegistrasi });
                     return itemKey ? sameFpplSampelComposite(itemKey, fpplSampelJson) : false;
                 });
+                if (!payloadForThisGroup.length) {
+                    payloadForThisGroup = sampelsPayload.filter((item) => Number(item.sample_group_index) === groupIndex);
+                }
                 const jumlahSampelDb = Number(fpplSampelJson.jumlah_sampel || 1);
                 const totalSampel = Number.isFinite(jumlahSampelDb) && jumlahSampelDb > 0 ? jumlahSampelDb : Math.max(payloadForThisGroup.length, 1);
+                if (sampelsPayload.length > 1 && payloadForThisGroup.length < totalSampel) {
+                    throw new Error(`Data penerimaan sampel untuk ${jenisSampel} belum lengkap atau tidak sesuai kelompok sampel.`);
+                }
                 for (let i = 0; i < totalSampel; i += 1) {
                     const itemPayload = payloadForThisGroup.find((item) => Number(item.sample_unit_index) === i + 1) ||
                         payloadForThisGroup[i] ||
                         {};
+                    const useLegacyTopLevelFallback = sampelsPayload.length <= 1;
+                    const pickItemValue = (snakeKey, camelKey, fallbackValue = null) => {
+                        const itemValue = itemPayload[snakeKey] ?? itemPayload[camelKey];
+                        if (itemValue !== undefined && itemValue !== null && String(itemValue).trim() !== '') {
+                            return itemValue;
+                        }
+                        if (!useLegacyTopLevelFallback) {
+                            return fallbackValue;
+                        }
+                        const legacyValue = payload[snakeKey] ?? payload[camelKey];
+                        return legacyValue !== undefined && legacyValue !== null && String(legacyValue).trim() !== '' ? legacyValue : fallbackValue;
+                    };
                     const noSampel = buildNoSampel(nextSequence, jenisSampel, receivedAt, fpplSampelJson.id_jenis_sampel);
                     nextSequence += 1;
                     const tanggalPengambilanSampel = resolveTanggalPengambilanSampel({
@@ -595,11 +613,11 @@ class RequestWorkflowService {
                         id_reg_bm: fpplSampelJson.id_reg_bm,
                         tanggal_pengambilan_sampel: tanggalPengambilanSampel,
                         diterima_pada: diterimaPada,
-                        kondisi_sampel: normalizeSampleCondition(itemPayload.kondisi_sampel || itemPayload.kondisiSampel || payload.kondisi_sampel || payload.kondisiSampel || 'Sesuai'),
-                        abnormalitas_sampel: itemPayload.abnormalitas_sampel || itemPayload.abnormalitasSampel || payload.abnormalitas_sampel || payload.abnormalitasSampel || null,
-                        acuan_pengambilan_sampel: itemPayload.acuan_pengambilan_sampel || itemPayload.acuanPengambilanSampel || payload.acuan_pengambilan_sampel || payload.acuanPengambilanSampel || null,
-                        lokasi_spesifik: itemPayload.lokasi_spesifik || itemPayload.lokasiSpesifik || payload.lokasi_spesifik || payload.lokasiSpesifik || null,
-                        koordinat: itemPayload.koordinat || payload.koordinat || null,
+                        kondisi_sampel: normalizeSampleCondition(pickItemValue('kondisi_sampel', 'kondisiSampel', itemPayload.kondisi || 'Sesuai')),
+                        abnormalitas_sampel: pickItemValue('abnormalitas_sampel', 'abnormalitasSampel', itemPayload.catatan || null),
+                        acuan_pengambilan_sampel: pickItemValue('acuan_pengambilan_sampel', 'acuanPengambilanSampel'),
+                        lokasi_spesifik: pickItemValue('lokasi_spesifik', 'lokasiSpesifik'),
+                        koordinat: pickItemValue('koordinat', 'koordinat'),
                         diterima_oleh: currentNik || payload.diterima_oleh || payload.diterimaOleh || null,
                         status_sample: 'Diterima',
                     }, { transaction });
@@ -626,8 +644,8 @@ class RequestWorkflowService {
                         jenis_sampel: jenisSampel,
                         tanggal_pengambilan_sampel: tanggalPengambilanSampel,
                         diterima_pada: diterimaPada,
-                        lokasi_spesifik: itemPayload.lokasi_spesifik || itemPayload.lokasiSpesifik || payload.lokasi_spesifik || payload.lokasiSpesifik || null,
-                        koordinat: itemPayload.koordinat || payload.koordinat || null,
+                        lokasi_spesifik: pickItemValue('lokasi_spesifik', 'lokasiSpesifik'),
+                        koordinat: pickItemValue('koordinat', 'koordinat'),
                         total_parameter: parameterRows.length,
                     });
                 }

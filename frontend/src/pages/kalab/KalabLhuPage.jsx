@@ -57,8 +57,8 @@ export function KalabLhuPage({ initialLhuNumber = '' }) {
       <ConfirmActionModal
         open={page.confirmApproveModal?.open}
         title="Konfirmasi Pengesahan LHU"
-        message={`Setujui dan sahkan LHU ${page.confirmApproveModal?.nomorLhu || page.selectedNomorLhu || '-'}? PDF final akan dibuat ulang.`}
-        confirmLabel="Sahkan LHU"
+        message={`Setujui dan sahkan draft LHU ${page.confirmApproveModal?.nomorLhu || page.selectedNomorLhu || '-'}? Nomor LHU resmi akan dibuat setelah persetujuan ini dan PDF final akan dibuat ulang.`}
+        confirmLabel="Sahkan & Terbitkan Nomor"
         cancelLabel="Batal"
         loading={page.actionLoading === 'approve'}
         onCancel={page.closeConfirmApproveModal}

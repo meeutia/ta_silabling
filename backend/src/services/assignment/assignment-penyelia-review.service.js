@@ -7,6 +7,7 @@ const { parseWorksheetFiles, getPrimaryWorksheetPath, } = require('./assignment-
 const { getDetailParameterInfo, } = require('./assignment-monitor.mapper');
 const { internalAssignmentWhere, } = require('./assignment-scope.helper');
 const { loadRevisionRowsForLka, markRevisionItemsApprovedByPenyelia, } = require('./assignment-worksheet.service');
+const { SNAPSHOT_BEFORE_ACTION, logRevisionResultSnapshotFromCurrentResult } = require('./assignment-revision-snapshot.helper');
 const { prefixRevisionNote, stripRevisionNotePrefix, appendRevisionNote, buildRevisionNotePatch, buildRevisionResultNotePatch, buildLkaHasilRevisionResponse, normalizeRevisionTargetItem, buildWorksheetRevisionResponse, collectRevisionNotesForSample, getLkaHasilKey, parseLkaHasilKey, lkaHasilWhereFromKey, lkaHasilWhereFromKeys, } = require('./assignment-revision.helper');
 const { resolveLkaHasilStatus, syncAssignmentHeaderStatusFromDetail, } = require('./assignment-status.helper');
 const { assertPenugasanDetailSamplesEditableBeforeLhu, } = require('./assignment-lhu-lock.helper');
@@ -131,6 +132,16 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPay
                 created_at: new Date(),
                 updated_at: null,
             }, { transaction });
+            if (row.no_sampel) {
+                await logRevisionResultSnapshotFromCurrentResult({
+                    idRevisiLka,
+                    action: SNAPSHOT_BEFORE_ACTION,
+                    kodeLka: row.kode_lka || kode,
+                    noSampel: row.no_sampel,
+                    actorNik: userNik,
+                    source: source === 'KASI_PENGUJIAN' ? 'Kasi' : 'Penyelia',
+                }, transaction);
+            }
             if (!firstRevision)
                 firstRevision = revision;
             await WorkflowLogService.logStatusTransition({

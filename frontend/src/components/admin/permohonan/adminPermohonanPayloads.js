@@ -3,6 +3,14 @@ const cleanText = (value) => String(value ?? '').trim();
 export const buildSampleReceivePayload = (sampelFormList = []) => {
   const sampels = sampelFormList.map((form) => ({
     id_fppl_sampel: form.id_fppl_sampel,
+    idFpplSampel: form.idFpplSampel || form.id_fppl_sampel,
+    id_registrasi: form.id_registrasi,
+    idRegistrasi: form.idRegistrasi || form.id_registrasi,
+    id_jenis_sampel: form.id_jenis_sampel,
+    idJenisSampel: form.idJenisSampel || form.id_jenis_sampel,
+    id_reg_bm: form.id_reg_bm,
+    idRegBm: form.idRegBm || form.id_reg_bm,
+    sample_group_index: form.sample_group_index,
     sample_unit_index: form.sample_unit_index,
     sample_type_counter: form.sample_type_counter,
     sample_label: form.sample_label,

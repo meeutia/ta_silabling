@@ -52,11 +52,12 @@ export const adminParameterApi = {
   },
 
   async getPaketTabData() {
-    const [paket, regulasi, jenisSampel, parameters] = await Promise.all([
+    const [paket, regulasi, jenisSampel, parameters, satuan] = await Promise.all([
       requestData('/admin/parameters/paket', {}, { auth: true }),
       requestData('/admin/parameters/regulasi', {}, { auth: true }),
       requestData('/admin/parameters/list-jenis-sampel', {}, { auth: true }),
       requestData('/admin/parameters/list-parameters', {}, { auth: true }),
+      requestData('/admin/parameters/list-satuan', {}, { auth: true }).catch(() => []),
     ]);
 
     return {
@@ -64,6 +65,7 @@ export const adminParameterApi = {
       regulasi: Array.isArray(regulasi) ? regulasi : [],
       jenisSampel: Array.isArray(jenisSampel) ? jenisSampel : [],
       parameters: Array.isArray(parameters) ? parameters.map(normalizeParameterCategory) : [],
+      satuan: Array.isArray(satuan) ? satuan : [],
     };
   },
 

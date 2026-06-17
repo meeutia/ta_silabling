@@ -144,6 +144,27 @@ const DELETE_META = {
   },
 };
 
+
+
+const STATUS_META = {
+  param_metode: {
+    label: 'parameter metode',
+    description: (item) => `${stripHtml(item?.parameter?.nama_parameter || item?.nama_parameter || '-')} - ${item?.metode?.nama_metode || '-'}`,
+  },
+  regulasi: {
+    label: 'regulasi',
+    description: (item) => item?.ref_reg || item?.id_reg_bm || '-',
+  },
+  paket_group: {
+    label: 'kelompok baku mutu',
+    description: (item) => `${item?.jenis_sampel_label || item?.id_jenis_sampel || '-'} - ${item?.reg_bm?.ref_reg || item?.id_reg_bm || '-'}`,
+  },
+  paket: {
+    label: 'klasifikasi baku mutu',
+    description: (item) => item?.klasifikasi || item?.id_pkt_bm || '-',
+  },
+};
+
 function getInitialFormData(type, item) {
   if (type === 'add_param_metode' || type === 'edit_param_metode') {
     return item
@@ -236,6 +257,10 @@ function validateParameterMetode(body) {
 }
 
 function validateMatrixPayload(formValue, paketItems) {
+  if (!String(formValue.satuan_bm || '').trim()) {
+    throw new Error('Satuan baku mutu wajib dipilih atau diisi');
+  }
+
   assertBmLength(formValue.satuan_bm, 20, 'Satuan baku mutu');
   assertBmLength(formValue.ket_bm, 100, 'Keterangan baku mutu');
 
@@ -327,6 +352,7 @@ export function useAdminKelolaParameter() {
   const [parametersOption, setParametersOption] = useState([]);
   const [methodsOption, setMethodsOption] = useState([]);
   const [kategoriParameterOptions, setKategoriParameterOptions] = useState([]);
+  const [satuanOptions, setSatuanOptions] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState(null);
@@ -334,6 +360,7 @@ export function useAdminKelolaParameter() {
   const [formData, setFormData] = useState({});
 
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmStatusChange, setConfirmStatusChange] = useState(null);
   const [paketParamForm, setPaketParamForm] = useState(EMPTY_PAKET_PARAM_FORM);
   const [editingPaketParam, setEditingPaketParam] = useState(null);
 
@@ -364,12 +391,13 @@ export function useAdminKelolaParameter() {
       }
 
       if (activeTab === 'paket_baku_mutu') {
-        const { paket, regulasi, jenisSampel, parameters } = await adminParameterApi.getPaketTabData();
+        const { paket, regulasi, jenisSampel, parameters, satuan } = await adminParameterApi.getPaketTabData();
 
         setPaketData(paket);
         setRegulasiData(regulasi);
         setJenisSampelOptions(jenisSampel);
         setParametersOption(parameters);
+        setSatuanOptions(satuan);
       }
 
       if (activeTab === 'tarif_pengambilan') {
@@ -542,10 +570,26 @@ export function useAdminKelolaParameter() {
     }
   }, [confirmDelete, fetchData, fetchPaketMatrix, selectedItem, showToast]);
 
-  const handleToggleMasterStatus = useCallback(
-    async (type, item) => {
+  const handleToggleMasterStatus = useCallback((type, item) => {
+    const meta = STATUS_META[type] || { label: 'data', description: () => '' };
+    const isCurrentlyActive = normalizeBool(item?.is_active);
+
+    setConfirmStatusChange({
+      type,
+      item,
+      label: meta.label,
+      description: meta.description ? meta.description(item) : '',
+      isCurrentlyActive,
+    });
+  }, []);
+
+  const handleConfirmToggleStatus = useCallback(
+    async () => {
+      if (!confirmStatusChange) return;
+
+      const { type, item, isCurrentlyActive } = confirmStatusChange;
+
       try {
-        const isCurrentlyActive = normalizeBool(item?.is_active);
         let result;
         let label = 'data';
 
@@ -564,12 +608,13 @@ export function useAdminKelolaParameter() {
         }
 
         showToast(result?.message || `Berhasil ${isCurrentlyActive ? 'menonaktifkan' : 'mengaktifkan'} ${label}`);
+        setConfirmStatusChange(null);
         fetchData();
       } catch (error) {
         showToast(error.message || 'Gagal mengubah status data', 'error');
       }
     },
-    [fetchData, showToast]
+    [confirmStatusChange, fetchData, showToast]
   );
 
   const handleKelolaPaket = useCallback(
@@ -847,12 +892,14 @@ export function useAdminKelolaParameter() {
     selectedItem,
     formData,
     confirmDelete,
+    confirmStatusChange,
     paketParamForm,
     editingPaketParam,
     paketParameters,
     parametersOption,
     methodsOption,
     kategoriParameterOptions,
+    satuanOptions,
     regulasiData,
     jenisSampelOptions,
     handleChangeTab,
@@ -863,6 +910,7 @@ export function useAdminKelolaParameter() {
     handleAddCurrentTab,
     handleKelolaPaket,
     handleToggleMasterStatus,
+    handleConfirmToggleStatus,
     handlePaketParamFormChange,
     handleAddPaketParameter,
     handleEditPaketParamChange,
@@ -873,6 +921,7 @@ export function useAdminKelolaParameter() {
     setSearchQuery,
     setFilterStatus,
     setConfirmDelete,
+    setConfirmStatusChange,
     setEditingPaketParam,
   };
 }

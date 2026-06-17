@@ -8,6 +8,52 @@ function getNilaiValue(formValue, idPktBm) {
   return formValue?.nilai_by_paket?.[idPktBm] ?? '';
 }
 
+
+function SatuanBmInput({ value, onChange, satuanOptions = [], disabled = false }) {
+  const normalizedOptions = (Array.isArray(satuanOptions) ? satuanOptions : [])
+    .map((item) => item?.satuan || item?.nama_satuan || item?.satuan_bm || item)
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+  const uniqueOptions = Array.from(new Set(normalizedOptions));
+  const datalistId = 'satuan-bm-options';
+
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-gray-700">
+        Satuan BM <span className="text-red-500">*</span>
+      </label>
+      <input
+        list={datalistId}
+        type="text"
+        name="satuan_bm"
+        value={value || ''}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+        placeholder="Pilih atau ketik satuan baru, contoh: mg/L"
+        maxLength={20}
+        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100 disabled:text-gray-500"
+        required
+      />
+      <datalist id={datalistId}>
+        {uniqueOptions.length > 0 ? (
+          uniqueOptions.map((satuan) => <option key={satuan} value={satuan} />)
+        ) : (
+          <>
+            <option value="-" />
+            <option value="mg/L" />
+            <option value="°C" />
+            <option value="MPN/100 mL" />
+            <option value="CFU/100 mL" />
+          </>
+        )}
+      </datalist>
+      <p className="mt-1 text-xs text-gray-500">
+        Ketik satuan baru jika belum ada. Sistem akan menyimpannya ke master satuan saat matrix disimpan.
+      </p>
+    </div>
+  );
+}
+
 function MatrixValueInput({ paket, value, onChange }) {
   return (
     <div>
@@ -34,6 +80,7 @@ function PaketParameterFormDialog({
   availableParametersOption,
   paketParamForm,
   editingPaketParam,
+  satuanOptions = [],
   onClose,
   onAddChange,
   onAddSubmit,
@@ -54,7 +101,7 @@ function PaketParameterFormDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-gray-900/40 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/50 p-4 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
         className="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
@@ -113,16 +160,13 @@ function PaketParameterFormDialog({
           )}
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <ScientificTextarea
-              label="Satuan BM"
+            <SatuanBmInput
               value={formValue?.satuan_bm || ''}
+              satuanOptions={satuanOptions}
               onChange={(value) => {
                 const event = { target: { name: 'satuan_bm', value } };
                 return isEdit ? onEditChange(event) : onAddChange(event);
               }}
-              placeholder="Contoh: mg/L, °C, MPN/100 mL, atau -"
-              maxLength={20}
-              rows={2}
             />
 
             <ScientificTextarea
@@ -181,6 +225,7 @@ export function ManagePaketParameterModal({
   selectedItem,
   paketParameters,
   parametersOption,
+  satuanOptions = [],
   isModalLoading,
   paketParamForm,
   editingPaketParam,
@@ -411,6 +456,7 @@ export function ManagePaketParameterModal({
         availableParametersOption={availableParametersOption}
         paketParamForm={paketParamForm}
         editingPaketParam={editingPaketParam}
+        satuanOptions={satuanOptions}
         onClose={closeDialog}
         onAddChange={onAddChange}
         onAddSubmit={onAddSubmit}

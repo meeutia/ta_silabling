@@ -14,9 +14,9 @@ const PktBm = sequelize.define('pkt_bm', {
         type: DataTypes.STRING(4),
         allowNull: false
     },
-    klasifikasi: {
-        type: DataTypes.STRING(50),
-        allowNull: true
+    id_klasifikasi: {
+        type: DataTypes.STRING(10),
+        allowNull: false
     },
     is_active: {
         type: DataTypes.TINYINT,

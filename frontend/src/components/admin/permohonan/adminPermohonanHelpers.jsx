@@ -31,6 +31,24 @@ function pickRegBmId(sample) {
   return sample?.id_reg_bm || sample?.idRegBm || sample?.RegBm?.id_reg_bm || sample?.reg_bm?.id_reg_bm || sample?.regBm?.idRegBm || '';
 }
 
+function pickRegistrationId(sample) {
+  return sample?.id_registrasi || sample?.idRegistrasi || '';
+}
+
+function sameSampleGroup(a = {}, b = {}) {
+  const pick = (row, snake, camel) => String(row?.[snake] ?? row?.[camel] ?? '').trim();
+
+  const idJenisA = pick(a, 'id_jenis_sampel', 'idJenisSampel') || pickSampleTypeId(a);
+  const idJenisB = pick(b, 'id_jenis_sampel', 'idJenisSampel') || pickSampleTypeId(b);
+  const idRegA = pick(a, 'id_reg_bm', 'idRegBm') || pickRegBmId(a);
+  const idRegB = pick(b, 'id_reg_bm', 'idRegBm') || pickRegBmId(b);
+  const idRegistrasiA = pick(a, 'id_registrasi', 'idRegistrasi') || pickRegistrationId(a);
+  const idRegistrasiB = pick(b, 'id_registrasi', 'idRegistrasi') || pickRegistrationId(b);
+
+  if (idRegistrasiA && idRegistrasiB && idRegistrasiA !== idRegistrasiB) return false;
+  return Boolean(idJenisA && idJenisB && idRegA && idRegB) && idJenisA === idJenisB && idRegA === idRegB;
+}
+
 function pickParameterIdentity(sampleParameterMethod) {
   const parameterMethod = getParameterMethod(sampleParameterMethod);
   const parameter = sampleParameterMethod?.Parameter || sampleParameterMethod?.parameter || parameterMethod?.Parameter || parameterMethod?.parameter || null;
@@ -56,6 +74,59 @@ function getAllSampleParameterMethods(requestSample) {
     ...(Array.isArray(requestSample?.fppl_parameter_metodes) ? requestSample.fppl_parameter_metodes : []),
     ...(Array.isArray(requestSample?.fpplParameterMetodes) ? requestSample.fpplParameterMetodes : []),
   ];
+}
+
+
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === '') return Number.POSITIVE_INFINITY;
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : Number.POSITIVE_INFINITY;
+}
+
+function extractActualSampleOrder(sample = {}) {
+  const noSampel = String(
+    sample?.no_sampel ||
+    sample?.noSampel ||
+    sample?.nomor_sampel ||
+    sample?.nomorSampel ||
+    ''
+  ).trim();
+
+  const leadingNumber = noSampel.match(/^\s*(\d+)\s*\//);
+  if (leadingNumber) return Number(leadingNumber[1]);
+
+  const looseLeadingNumber = noSampel.match(/^\s*(\d+)/);
+  if (looseLeadingNumber) return Number(looseLeadingNumber[1]);
+
+  return toFiniteNumber(
+    sample?.sample_unit_index ??
+    sample?.sampleUnitIndex ??
+    sample?.sample_type_counter ??
+    sample?.sampleTypeCounter ??
+    sample?.urutan_sampel ??
+    sample?.urutanSampel ??
+    sample?.nomor_urut ??
+    sample?.nomorUrut
+  );
+}
+
+function compareActualSamples(a = {}, b = {}) {
+  const orderA = extractActualSampleOrder(a);
+  const orderB = extractActualSampleOrder(b);
+
+  if (orderA !== orderB) return orderA - orderB;
+
+  const noSampelA = String(a?.no_sampel || a?.noSampel || a?.nomor_sampel || a?.nomorSampel || '');
+  const noSampelB = String(b?.no_sampel || b?.noSampel || b?.nomor_sampel || b?.nomorSampel || '');
+
+  const byNoSampel = noSampelA.localeCompare(noSampelB, undefined, { numeric: true, sensitivity: 'base' });
+  if (byNoSampel !== 0) return byNoSampel;
+
+  return String(a?.id_sampel || a?.idSampel || '').localeCompare(String(b?.id_sampel || b?.idSampel || ''), undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function sortActualSamples(rows = []) {
+  return [...rows].sort(compareActualSamples);
 }
 
 function mergeUniqueByIdentity(items, pickIdentity) {
@@ -103,6 +174,12 @@ function mergeRequestSample(existing, incoming) {
     ...incoming,
     id_fppl_sampel: pickSampleIdentity(incoming) || pickSampleIdentity(existing),
     idFpplSampel: pickSampleIdentity(incoming) || pickSampleIdentity(existing),
+    id_registrasi: pickRegistrationId(incoming) || pickRegistrationId(existing),
+    idRegistrasi: pickRegistrationId(incoming) || pickRegistrationId(existing),
+    id_jenis_sampel: pickSampleTypeId(incoming) || pickSampleTypeId(existing),
+    idJenisSampel: pickSampleTypeId(incoming) || pickSampleTypeId(existing),
+    id_reg_bm: pickRegBmId(incoming) || pickRegBmId(existing),
+    idRegBm: pickRegBmId(incoming) || pickRegBmId(existing),
     jumlah_sampel: Math.max(existingQuantity, incomingQuantity),
     jumlahSampel: Math.max(existingQuantity, incomingQuantity),
     JenisSampel: incoming?.JenisSampel || existing?.JenisSampel,
@@ -185,7 +262,14 @@ export function buildSampleReceiptForms(requestItem) {
       counterByType[sampleTypeName] += 1;
 
       forms.push({
-        id_fppl_sampel: sample.id_fppl_sampel,
+        id_fppl_sampel: sample.id_fppl_sampel || sample.idFpplSampel || '',
+        idFpplSampel: sample.id_fppl_sampel || sample.idFpplSampel || '',
+        id_registrasi: pickRegistrationId(sample) || requestItem?.id_registrasi || requestItem?.idRegistrasi || '',
+        idRegistrasi: pickRegistrationId(sample) || requestItem?.id_registrasi || requestItem?.idRegistrasi || '',
+        id_jenis_sampel: pickSampleTypeId(sample),
+        idJenisSampel: pickSampleTypeId(sample),
+        id_reg_bm: pickRegBmId(sample),
+        idRegBm: pickRegBmId(sample),
         sample_group_index: groupIndex,
         sample_unit_index: unitIndex + 1,
         sample_type_counter: counterByType[sampleTypeName],
@@ -227,7 +311,13 @@ export function getParameterName(sampleParameterMethod) {
 }
 
 export function getActualSamples(requestSample) {
-  return requestSample?.Sampels || requestSample?.sampels || requestSample?.Sampel || [];
+  const rows = requestSample?.Sampels || requestSample?.sampels || requestSample?.Sampel || [];
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const hasCompositeFields = rows.some((row) => row?.id_jenis_sampel || row?.idJenisSampel || row?.id_reg_bm || row?.idRegBm);
+  const matchedRows = hasCompositeFields ? rows.filter((row) => sameSampleGroup(row, requestSample)) : rows;
+
+  return sortActualSamples(matchedRows);
 }
 
 export function getMethodName(sampleParameterMethod) {

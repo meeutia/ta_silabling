@@ -304,7 +304,7 @@ export function useKalabLhuPage({ initialLhuNumber = '' } = {}) {
 
     try {
       const data = await lhuReviewApi.approveKalabLhu(nomorLhu);
-      showSuccess(data.message || 'LHU berhasil disahkan.');
+      showSuccess(data.message || `LHU berhasil disahkan. Nomor resmi: ${data?.data?.nomorLhu || data?.data?.nomor_lhu || '-'}.`);
       closeConfirmApproveModal();
       closeModal();
       await Promise.all([loadQueue(), loadHistory()]);

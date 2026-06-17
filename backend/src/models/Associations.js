@@ -16,8 +16,10 @@ const ParameterMetode = require('./ParameterMetode');
 const FpplParameterMetode = require('./FpplParameterMetode');
 const RegBm = require('./RegBm');
 const PktBm = require('./PktBm');
+const Klasifikasi = require('./Klasifikasi');
 const PktBmKelompok = require('./PktBmKelompok');
 const PktBmParam = require('./PktBmParam');
+const Satuan = require('./Satuan');
 const PktBmNilai = require('./PktBmNilai');
 const Sampel = require('./Sampel');
 const SampelParameter = require('./SampelParameter');
@@ -79,12 +81,16 @@ RegBm.hasMany(PktBm, { foreignKey: 'id_reg_bm' });
 PktBm.belongsTo(RegBm, { foreignKey: 'id_reg_bm' });
 JenisSampel.hasMany(PktBm, { foreignKey: 'id_jenis_sampel' });
 PktBm.belongsTo(JenisSampel, { foreignKey: 'id_jenis_sampel' });
+Klasifikasi.hasMany(PktBm, { foreignKey: 'id_klasifikasi' });
+PktBm.belongsTo(Klasifikasi, { foreignKey: 'id_klasifikasi' });
 RegBm.hasMany(PktBmParam, { foreignKey: 'id_reg_bm' });
 PktBmParam.belongsTo(RegBm, { foreignKey: 'id_reg_bm' });
 JenisSampel.hasMany(PktBmParam, { foreignKey: 'id_jenis_sampel' });
 PktBmParam.belongsTo(JenisSampel, { foreignKey: 'id_jenis_sampel' });
 Parameter.hasMany(PktBmParam, { foreignKey: 'id_parameter' });
 PktBmParam.belongsTo(Parameter, { foreignKey: 'id_parameter' });
+Satuan.hasMany(PktBmParam, { foreignKey: 'id_satuan' });
+PktBmParam.belongsTo(Satuan, { foreignKey: 'id_satuan' });
 PktBm.hasMany(PktBmNilai, { foreignKey: 'id_pkt_bm' });
 PktBmNilai.belongsTo(PktBm, { foreignKey: 'id_pkt_bm' });
 Parameter.hasMany(PktBmNilai, { foreignKey: 'id_parameter' });
@@ -247,4 +253,4 @@ AktivitasSistemLog.belongsTo(User, {
   as: 'pembuat_aktivitas',
 });
 
-module.exports = { sequelize, Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, RegBm, PktBm, PktBmKelompok, PktBmParam, PktBmNilai, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, Lhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, NotifikasiEmail, AktivitasSistemLog };
+module.exports = { sequelize, Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, RegBm, PktBm, Klasifikasi, PktBmKelompok, PktBmParam, Satuan, PktBmNilai, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, Lhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, NotifikasiEmail, AktivitasSistemLog };

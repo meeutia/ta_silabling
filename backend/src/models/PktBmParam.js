@@ -17,9 +17,9 @@ const PktBmParam = sequelize.define('pkt_bm_param', {
         primaryKey: true,
         allowNull: false
     },
-    satuan_bm: {
-        type: DataTypes.STRING(20),
-        allowNull: true
+    id_satuan: {
+        type: DataTypes.STRING(10),
+        allowNull: false
     },
     ket_bm: {
         type: DataTypes.STRING(100),

@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
-const { sequelize, Fppl, FpplSampel, FpplParameterMetode, Pelanggan, JenisSampel, RegBm, ParameterMetode, Parameter, Metode, TarifPengambilan, JadwalSampel, PktBm, Pegawai, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, Lhu, JadwalPengambilanLhu, PengajuanPerubahanJadwal, User } = require('../../models/Associations');
+const { sequelize, Fppl, FpplSampel, FpplParameterMetode, Pelanggan, JenisSampel, RegBm, ParameterMetode, Parameter, Metode, TarifPengambilan, JadwalSampel, PktBm, Klasifikasi, Pegawai, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, Lhu, JadwalPengambilanLhu, PengajuanPerubahanJadwal, User } = require('../../models/Associations');
 const { generateId } = require('../../utils/id-generator');
 const { buildInvoiceSummary, getAvailablePaymentMethods } = require('../payment/payment.service');
 const RequestStatus = require('../../constants/request-status');
@@ -248,7 +248,8 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                     model: FpplSampel,
                     as: 'fppl_sampels',
                     attributes: [
-                                                'id_jenis_sampel',
+                        'id_registrasi',
+                        'id_jenis_sampel',
                         'id_reg_bm',
                         'jumlah_sampel'
                     ],
@@ -309,11 +310,15 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                             as: 'sampels',
                             attributes: [
                                 'no_sampel',
+                                'id_registrasi',
+                                'id_jenis_sampel',
+                                'id_reg_bm',
                                 'tanggal_pengambilan_sampel',
                                 'diterima_pada',
                                 'kondisi_sampel',
                                 'abnormalitas_sampel',
                                 'acuan_pengambilan_sampel',
+                                'lokasi_spesifik',
                                 'koordinat',
                                 'status_sample'
                             ],
@@ -397,9 +402,9 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                                     include: [
                                         {
                                             model: PktBm,
-                                            attributes: ['id_pkt_bm', 'id_reg_bm', 'id_jenis_sampel', 'klasifikasi'],
+                                            attributes: ['id_pkt_bm', 'id_reg_bm', 'id_jenis_sampel', 'id_klasifikasi'],
                                             required: false,
-                                            include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }]
+                                            include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }, { model: Klasifikasi, required: false }]
                                         }
                                     ]
                                 }

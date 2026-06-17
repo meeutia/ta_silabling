@@ -5,6 +5,7 @@
  */
 const { Op } = require('sequelize');
 const { LkaRevisi } = require('../models/Associations');
+const { enrichRevisionRowsWithResultSnapshots } = require('./assignment/assignment-revision-snapshot.helper');
 class LkaRevisionSourceService {
 normalizeTargets = (targets = []) => {
         return (Array.isArray(targets) ? targets : [targets])
@@ -132,7 +133,8 @@ normalizeTargets = (targets = []) => {
             ],
             transaction: options.transaction || null,
         });
-        return rows.map(this.plain).filter(Boolean).map(this.toCamelSnakeRevisionRow);
+        const enrichedRows = await enrichRevisionRowsWithResultSnapshots(rows, options.transaction || null);
+        return enrichedRows.map(this.toCamelSnakeRevisionRow);
     };
     buildSourceRow = (kodeLka, noSampel, revisions = []) => {
         const matching = revisions
@@ -160,6 +162,11 @@ normalizeTargets = (targets = []) => {
             id_revisi_terakhir_source: matching[0]?.id_revisi_lka || null,
             id_revisi_sebelumnya_source: matching[0]?.id_revisi_sebelumnya || null,
             revisi_sebelumnya_source: matching[0]?.RevisiSebelumnya || matching[0]?.revisiSebelumnya || null,
+            hasil_sebelum_revisi_source: matching[0]?.hasil_sebelum_revisi || matching[0]?.hasilSebelumRevisi || null,
+            hasil_setelah_revisi_source: matching[0]?.hasil_setelah_revisi || matching[0]?.hasilSetelahRevisi || null,
+            catatan_hasil_sebelum_revisi_source: matching[0]?.catatan_hasil_sebelum_revisi || matching[0]?.catatanHasilSebelumRevisi || null,
+            catatan_hasil_setelah_revisi_source: matching[0]?.catatan_hasil_setelah_revisi || matching[0]?.catatanHasilSetelahRevisi || null,
+            revision_comparison_source: matching[0]?.revision_comparison || matching[0]?.revisionComparison || null,
             jumlah_revisi_hasil_source: matching.length,
         };
     };
@@ -176,7 +183,7 @@ normalizeTargets = (targets = []) => {
             ],
             transaction: options.transaction || null,
         });
-        return rows.map(this.plain).filter(Boolean);
+        return enrichRevisionRowsWithResultSnapshots(rows, options.transaction || null);
     };
     getRevisionSourceByTargets = async (targets = [], options = {}) => {
         const rowsTarget = this.normalizeTargets(targets);
@@ -249,6 +256,16 @@ normalizeTargets = (targets = []) => {
             id_revisi_sebelumnya_source: source?.id_revisi_sebelumnya_source || null,
             revisiSebelumnyaSource: source?.revisi_sebelumnya_source || null,
             revisi_sebelumnya_source: source?.revisi_sebelumnya_source || null,
+            hasilSebelumRevisi: source?.hasil_sebelum_revisi_source || null,
+            hasil_sebelum_revisi: source?.hasil_sebelum_revisi_source || null,
+            hasilSetelahRevisi: source?.hasil_setelah_revisi_source || null,
+            hasil_setelah_revisi: source?.hasil_setelah_revisi_source || null,
+            catatanHasilSebelumRevisi: source?.catatan_hasil_sebelum_revisi_source || null,
+            catatan_hasil_sebelum_revisi: source?.catatan_hasil_sebelum_revisi_source || null,
+            catatanHasilSetelahRevisi: source?.catatan_hasil_setelah_revisi_source || null,
+            catatan_hasil_setelah_revisi: source?.catatan_hasil_setelah_revisi_source || null,
+            revisionComparison: source?.revision_comparison_source || null,
+            revision_comparison: source?.revision_comparison_source || null,
             revisionSource: source ? 'lka_revisi' : 'none',
             revision_source: source ? 'lka_revisi' : 'none',
             jumlahRevisiHasilSource: Number(source?.jumlah_revisi_hasil_source || 0),

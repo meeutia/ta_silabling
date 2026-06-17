@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const { getLhuPdfData } = require('./lhu-pdf-data.service');
-const { ensureDir, safeFileName, formatDateId, valueOrDash, getDisplayNoSampel, normalizeBakuMutuForLhu, isBakuMutuNotRequired, normalizeSampleTypeForLhu, normalizeSampleCollectorForLhu, getStatusText, calculateAccreditationStats, safeDrawImage, sortRowsBySampleOrder, } = require('./lhu-pdf-format.util');
+const { ensureDir, safeFileName, formatDateId, valueOrDash, getDisplayNoSampel, normalizeBakuMutuForLhu, isBakuMutuNotRequired, formatParameterDisplayName, normalizeSampleTypeForLhu, normalizeSampleCollectorForLhu, getStatusText, calculateAccreditationStats, safeDrawImage, sortRowsBySampleOrder, } = require('./lhu-pdf-format.util');
 const PUBLIC_DIR = path.join(__dirname, '../../../public');
 const LHU_PUBLIC_DIR = path.join(PUBLIC_DIR, 'lhu');
 const LOGO_DIR = path.join(PUBLIC_DIR, 'assets', 'logos');
@@ -357,7 +357,7 @@ findExistingFile = (paths = []) => {
         return Math.ceil(Math.max(22, maxTextHeight + TABLE_CELL_PADDING_Y * 2));
     };
     buildParameterName = (row = {}) => {
-        const nama = valueOrDash(row.nama_parameter_snapshot);
+        const nama = formatParameterDisplayName(valueOrDash(row.nama_parameter_snapshot));
         const isTerakreditasi = Number(row.is_terakreditasi || row.isTerakreditasi || 0) === 1;
         const isInsitu = Number(row.is_insitu_snapshot || row.isInsituSnapshot || row.is_insitu || row.isInsitu || 0) === 1;
         const isSubkontrak = Number(row.is_subkontrak_snapshot || row.isSubkontrakSnapshot || row.is_subkontrak || row.isSubkontrak || 0) === 1;

@@ -67,6 +67,34 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
       .sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }));
   };
 
+  const getSampleCompatibilityKey = (sample = {}) => [
+    sample.idRegistrasi || sample.id_registrasi || '',
+    sample.idJenisSampel || sample.id_jenis_sampel || '',
+    sample.idRegBm || sample.id_reg_bm || '',
+  ]
+    .map((value) => String(value || '').trim())
+    .join('|');
+
+  const getInitialCompatibleSampleNos = (samples = [], fallbackNos = []) => {
+    const rows = Array.isArray(samples) ? samples : [];
+    const fallbackSet = new Set((Array.isArray(fallbackNos) ? fallbackNos : []).map((value) => String(value || '').trim()).filter(Boolean));
+    const availableRows = rows
+      .filter((sample) => {
+        const noSampel = sample.noSampel || sample.no_sampel;
+        return noSampel && (!fallbackSet.size || fallbackSet.has(String(noSampel).trim()));
+      })
+      .sort((a, b) => String(a.noSampel || a.no_sampel || '').localeCompare(String(b.noSampel || b.no_sampel || ''), 'id', { numeric: true, sensitivity: 'base' }));
+
+    const firstKey = getSampleCompatibilityKey(availableRows[0] || {});
+    const compatibleNos = availableRows
+      .filter((sample) => firstKey && getSampleCompatibilityKey(sample) === firstKey)
+      .map((sample) => sample.noSampel || sample.no_sampel)
+      .filter(Boolean);
+
+    return dedupeTextList(compatibleNos.length ? compatibleNos : fallbackNos.slice(0, 1))
+      .sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }));
+  };
+
   function buildDetailTextKey(row = {}, index = 0) {
     return [
       row.id_parameter || row.idParameter || '',
@@ -271,31 +299,26 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
 
     setForm({
       idPktBm: '',
-      sampleNos: initialSampleNos,
+      sampleNos: [],
       detailOrder: [],
     });
 
     try {
       const detail = await lhuReviewApi.getLhuFinalizationDetail(requestId) || {};
-      setDetailData(detail);
-
-      const detailSamples = detail.samples || detail.sampels || [];
-      const availableNos = dedupeTextList(detailSamples.map((sample) => sample.noSampel || sample.no_sampel).filter(Boolean));
-      const selectedNos = (initialSampleNos.length
-        ? dedupeTextList(initialSampleNos.filter((noSampel) => availableNos.includes(noSampel)))
-        : availableNos)
-        .sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }));
+      const detailSamples = detail.samples || detail.sampels || item.samples || item.sampels || [];
+      const compatibleSampleNos = getInitialCompatibleSampleNos(detailSamples, initialSampleNos);
 
       const nextForm = {
         idPktBm: detail.lhu?.id_pkt_bm || detail.lhu?.idPktBm || item.idPktBm || item.id_pkt_bm || '',
-        sampleNos: selectedNos,
+        sampleNos: compatibleSampleNos,
         detailOrder: [],
       };
 
+      setDetailData(detail);
       setForm(nextForm);
 
-      if (nextForm.idPktBm && selectedNos.length) {
-        await loadPreviewFor(requestId, nextForm.idPktBm, selectedNos);
+      if (nextForm.idPktBm && compatibleSampleNos.length) {
+        await loadPreviewFor(requestId, nextForm.idPktBm, compatibleSampleNos);
       }
     } catch (error) {
       showError(getErrorMessage(error, 'Gagal memuat detail finalisasi LHU.'));
