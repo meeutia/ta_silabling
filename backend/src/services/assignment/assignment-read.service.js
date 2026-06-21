@@ -1,12 +1,14 @@
 const { Op } = require('sequelize');
 const { User, Pegawai, Pelanggan, Fppl, FpplSampel, RegBm, JenisSampel, Parameter, Metode, ParameterMetode, FpplParameterMetode, Penugasan, PenugasanDetail, PenugasanItem, Sampel, Lka, LkaHasil, LkaRevisi, } = require('../../models/Associations');
 const { ROLE_ANALIS } = require('./assignment.constants');
-const { getPlain, pickObject, pickArray, firstDate } = require('./assignment-object.helper');
+const { getPlain, pickObject, pickArray, uniqueText, firstDate } = require('./assignment-object.helper');
+const { parseWorksheetFiles, getPrimaryWorksheetPath } = require('./assignment-worksheet-files.helper');
 const { internalAssignmentWhere, isSubkontrakAssignment } = require('./assignment-scope.helper');
 const { assignmentGroupKey, assignmentPendingKey, getAssociatedFpmsFromSample, getStatusOrderValue, isInternalCapableFpm, sortSamplesForAssignment, } = require('./assignment-fpm.helper');
-const { hasActiveRevisionForMonitorDetail, resolveMonitorDisplayStatus, } = require('./assignment-status.helper');
+const { hasActiveRevisionForMonitorDetail, resolveMonitorDisplayStatus, resolveLkaHasilStatus, } = require('./assignment-status.helper');
 const { deriveSampleStatus, getDetailParameterInfo, getDetailSampleRows, isInternalDetail, } = require('./assignment-monitor.mapper');
-const { buildRevisionNoteBuckets, buildRevisionNoteResponseFromBuckets, getRevisionItemsFromRow, isGlobalRevisionLevel, isRevisionVisibleForAudience, } = require('./assignment-revision.helper');
+const { buildRevisionNoteBuckets, buildRevisionNoteResponseFromBuckets, getRevisionItemsFromRow, isGlobalRevisionLevel, isRevisionVisibleForAudience, collectRevisionNotesForSample, buildWorksheetRevisionResponse, buildLkaHasilRevisionResponse, } = require('./assignment-revision.helper');
+const { enrichRevisionRowsWithResultSnapshots } = require('./assignment-revision-snapshot.helper');
 class AssignmentReadService {
 getAnalystOptions = async () => {
         const analystInstances = await User.findAll({
@@ -133,18 +135,13 @@ getAnalystOptions = async () => {
                     idRegistrasi: fppl.id_registrasi || fpplSampel.id_registrasi || '-',
                     pelanggan: pelanggan.nama_instansi || '-',
                     // pakai salah satu FPM sebagai representative untuk penugasan_detail
-                    id_fppl_parameter_metode: fpm.id_fppl_parameter_metode,
                     idFpplParameterMetode: fpm.id_fppl_parameter_metode,
                     id_metode_parameter: fpm.id_metode_parameter || parameterMetode.id_metode_parameter || null,
-                    nama_parameter: parameter.nama_parameter || '-',
                     namaParameter: parameter.nama_parameter || '-',
-                    nama_metode: metode.nama_metode || '-',
                     namaMetode: metode.nama_metode || '-',
-                    acuan_metode: parameterMetode.acuan_metode || '-',
                     acuanMetode: parameterMetode.acuan_metode || '-',
                     is_insitu: Number(fpm.is_insitu || 0),
                     status_kemampuan_lab: fpm.status_kemampuan_lab || null,
-                    is_subkontrak: Number(parameterMetode.is_subkontrak || 0),
                     isSubkontrak: false,
                     fpmIds: [],
                     availableSamples: [],
@@ -169,19 +166,13 @@ getAnalystOptions = async () => {
                     no_sampel: sampel.no_sampel,
                     id_fppl_parameter_metode: fpm.id_fppl_parameter_metode,
                     pelanggan: pelanggan.nama_instansi || '-',
-                    nama_pelanggan: pelanggan.nama_instansi || '-',
                     namaPelanggan: pelanggan.nama_instansi || '-',
-                    id_registrasi: fppl.id_registrasi || fpplSampel.id_registrasi || '-',
                     idRegistrasi: fppl.id_registrasi || fpplSampel.id_registrasi || '-',
                     id_jenis_sampel: fpplSampel.id_jenis_sampel || fpm.id_jenis_sampel || null,
                     id_reg_bm: fpplSampel.id_reg_bm || fpm.id_reg_bm || null,
-                    jenis_sampel: jenis.jenis_sampel || '-',
                     jenisSampel: jenis.jenis_sampel || '-',
-                    reg_bm: [regBm.instansi, regBm.ref_reg].filter(Boolean).join(' - ') || '-',
                     regBm: [regBm.instansi, regBm.ref_reg].filter(Boolean).join(' - ') || '-',
-                    tanggal_pengambilan_sampel: sampel.tanggal_pengambilan_sampel || null,
                     tanggalPengambilanSampel: sampel.tanggal_pengambilan_sampel || null,
-                    tanggal_sampling: sampel.tanggal_pengambilan_sampel || null,
                     tanggalSampling: sampel.tanggal_pengambilan_sampel || null,
                     tanggal_penerimaan: sampel.diterima_pada || null,
                     tanggal_terima: sampel.diterima_pada || null,
@@ -301,29 +292,22 @@ getAnalystOptions = async () => {
                     null;
                 return {
                     idPenugasan: penugasan.id_penugasan,
-                    id_penugasan: penugasan.id_penugasan,
                     idPenugasanDetail: detail.id_penugasan_detail,
-                    id_penugasan_detail: detail.id_penugasan_detail,
                     analis: analis.username || penugasan.id_user_analis || '-',
                     parameter: info.namaParameter,
                     metode: info.namaMetode,
                     deadline: detail.tanggal_tenggat,
                     tanggalTenggat: detail.tanggal_tenggat,
-                    tanggal_tenggat: detail.tanggal_tenggat,
                     assignedAt: penugasan.assigned_at || null,
-                    assigned_at: penugasan.assigned_at || null,
                     tanggalPenugasan,
                     tanggal_penugasan: tanggalPenugasan,
                     tanggalPelaporan: lka.tanggal_pelaporan || null,
-                    tanggal_pelaporan: lka.tanggal_pelaporan || null,
                     tanggalPemeriksaan: lka.tanggal_pemeriksaan || null,
-                    tanggal_pemeriksaan: lka.tanggal_pemeriksaan || null,
                     latestActivityAt,
                     latest_activity_at: latestActivityAt,
                     statusDetail,
                     status_detail: statusDetail,
                     statusDetailActual: detail.status_detail,
-                    status_detail_actual: detail.status_detail,
                     hasActiveRevision,
                     has_active_revision: hasActiveRevision,
                     totalSampel,
@@ -490,20 +474,13 @@ getAnalystOptions = async () => {
             });
             return {
                 noSampel: sample.no_sampel,
-                no_sampel: sample.no_sampel,
                 jenisSampel: jenis.jenis_sampel || '-',
-                jenis_sampel: jenis.jenis_sampel || '-',
                 standar: [regBm.instansi, regBm.ref_reg].filter(Boolean).join(' - ') || '-',
                 tanggalPengambilanSampel: sample.tanggal_pengambilan_sampel || null,
-                tanggal_pengambilan_sampel: sample.tanggal_pengambilan_sampel || null,
                 tanggalSampling: sample.tanggal_pengambilan_sampel || null,
-                tanggal_sampling: sample.tanggal_pengambilan_sampel || null,
                 tanggalPenerimaan: sample.diterima_pada || null,
-                tanggal_penerimaan: sample.diterima_pada || null,
                 acuanPengambilanSampel: sample.acuan_pengambilan_sampel || '-',
-                acuan_pengambilan_sampel: sample.acuan_pengambilan_sampel || '-',
                 abnormalitasSampel: sample.abnormalitas_sampel || '-',
-                abnormalitas_sampel: sample.abnormalitas_sampel || '-',
                 totalParameter,
                 totalDitugaskan,
                 totalWorksheetTerkirim,
@@ -592,11 +569,11 @@ getAnalystOptions = async () => {
                         revisionBuckets.addBySource(source, itemNote);
                     });
                 });
-                const revisionNotePayload = buildRevisionNoteResponseFromBuckets(revisionBuckets);
-                const catatanRevisiHasil = revisionNotePayload.catatanRevisiHasil || null;
-                const catatanRevisiHasilPenyelia = revisionNotePayload.catatanRevisiHasilPenyelia || null;
-                const catatanRevisiHasilKasiPengujian = revisionNotePayload.catatanRevisiHasilKasiPengujian || null;
-                const catatanResponPenyelia = revisionNotePayload.catatanResponPenyelia || null;
+                const revisionNoteRequestData = buildRevisionNoteResponseFromBuckets(revisionBuckets);
+                const catatanRevisiHasil = revisionNoteRequestData.catatanRevisiHasil || null;
+                const catatanRevisiHasilPenyelia = revisionNoteRequestData.catatanRevisiHasilPenyelia || null;
+                const catatanRevisiHasilKasiPengujian = revisionNoteRequestData.catatanRevisiHasilKasiPengujian || null;
+                const catatanResponPenyelia = revisionNoteRequestData.catatanResponPenyelia || null;
                 const totalHasil = relatedResults.filter((row) => String(row.hasil || '').trim()).length;
                 const sampleNoList = Array.from(sampleNos);
                 const catatanHasilAnalis = Array.from(new Set(relatedResults
@@ -604,23 +581,16 @@ getAnalystOptions = async () => {
                     .filter(Boolean))).join('\n\n') || null;
                 return {
                     idPenugasan: penugasan.id_penugasan,
-                    id_penugasan: penugasan.id_penugasan,
                     idPenugasanDetail: detail.id_penugasan_detail,
-                    id_penugasan_detail: detail.id_penugasan_detail,
                     catatanPenugasan: penugasan.catatan_penugasan || null,
-                    catatan_penugasan: penugasan.catatan_penugasan || null,
                     parameter: info.namaParameter,
                     metode: info.namaMetode,
                     deadline: detail.tanggal_tenggat,
                     statusDetail: detail.status_detail,
                     totalSampel: sampleRows.length,
-                    total_sampel: sampleRows.length,
                     sampleNos: sampleNoList,
-                    sample_nos: sampleNoList,
                     noSampelList: sampleNoList,
-                    no_sampel_list: sampleNoList,
                     noSampel: sampleNoList.join(', '),
-                    no_sampel: sampleNoList.join(', '),
                     totalHasil,
                     total_hasil: totalHasil,
                     catatanHasilAnalis,
@@ -642,6 +612,284 @@ getAnalystOptions = async () => {
             return String(deadlineA).localeCompare(String(deadlineB)) || String(b.idPenugasanDetail).localeCompare(String(a.idPenugasanDetail));
         });
     };
+    resolvePenugasanId = async (idPenugasan, options = {}) => {
+            const fallbackDetailId = String(options.idPenugasanDetail ||
+                options.id_penugasan_detail ||
+                options.detailId ||
+                '').trim();
+            if (!fallbackDetailId) {
+                return String(idPenugasan || '').trim();
+            }
+            const detail = await PenugasanDetail.findOne({
+                where: { id_penugasan_detail: fallbackDetailId },
+                attributes: ['id_penugasan'],
+            });
+            return String(detail?.id_penugasan || idPenugasan || '').trim();
+        };
+        getAssignmentDetailsByPenugasan = async (idPenugasan, options = {}) => {
+            const resolvedIdPenugasan = await this.resolvePenugasanId(idPenugasan, options);
+            const headerInstance = await Penugasan.findByPk(resolvedIdPenugasan, {
+                include: [{ model: User, as: 'Analis', required: false, attributes: ['nik', 'username'] }],
+            });
+            if (!headerInstance) {
+                const error = new Error('Penugasan tidak ditemukan atau detail penugasan tidak sesuai.');
+                error.statusCode = 404;
+                throw error;
+            }
+            idPenugasan = resolvedIdPenugasan;
+            const header = getPlain(headerInstance);
+            const analis = pickObject(header, ['Analis']) || {};
+            const penyeliaNik = header.assigned_by || null;
+            const penyelia = penyeliaNik
+                ? getPlain(await User.findOne({ where: { nik: penyeliaNik }, attributes: ['nik', 'username'] }))
+                : null;
+            const detailInstances = await PenugasanDetail.findAll({
+                where: {
+                    id_penugasan: idPenugasan,
+                },
+                include: [
+                    {
+                        model: ParameterMetode,
+                        required: false,
+                        include: [
+                            { model: Parameter, required: false },
+                            { model: Metode, required: false },
+                        ],
+                    },
+                    {
+                        model: PenugasanItem,
+                        required: false,
+                        include: [
+                            {
+                                model: Sampel,
+                                required: false,
+                                include: [
+                                    {
+                                        model: FpplSampel,
+                                        as: 'fppl_sampel',
+                                        required: false,
+                                        include: [
+                                            { model: JenisSampel, required: false },
+                                            { model: RegBm, required: false },
+                                            {
+                                                model: Fppl,
+                                                as: 'fppl',
+                                                required: false,
+                                                include: [{ model: Pelanggan, as: 'pelanggan', required: false }],
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                    {
+                        model: Lka,
+                        required: false,
+                        include: [
+                            { model: LkaHasil, required: false },
+                            {
+                                model: LkaRevisi,
+                                as: 'revisi_lka',
+                                required: false,
+                                include: [],
+                            },
+                            { model: User, as: 'Pelapor', required: false, attributes: ['nik', 'username'] },
+                            { model: User, as: 'Pemeriksa', required: false, attributes: ['nik', 'username'] },
+                        ],
+                    },
+                ],
+            });
+            const details = await Promise.all(detailInstances.map(async (instance) => {
+                const row = getPlain(instance);
+                const info = getDetailParameterInfo(row);
+                const fpm = info.fpm || {};
+                const fpplSampel = pickObject(fpm, ['fppl_sampel', 'FpplSampel']) || {};
+                const jenis = pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
+                const regBm = pickObject(fpplSampel, ['reg_bm', 'RegBm']) || {};
+                const fppl = pickObject(fpplSampel, ['fppl', 'Fppl']) || {};
+                const pelanggan = pickObject(fppl, ['pelanggan', 'Pelanggan']) || {};
+                const penugasanItems = pickArray(row, ['penugasan_items', 'PenugasanItems', 'penugasan_item']);
+                const lka = pickObject(row, ['lka', 'Lka']) || null;
+                const lkaHasilRows = lka ? pickArray(lka, ['lka_hasils', 'LkaHasils', 'lka_hasil', 'LkaHasil']) : [];
+                const rawLkaRevisionRows = lka ? pickArray(lka, ['revisi_lka', 'RevisiLka', 'LkaRevisis']) : [];
+                const lkaRevisionRows = await enrichRevisionRowsWithResultSnapshots(rawLkaRevisionRows);
+                const worksheetRevisionRequestData = buildWorksheetRevisionResponse(lka || {}, lkaRevisionRows, { audience: 'penyelia' });
+                const worksheetFiles = parseWorksheetFiles(lka?.file_worksheet_path);
+                const sampleRows = penugasanItems
+                    .map((item) => {
+                    const sampel = pickObject(item, ['sampel', 'Sampel']) || {};
+                    const sampelFppl = pickObject(sampel, ['fppl_sampel', 'FpplSampel']) || {};
+                    const sampelJenis = pickObject(sampelFppl, ['jenis_sampel', 'JenisSampel']) || {};
+                    const sampelRegBm = pickObject(sampelFppl, ['reg_bm', 'RegBm']) || {};
+                    const sampelFpplHeader = pickObject(sampelFppl, ['fppl', 'Fppl']) || {};
+                    const sampelPelanggan = pickObject(sampelFpplHeader, ['pelanggan', 'Pelanggan']) || {};
+                    const noSampel = item.no_sampel || sampel.no_sampel;
+                    const hasilRow = lkaHasilRows.find((hasil) => hasil.no_sampel === noSampel) || {};
+                    const revisionNoteRequestData = collectRevisionNotesForSample(lkaRevisionRows, noSampel, lka?.kode_lka || hasilRow.kode_lka || null, { audience: 'penyelia' });
+                    const revisionResponse = buildLkaHasilRevisionResponse({ ...hasilRow, ...revisionNoteRequestData });
+                    const hasilSebelumnya = revisionResponse.hasilSebelumRevisi || revisionResponse.hasil_sebelum_revisi || null;
+                    return {
+                        kodeLka: lka?.kode_lka || hasilRow.kode_lka || null,
+                        no_sampel: noSampel,
+                        noSampel,
+                        id_registrasi: sampelFpplHeader.id_registrasi || sampelFppl.id_registrasi || '-',
+                        pelanggan: sampelPelanggan.nama_instansi || '-',
+                        id_jenis_sampel: sampelFppl.id_jenis_sampel || null,
+                        jenis_sampel: sampelJenis.jenis_sampel || '-',
+                        reg_bm: [sampelRegBm.instansi, sampelRegBm.ref_reg].filter(Boolean).join(' - ') || '-',
+                        tanggal_pengambilan_sampel: sampel.tanggal_pengambilan_sampel || null,
+                        tanggal_penerimaan: sampel.diterima_pada || null,
+                        jam_penerimaan: (sampel.diterima_pada ? new Date(sampel.diterima_pada).toTimeString().slice(0, 8) : null) || null,
+                        kondisi_sampel: sampel.kondisi_sampel || '-',
+                        abnormalitas_sampel: sampel.abnormalitas_sampel || '-',
+                        acuan_pengambilan_sampel: sampel.acuan_pengambilan_sampel || '-',
+                        koordinat: sampel.koordinat || '-',
+                        hasil: hasilRow.hasil || '',
+                        catatan_hasil: hasilRow.catatan_hasil || '-',
+                        hasilSebelumnya,
+                        hasil_sebelumnya: hasilSebelumnya,
+                        hasilSebelumRevisi: revisionResponse.hasilSebelumRevisi || null,
+                        hasil_sebelum_revisi: revisionResponse.hasil_sebelum_revisi || null,
+                        statusReviewHasil: resolveLkaHasilStatus(hasilRow, lka?.status_lka, lkaHasilRows),
+                        ...revisionResponse,
+                    };
+                })
+                    .filter((sample) => sample.no_sampel);
+                const tanggalSampling = firstDate(sampleRows.map((sample) => sample.tanggal_pengambilan_sampel)) || lka?.tanggal_sampling || null;
+                const abnormalitasSampel = uniqueText(sampleRows.map((sample) => sample.abnormalitas_sampel));
+                const acuanPengambilanSampel = uniqueText(sampleRows.map((sample) => sample.acuan_pengambilan_sampel));
+                const jenisContoh = uniqueText(sampleRows.map((sample) => sample.jenis_sampel));
+                const idJenisSampel = sampleRows.find((sample) => sample.id_jenis_sampel)?.id_jenis_sampel ||
+                    null;
+                const totalSampel = sampleRows.length;
+                const totalHasil = sampleRows.filter((sample) => String(sample.hasil || '').trim()).length;
+                const hasActiveRevision = hasActiveRevisionForMonitorDetail(row, lka || {});
+                const statusDetail = resolveMonitorDisplayStatus(row, lka || {}, hasActiveRevision);
+                return {
+                    idPenugasan: row.id_penugasan,
+                    idPenugasanDetail: row.id_penugasan_detail,
+                    idFpplParameterMetode: row.id_fppl_parameter_metode,
+                    parameter: info.namaParameter,
+                    namaParameter: info.namaParameter,
+                    metode: info.acuanMetode || info.namaMetode || info.idMetodeParameter || '-',
+                    namaMetode: info.namaMetode,
+                    acuanMetode: info.acuanMetode,
+                    idMetodeParameter: info.idMetodeParameter || null,
+                    idJenisSampel,
+                    id_jenis_sampel: idJenisSampel,
+                    jenisSampel: jenisContoh,
+                    jenisContoh,
+                    jenis_contoh: jenisContoh,
+                    tanggalSampling,
+                    tanggal_sampling: tanggalSampling,
+                    tanggalPengambilanSampel: tanggalSampling,
+                    abnormalitasSampel,
+                    abnormalitas_sampel: abnormalitasSampel,
+                    abnormalitasContoh: abnormalitasSampel,
+                    acuanPengambilanSampel,
+                    acuan_pengambilan_sampel: acuanPengambilanSampel,
+                    deadline: row.tanggal_tenggat,
+                    tanggalTenggat: row.tanggal_tenggat,
+                    statusDetail,
+                    status_detail: statusDetail,
+                    statusDetailActual: row.status_detail,
+                    hasActiveRevision,
+                    has_active_revision: hasActiveRevision,
+                    catatanDetail: row.catatan_detail || null,
+                    totalSampel,
+                    total_sampel: totalSampel,
+                    totalHasil,
+                    total_hasil: totalHasil,
+                    ...worksheetRevisionRequestData,
+                    catatanRevisi: worksheetRevisionRequestData.catatanRevisiLka || worksheetRevisionRequestData.catatanRevisi || null,
+                    lkaRevisionNote: worksheetRevisionRequestData.lkaRevisionNote || null,
+                    worksheet: {
+                        kodeLka: lka?.kode_lka || null,
+                        tanggalSampling,
+                        tanggal_sampling: tanggalSampling,
+                        tanggalPengambilanSampel: tanggalSampling,
+                        abnormalitasSampel,
+                        abnormalitas_sampel: abnormalitasSampel,
+                        acuanPengambilanSampel,
+                        acuan_pengambilan_sampel: acuanPengambilanSampel,
+                        tanggalMulaiPengujian: lka?.tanggal_mulai_pengujian || null,
+                        tanggalSelesaiPengujian: lka?.tanggal_selesai_pengujian || null,
+                        dhlAkuades: lka?.dhl_akuades || null,
+                        fileWorksheetPath: getPrimaryWorksheetPath(lka?.file_worksheet_path),
+                        worksheetUrl: getPrimaryWorksheetPath(lka?.file_worksheet_path),
+                        worksheetFiles,
+                        statusLka: lka?.status_lka || 'Draft',
+                        ...worksheetRevisionRequestData,
+                        catatanRevisi: worksheetRevisionRequestData.catatanRevisiLka || worksheetRevisionRequestData.catatanRevisi || null,
+                        lkaRevisionNote: worksheetRevisionRequestData.lkaRevisionNote || null,
+                        dilaporkanOleh: lka?.dilaporkan_oleh || header.id_user_analis || null,
+                        dilaporkanOlehNama: lka?.Pelapor?.username || lka?.pelapor?.username || analis.username || header.id_user_analis || '-',
+                        tanggalPelaporan: lka?.tanggal_pelaporan || null,
+                        diperiksaOleh: lka?.diperiksa_oleh || null,
+                        diperiksaOlehNama: lka?.Pemeriksa?.username || lka?.pemeriksa?.username || lka?.diperiksa_oleh || '-',
+                        tanggalPemeriksaan: lka?.tanggal_pemeriksaan || null,
+                    },
+                    samples: sampleRows.map((sample) => ({
+                        kodeLka: sample.kodeLka || sample.kode_lka || lka?.kode_lka || null,
+                        noSampel: sample.no_sampel,
+                        idRegistrasi: sample.id_registrasi || '-',
+                        pelanggan: sample.pelanggan || '-',
+                        jenisSampel: sample.jenis_sampel || '-',
+                        regBm: sample.reg_bm || '-',
+                        tanggalPengambilanSampel: sample.tanggal_pengambilan_sampel || null,
+                        tanggalSampling: sample.tanggal_pengambilan_sampel || null,
+                        tanggalPenerimaan: sample.tanggal_penerimaan || null,
+                        jamPenerimaan: sample.jam_penerimaan || null,
+                        kondisiSampel: sample.kondisi_sampel || '-',
+                        koordinat: sample.koordinat || '-',
+                        abnormalitasSampel: sample.abnormalitas_sampel || '-',
+                        acuanPengambilanSampel: sample.acuan_pengambilan_sampel || '-',
+                        hasil: sample.hasil || '',
+                        hasHasil: Boolean(String(sample.hasil || '').trim()),
+                        catatanHasil: sample.catatan_hasil || '-',
+                        hasilSebelumnya: sample.hasilSebelumnya || sample.hasil_sebelumnya || sample.hasilSebelumRevisi || sample.hasil_sebelum_revisi || null,
+                        hasil_sebelumnya: sample.hasilSebelumnya || sample.hasil_sebelumnya || sample.hasilSebelumRevisi || sample.hasil_sebelum_revisi || null,
+                        statusReviewHasil: sample.statusReviewHasil || null,
+                        ...buildLkaHasilRevisionResponse(sample),
+                    })),
+                };
+            }));
+            details.sort((a, b) => {
+                const statusDiff = getStatusOrderValue(a.statusDetail) - getStatusOrderValue(b.statusDetail);
+                if (statusDiff !== 0)
+                    return statusDiff;
+                const dateA = a.worksheet?.tanggalPelaporan || a.worksheet?.tanggalPemeriksaan || a.tanggalTenggat || '';
+                const dateB = b.worksheet?.tanggalPelaporan || b.worksheet?.tanggalPemeriksaan || b.tanggalTenggat || '';
+                return String(dateB).localeCompare(String(dateA)) || String(b.idPenugasanDetail).localeCompare(String(a.idPenugasanDetail));
+            });
+            const totalDetail = details.length;
+            const totalSampel = details.reduce((sum, detail) => sum + Number(detail.totalSampel || 0), 0);
+            const totalWorksheetSubmitted = details.filter((detail) => detail.statusDetail === 'Worksheet Terkirim').length;
+            const totalMenungguReview = details.filter((detail) => detail.statusDetail === 'Worksheet Terkirim' && detail.worksheet?.statusLka === 'Menunggu Verifikasi Penyelia').length;
+            const totalPerluRevisi = details.filter((detail) => detail.statusDetail === 'Perlu Revisi').length;
+            const totalDisetujui = details.filter((detail) => ['Disetujui', 'Selesai'].includes(detail.statusDetail)).length;
+            return {
+                idPenugasan: header.id_penugasan,
+                analis: analis.username || header.id_user_analis || '-',
+                analisNama: analis.username || header.id_user_analis || '-',
+                idAnalis: header.id_user_analis || null,
+                penyelia: penyelia?.username || header.assigned_by || '-',
+                penyeliaNama: penyelia?.username || header.assigned_by || '-',
+                statusPenugasan: header.status_penugasan,
+                assignedAt: header.assigned_at,
+                idPenyelia: header.assigned_by || null,
+                jenisPenugasan: header.jenis_penugasan || 'INTERNAL',
+                catatanPenugasan: header.catatan_penugasan || null,
+                totalDetail,
+                totalSampel,
+                totalWorksheetSubmitted,
+                totalMenungguReview,
+                totalPerluRevisi,
+                totalDisetujui,
+                details,
+            };
+        };
 }
 module.exports = new AssignmentReadService();
 module.exports.AssignmentReadService = AssignmentReadService;

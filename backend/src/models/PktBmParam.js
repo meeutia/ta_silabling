@@ -1,7 +1,25 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const PktBmParam = sequelize.define('pkt_bm_param', {
+class PktBmParam extends Model {
+  static associate(models) {
+    PktBmParam.belongsTo(models.RegBm, { foreignKey: 'id_reg_bm' });
+    PktBmParam.belongsTo(models.JenisSampel, { foreignKey: 'id_jenis_sampel' });
+    PktBmParam.belongsTo(models.Parameter, { foreignKey: 'id_parameter' });
+    PktBmParam.belongsTo(models.Satuan, { foreignKey: 'id_satuan' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+}
+
+PktBmParam.init({
     id_reg_bm: {
         type: DataTypes.STRING(6),
         primaryKey: true,
@@ -26,7 +44,9 @@ const PktBmParam = sequelize.define('pkt_bm_param', {
         allowNull: true
     }
 }, {
-    tableName: 'pkt_bm_param',
+  sequelize,
+  modelName: 'pkt_bm_param',
+tableName: 'pkt_bm_param',
     timestamps: false,
 });
 

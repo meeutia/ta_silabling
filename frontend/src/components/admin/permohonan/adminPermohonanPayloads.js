@@ -1,55 +1,35 @@
 const cleanText = (value) => String(value ?? '').trim();
-
-export const buildSampleReceivePayload = (sampelFormList = []) => {
-  const sampels = sampelFormList.map((form) => ({
-    id_fppl_sampel: form.id_fppl_sampel,
-    idFpplSampel: form.idFpplSampel || form.id_fppl_sampel,
-    id_registrasi: form.id_registrasi,
-    idRegistrasi: form.idRegistrasi || form.id_registrasi,
-    id_jenis_sampel: form.id_jenis_sampel,
-    idJenisSampel: form.idJenisSampel || form.id_jenis_sampel,
-    id_reg_bm: form.id_reg_bm,
-    idRegBm: form.idRegBm || form.id_reg_bm,
-    sample_group_index: form.sample_group_index,
-    sample_unit_index: form.sample_unit_index,
-    sample_type_counter: form.sample_type_counter,
-    sample_label: form.sample_label,
-
-    tanggal_pengambilan_sampel: form.tanggal_pengambilan_sampel,
-    tanggalPengambilanSampel: form.tanggal_pengambilan_sampel,
-
-
-    kondisi: cleanText(form.kondisi),
-    kondisi_sampel: cleanText(form.kondisi),
-    kondisiSampel: cleanText(form.kondisi),
-
-    catatan: cleanText(form.catatan),
-    abnormalitas_sampel: cleanText(form.catatan),
-    abnormalitasSampel: cleanText(form.catatan),
-
-    acuan_pengambilan_sampel: cleanText(form.acuan_pengambilan_sampel),
-    acuanPengambilanSampel: cleanText(form.acuan_pengambilan_sampel),
-
-    lokasi_spesifik: cleanText(form.lokasi_spesifik),
-    lokasiSpesifik: cleanText(form.lokasi_spesifik),
-
-    koordinat: cleanText(form.koordinat),
-  }));
-
-  const firstForm = sampelFormList[0] || {};
-
-  return {
-    tanggal_pengambilan_sampel: firstForm.tanggal_pengambilan_sampel || null,
-    tanggalPengambilanSampel: firstForm.tanggal_pengambilan_sampel || null,
-    kondisi_sampel: cleanText(firstForm.kondisi) || 'Sesuai',
-    kondisiSampel: cleanText(firstForm.kondisi) || 'Sesuai',
-    abnormalitas_sampel: cleanText(firstForm.catatan) || null,
-    abnormalitasSampel: cleanText(firstForm.catatan) || null,
-    acuan_pengambilan_sampel: cleanText(firstForm.acuan_pengambilan_sampel) || null,
-    acuanPengambilanSampel: cleanText(firstForm.acuan_pengambilan_sampel) || null,
-    lokasi_spesifik: cleanText(firstForm.lokasi_spesifik) || null,
-    lokasiSpesifik: cleanText(firstForm.lokasi_spesifik) || null,
-    koordinat: cleanText(firstForm.koordinat) || null,
-    sampels,
-  };
+const emptyToNull = (value) => {
+  const text = cleanText(value);
+  return text || null;
 };
+
+const pickFirstFilled = (...values) => {
+  for (const value of values) {
+    const text = cleanText(value);
+    if (text) return text;
+  }
+  return null;
+};
+
+export const buildSampleReceivePayload = (sampelFormList = []) => ({
+  sampels: sampelFormList.map((form, index) => ({
+    id_registrasi: pickFirstFilled(form.id_registrasi, form.idRegistrasi),
+    id_jenis_sampel: pickFirstFilled(form.id_jenis_sampel, form.idJenisSampel),
+    id_reg_bm: pickFirstFilled(form.id_reg_bm, form.idRegBm),
+    sample_group_index: Number.isFinite(Number(form.sample_group_index))
+      ? Number(form.sample_group_index)
+      : index,
+    sample_unit_index: Number.isFinite(Number(form.sample_unit_index))
+      ? Number(form.sample_unit_index)
+      : index + 1,
+    sample_type_counter: form.sample_type_counter ?? null,
+    sample_label: emptyToNull(form.sample_label),
+    tanggal_pengambilan_sampel: emptyToNull(form.tanggal_pengambilan_sampel),
+    kondisi_sampel: cleanText(form.kondisi) || 'Sesuai',
+    abnormalitas_sampel: emptyToNull(form.catatan),
+    acuan_pengambilan_sampel: emptyToNull(form.acuan_pengambilan_sampel),
+    lokasi_spesifik: emptyToNull(form.lokasi_spesifik),
+    koordinat: emptyToNull(form.koordinat),
+  })),
+});

@@ -4,10 +4,10 @@ const { toCamelCaseDeep } = require('./case-transform.util');
  * Standardize API successful responses.
  * Response data dikirim dalam camelCase sebagai kontrak utama frontend.
  */
-const successResponse = (res, message, data = null, statusCode = 200) => {
-  const payload = { success: true, message };
-  if (data !== null) payload.data = toCamelCaseDeep(data);
-  return res.status(statusCode).json(payload);
+const successResponse = (res, message, responseData = null, statusCode = 200) => {
+  const body = { success: true, message };
+  if (responseData !== null) body.data = toCamelCaseDeep(responseData);
+  return res.status(statusCode).json(body);
 };
 
 function sanitizeServerMessage(message, statusCode) {
@@ -24,16 +24,16 @@ function sanitizeServerMessage(message, statusCode) {
  * Standardize API error responses.
  */
 const errorResponse = (res, message, statusCode = 500, errors = null) => {
-  const payload = {
+  const data = {
     success: false,
     message: sanitizeServerMessage(message, statusCode),
   };
 
   if (errors !== null && Number(statusCode) < 500) {
-    payload.errors = toCamelCaseDeep(errors);
+    data.errors = toCamelCaseDeep(errors);
   }
 
-  return res.status(statusCode).json(payload);
+  return res.status(statusCode).json(data);
 };
 
 module.exports = {

@@ -1,7 +1,22 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Satuan = sequelize.define('satuan', {
+class Satuan extends Model {
+  static associate(models) {
+    Satuan.hasMany(models.PktBmParam, { foreignKey: 'id_satuan' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+}
+
+Satuan.init({
   id_satuan: {
     type: DataTypes.STRING(10),
     primaryKey: true,
@@ -12,7 +27,9 @@ const Satuan = sequelize.define('satuan', {
     allowNull: false,
   },
 }, {
-  tableName: 'satuan',
+  sequelize,
+  modelName: 'satuan',
+tableName: 'satuan',
   timestamps: false,
 });
 

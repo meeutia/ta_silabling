@@ -2,11 +2,11 @@ import { requestBlob, requestData, requestJson } from './httpClient';
 
 export const customerRequestApi = {
   getHolidays() {
-    return requestData('/references/holidays', {}, { auth: true });
+    return requestData('/requests/schedule/holidays', {}, { auth: true });
   },
 
   getAdminContact() {
-    return requestData('/references/admin-contact', {}, { auth: true });
+    return requestData('/requests/support/admin-contact', {}, { auth: true });
   },
 
   getRequests() {

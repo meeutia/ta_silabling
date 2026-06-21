@@ -89,6 +89,44 @@ export function getNomorLhu(row = {}) {
   return row?.nomorLhu || row?.nomor_lhu || '';
 }
 
+/**
+ * Mengembalikan true jika nomorLhu adalah ID draft (bukan nomor LHU resmi).
+ * Nomor draft biasanya berupa UUID atau string yang tidak mengandung format nomor resmi (misal: LHU/...).
+ */
+export function isDraftNomorLhu(nomorLhu) {
+  if (!nomorLhu) return false;
+  const val = String(nomorLhu).trim();
+  if (!val || val === '-') return false;
+  // Nomor resmi mengandung format seperti "LHU/" atau angka-angka terformat
+  // Draft biasanya UUID (8-4-4-4-12) atau string tanpa slash
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+  const hasSlash = val.includes('/');
+  return isUuid || !hasSlash;
+}
+
+/**
+ * Menampilkan nomor LHU yang sesuai untuk ditampilkan ke pengguna.
+ * Jika draft, tampilkan dengan prefix "Draft: " agar mudah dibedakan.
+ * Jika resmi, tampilkan nomor resminya langsung.
+ */
+export function getNomorLhuDisplay(row = {}) {
+  const nomor = getNomorLhu(row);
+  if (!nomor) return '';
+  if (isDraftNomorLhu(nomor)) return `Draft: ${nomor}`;
+  return nomor;
+}
+
+/**
+ * Menampilkan nomor LHU resmi saja.
+ * Jika nomor yang ada adalah draft (UUID/tanpa slash), kembalikan '-'.
+ */
+export function getNomorLhuResmiDisplay(row = {}) {
+  const nomor = getNomorLhu(row);
+  if (!nomor) return '-';
+  if (isDraftNomorLhu(nomor)) return '-';
+  return nomor;
+}
+
 export function getStatusLhu(row = {}, fallback = 'Belum Dibuat') {
   return row?.statusLhu || row?.status_lhu || fallback;
 }

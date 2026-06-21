@@ -1,7 +1,44 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const FpplParameterMetode = sequelize.define('fppl_parameter_metode', {
+class FpplParameterMetode extends Model {
+  static associate(models) {
+    FpplParameterMetode.belongsTo(models.FpplSampel, { foreignKey: 'id_registrasi', targetKey: 'id_registrasi', constraints: false });
+    FpplParameterMetode.belongsTo(models.Fppl, { foreignKey: 'id_registrasi', targetKey: 'id_registrasi', as: 'fppl' });
+    FpplParameterMetode.belongsTo(models.JenisSampel, { foreignKey: 'id_jenis_sampel', as: 'jenis_sampel' });
+    FpplParameterMetode.belongsTo(models.RegBm, { foreignKey: 'id_reg_bm', as: 'reg_bm' });
+    FpplParameterMetode.belongsTo(models.Parameter, { foreignKey: 'id_parameter' });
+    FpplParameterMetode.belongsTo(models.ParameterMetode, { foreignKey: 'id_metode_parameter' });
+    FpplParameterMetode.belongsTo(models.User, { foreignKey: 'dipilih_oleh', as: 'PemilihUser' });
+    FpplParameterMetode.hasMany(models.SampelParameter, { foreignKey: 'id_fppl_parameter_metode', as: 'sampel_parameters' });
+    FpplParameterMetode.belongsToMany(models.Sampel, { through: models.SampelParameter, foreignKey: 'id_fppl_parameter_metode', otherKey: 'no_sampel', as: 'sampels' });
+    FpplParameterMetode.hasMany(models.InvoiceItem, { foreignKey: 'id_fppl_parameter_metode' });
+    FpplParameterMetode.belongsToMany(models.Invoice, { through: models.InvoiceItem, foreignKey: 'id_fppl_parameter_metode', otherKey: 'id_invoice', as: 'InvoiceList' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isLabCapable() {
+    return this.status_kemampuan_lab === 'MAMPU';
+  }
+
+  isSubcontractRequired() {
+    return this.status_kemampuan_lab === 'TIDAK_MAMPU';
+  }
+
+  isInSitu() {
+    return this.is_insitu === true || this.is_insitu === 1;
+  }
+}
+
+FpplParameterMetode.init({
   id_fppl_parameter_metode: {
     type: DataTypes.STRING(15),
     primaryKey: true,
@@ -49,7 +86,9 @@ const FpplParameterMetode = sequelize.define('fppl_parameter_metode', {
     defaultValue: false,
   },
 }, {
-  tableName: 'fppl_parameter_metode',
+  sequelize,
+  modelName: 'fppl_parameter_metode',
+tableName: 'fppl_parameter_metode',
   timestamps: false,
 });
 

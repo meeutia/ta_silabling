@@ -26,7 +26,6 @@ normalizeBmText = (value) => {
             return;
         group.__sampleNoKeySet.add(key);
         group.samples.push(value);
-        group.sampels.push(value);
     };
     findApprovedResultForExpectedParameter = (expected = {}, resultRows = []) => {
         const expectedFpmId = String(expected.id_fppl_parameter_metode || '').trim();
@@ -54,49 +53,37 @@ normalizeBmText = (value) => {
         })[0];
     };
     mapDetailRow = (resultRow, bmInfo, sample = {}) => {
-        const bm = bmInfo.map.get(resultRow.id_parameter) || null;
+        const parameterId = resultRow.idParameter || resultRow.id_parameter;
+        const bm = bmInfo.map.get(parameterId) || null;
         const adaDiBm = Boolean(bm);
-        const nilaiBm = this.normalizeNilaiBmForLhu(bm?.nilai_bm);
-        const satuanBm = this.normalizeBmText(bm?.satuan_bm);
-        const payload = {
-            nomor_lhu: null,
-            no_sampel: resultRow.no_sampel,
-            noSampel: resultRow.no_sampel,
-            kode_lka: resultRow.kode_lka || null,
-            kodeLka: resultRow.kode_lka || null,
-            id_fppl_parameter_metode: resultRow.id_fppl_parameter_metode || null,
-            idFpplParameterMetode: resultRow.id_fppl_parameter_metode || null,
-            id_parameter: resultRow.id_parameter || null,
-            idParameter: resultRow.id_parameter || null,
-            id_metode_parameter: resultRow.id_metode_parameter || null,
-            idMetodeParameter: resultRow.id_metode_parameter || null,
-            nama_parameter: resultRow.nama_parameter,
-            metode: resultRow.nama_metode,
-            acuan_metode: resultRow.acuan_metode,
+        const nilaiBm = this.normalizeNilaiBmForLhu(bm?.nilaiBm ?? bm?.nilai_bm);
+        const satuanBm = this.normalizeBmText(bm?.satuanBm ?? bm?.satuan_bm);
+        const data = {
+            nomorLhu: null,
+            noSampel: resultRow.noSampel || resultRow.no_sampel,
+            kodeLka: resultRow.kodeLka || resultRow.kode_lka || null,
+            idFpplParameterMetode: resultRow.idFpplParameterMetode || resultRow.id_fppl_parameter_metode || null,
+            idParameter: parameterId || null,
+            idMetodeParameter: resultRow.idMetodeParameter || resultRow.id_metode_parameter || null,
+            namaParameter: resultRow.namaParameter || resultRow.nama_parameter,
+            metode: resultRow.namaMetode || resultRow.nama_metode || resultRow.metode,
+            acuanMetode: resultRow.acuanMetode || resultRow.acuan_metode,
             hasil: resultRow.hasil,
-            is_terakreditasi: toTinyIntFlag(resultRow.is_terakreditasi),
-            isTerakreditasi: toTinyIntFlag(resultRow.is_terakreditasi),
+            isTerakreditasi: toTinyIntFlag(resultRow.isTerakreditasi ?? resultRow.is_terakreditasi),
             bm: nilaiBm,
-            satuan_bm: satuanBm,
-            satuanBm: satuanBm,
-            ada_di_bm: adaDiBm ? 1 : 0,
+            satuanBm,
             adaDiBm: adaDiBm ? 1 : 0,
-            is_insitu: toTinyIntFlag(resultRow.is_insitu),
-            isInsitu: toTinyIntFlag(resultRow.is_insitu),
-            is_insitu_snapshot: toTinyIntFlag(resultRow.is_insitu),
-            isInsituSnapshot: toTinyIntFlag(resultRow.is_insitu),
-            is_subkontrak: getSubkontrakSnapshot(resultRow),
+            isInsitu: toTinyIntFlag(resultRow.isInsitu ?? resultRow.is_insitu),
+            isInsituSnapshot: toTinyIntFlag(resultRow.isInsitu ?? resultRow.is_insitu),
             isSubkontrak: getSubkontrakSnapshot(resultRow),
-            is_subkontrak_snapshot: getSubkontrakSnapshot(resultRow),
             isSubkontrakSnapshot: getSubkontrakSnapshot(resultRow),
-            tanggal_sampling: toDateOnly(sample?.tanggal_pengambilan_sampel),
-            nilai_bm: nilaiBm,
-            catatan_hasil: resultRow.catatan_hasil || null,
+            tanggalSampling: toDateOnly(sample?.tanggalPengambilanSampel || sample?.tanggal_pengambilan_sampel),
+            nilaiBm,
+            catatanHasil: resultRow.catatanHasil || resultRow.catatan_hasil || null,
         };
-        const detailKey = getFallbackParameterKey(payload);
+        const detailKey = getFallbackParameterKey(data);
         return {
-            ...payload,
-            detail_key: detailKey,
+            ...data,
             detailKey,
         };
     };
@@ -107,38 +94,35 @@ normalizeBmText = (value) => {
             if (!map.has(key)) {
                 map.set(key, {
                     ...row,
-                    no_sampel: null,
                     noSampel: null,
-                    kode_lka: null,
                     kodeLka: null,
                     samples: [],
-                    sampels: [],
-                    hasil_by_sample: {},
-                    hasilBySample: {},
-                    kode_lka_by_sample: {},
+                    resultsBySample: {},
                     kodeLkaBySample: {},
                 });
             }
             const group = map.get(key);
-            const noSampel = String(row.no_sampel || row.noSampel || '').trim();
+            const noSampel = String(row.noSampel || row.no_sampel || '').trim();
             if (!noSampel)
                 return;
-            group.hasil_by_sample[noSampel] = row.hasil || row.hasil_snapshot || row.hasilSnapshot || null;
-            group.hasilBySample[noSampel] = group.hasil_by_sample[noSampel];
-            group.kode_lka_by_sample[noSampel] = row.kode_lka || row.kodeLka || null;
-            group.kodeLkaBySample[noSampel] = group.kode_lka_by_sample[noSampel];
+            group.resultsBySample[noSampel] = row.hasil || row.hasilSnapshot || row.hasil_snapshot || null;
+            group.kodeLkaBySample[noSampel] = row.kodeLka || row.kode_lka || null;
             this.pushSampleNoOnce(group, noSampel);
             group.hasil = group.samples
-                .map((sampleNo) => `${sampleNo}: ${group.hasil_by_sample[sampleNo] || '-'}`)
+                .map((sampleNo) => `${sampleNo}: ${group.resultsBySample[sampleNo] || '-'}`)
                 .join('\n');
-            group.hasil_snapshot = group.hasil;
             group.hasilSnapshot = group.hasil;
         });
         const groupedRows = Array.from(map.values()).map((row) => {
-            const { __sampleNoKeySet, ...payload } = row;
-            return payload;
+            const { __sampleNoKeySet, ...data } = row;
+            return data;
         });
-        return sortDetailRowsForLhu(groupedRows);
+        groupedRows.sort((a, b) => {
+            const orderA = Number(a.urutanLhu || a.urutan_lhu) || 99999;
+            const orderB = Number(b.urutanLhu || b.urutan_lhu) || 99999;
+            return orderA - orderB;
+        });
+        return groupedRows;
     };
 }
 module.exports = new LhuDetailRowMapper();

@@ -8,7 +8,7 @@ const { createXenditPaymentSession, findPaymentForXenditWebhook, getWebhookData,
 const { getAllowedXenditPaymentChannels, } = require('./payment-xendit.service');
 const { buildInvoiceSummary, createOrRefreshInvoiceForRequest, ensureCustomerOwnsRequest, loadRequestForBilling, updateCustomerApprovalStatus, } = require('./payment-billing.service');
 const { INTERNAL_PAYMENT_METHOD, canMoveRequestToWaitingSampleAfterPayment, deriveCustomerDecisionStatus, getAvailablePaymentMethods, getLatestPaymentRow, getPaymentLifecycleState, isInvoiceSettled, isRequestAlreadyPastPayment, normalizeAmount, normalizeGatewayStatus, resolvePaymentMethod, } = require('./payment-policy.util');
-const { buildPaymentGatewayPayload, buildXenditPaymentSessionPayload, } = require('./payment-session-payload.util');
+const { buildPaymentGatewayData, buildXenditPaymentSessionData, } = require('./payment-session-request.util');
 class PaymentService {
     constructor({ notificationRequestService = NotificationRequestService } = {}) {
         this.notificationRequestService = notificationRequestService;
@@ -81,7 +81,7 @@ class PaymentService {
                     gateway_payment_id: null,
                     gateway_payment_request_id: null,
                     expires_at: null,
-                    gateway_payload: null,
+                    gatewayData: null,
                     paid_at: null
                 }, { transaction: t });
             }
@@ -93,7 +93,7 @@ class PaymentService {
                 }, { transaction: t });
             }
             const referenceId = `SILAB-${invoice.id_invoice}-${payment.id_payment}-${Date.now()}`.slice(0, 64);
-            const sessionPayload = buildXenditPaymentSessionPayload({
+            const sessionData = buildXenditPaymentSessionData({
                 requestJson,
                 requestId,
                 invoice,
@@ -102,7 +102,7 @@ class PaymentService {
                 referenceId,
                 paymentMethod: method
             });
-            const xenditSession = await createXenditPaymentSession(sessionPayload);
+            const xenditSession = await createXenditPaymentSession(sessionData);
             const paymentUrl = xenditSession.payment_link_url;
             if (!paymentUrl) {
                 throw new Error('Xendit tidak mengembalikan payment_link_url.');
@@ -115,8 +115,8 @@ class PaymentService {
                 gateway_status: xenditSession.status || 'ACTIVE',
                 gateway_payment_id: xenditSession.payment_id || null,
                 gateway_payment_request_id: xenditSession.payment_request_id || null,
-                expires_at: xenditSession.expires_at || sessionPayload.expires_at,
-                gateway_payload: xenditSession
+                expires_at: xenditSession.expires_at || sessionData.expires_at,
+                gatewayData: xenditSession
             }, { transaction: t });
             await invoice.update({
                 status_invoice: 'Belum Dibayar'
@@ -168,7 +168,7 @@ class PaymentService {
             });
             await t.commit();
             return {
-                id_registrasi: requestRecord.id_registrasi,
+                idRegistrasi: requestRecord.id_registrasi,
                 status: RequestStatus.CANCELLED_BY_CUSTOMER,
                 note: normalizedRejectionNote || null
             };
@@ -213,7 +213,7 @@ class PaymentService {
                     gateway_payment_id: null,
                     gateway_payment_request_id: null,
                     expires_at: null,
-                    gateway_payload: null,
+                    gatewayData: null,
                     paid_at: null
                 }, { transaction: t });
             }
@@ -228,7 +228,7 @@ class PaymentService {
                     gateway_payment_id: null,
                     gateway_payment_request_id: null,
                     expires_at: null,
-                    gateway_payload: null,
+                    gatewayData: null,
                     paid_at: null
                 }, { transaction: t });
             }
@@ -265,8 +265,7 @@ class PaymentService {
             const summary = await buildInvoiceSummary(requestId);
             return {
                 ...summary,
-                id_registrasi: requestRecord.id_registrasi,
-                nomor_fppl: nomorFppl,
+                idRegistrasi: requestRecord.id_registrasi,
                 nomorFppl,
                 status: nextWaitingSampleStatus
             };
@@ -319,14 +318,14 @@ class PaymentService {
         const payment = this.firstArrayItem(data.payments) || data.payment || {};
         return this.firstNonEmpty(data.payment_request_id, paymentRequest.id, paymentRequest.payment_request_id, payment.payment_request_id);
     };
-    extractXenditPaidAt = (data = {}, payload = {}) => {
-        const payment = this.firstArrayItem(data.payments) || data.payment || {};
-        return this.firstNonEmpty(data.paid_at, data.completed_at, data.updated, data.updated_at, payment.paid_at, payment.completed_at, payment.updated, payload.created, new Date());
+    extractXenditPaidAt = (webhookData = {}) => {
+        const payment = this.firstArrayItem(webhookData.payments) || webhookData.payment || {};
+        return this.firstNonEmpty(webhookData.paid_at, webhookData.completed_at, webhookData.updated, webhookData.updated_at, payment.paid_at, payment.completed_at, payment.updated, webhookData.created, new Date());
     };
-    applyXenditPaymentSessionUpdate = async (payload, transaction) => {
-        const data = getWebhookData(payload);
-        const status = normalizeSessionStatus(payload);
-        const payment = await findPaymentForXenditWebhook(data, transaction);
+    applyXenditPaymentSessionUpdate = async (rawWebhookData, transaction) => {
+        const webhookData = getWebhookData(rawWebhookData);
+        const status = normalizeSessionStatus(webhookData);
+        const payment = await findPaymentForXenditWebhook(webhookData, transaction);
         if (!payment) {
             return { found: false, status };
         }
@@ -338,16 +337,16 @@ class PaymentService {
         }
         await payment.update({
             gateway_status: status,
-            gateway_session_id: data.payment_session_id || data.id || payment.gateway_session_id || null,
-            gateway_reference_id: data.reference_id || payment.gateway_reference_id || null,
-            gateway_payment_url: data.payment_link_url || data.payment_url || payment.gateway_payment_url || null,
-            gateway_payment_id: this.extractXenditPaymentId(data) || payment.gateway_payment_id || null,
-            gateway_payment_request_id: this.extractXenditPaymentRequestId(data) || payment.gateway_payment_request_id || null,
-            gateway_payload: payload,
+            gateway_session_id: webhookData.payment_session_id || webhookData.id || payment.gateway_session_id || null,
+            gateway_reference_id: webhookData.reference_id || payment.gateway_reference_id || null,
+            gateway_payment_url: webhookData.payment_link_url || webhookData.payment_url || payment.gateway_payment_url || null,
+            gateway_payment_id: this.extractXenditPaymentId(webhookData) || payment.gateway_payment_id || null,
+            gateway_payment_request_id: this.extractXenditPaymentRequestId(webhookData) || payment.gateway_payment_request_id || null,
+            gatewayData: webhookData,
         }, { transaction });
         if (status === 'COMPLETED') {
             const wasAlreadyConfirmed = Boolean(payment.paid_at) || isInvoiceSettled(invoice);
-            const paidAt = this.extractXenditPaidAt(data, payload);
+            const paidAt = this.extractXenditPaidAt(webhookData);
             await payment.update({ paid_at: paidAt }, { transaction });
             await invoice.update({
                 status_invoice: 'Lunas',
@@ -453,12 +452,12 @@ class PaymentService {
                 message: 'Invalid Xendit callback token.',
             });
         }
-        const payload = req.body || {};
-        const data = getWebhookData(payload);
-        const status = normalizeSessionStatus(payload);
+        const rawWebhookData = req.body || {};
+        const webhookData = getWebhookData(rawWebhookData);
+        const status = normalizeSessionStatus(webhookData);
         const t = await sequelize.transaction();
         try {
-            const result = await this.applyXenditPaymentSessionUpdate(payload, t);
+            const result = await this.applyXenditPaymentSessionUpdate(webhookData, t);
             await t.commit();
             this.triggerPaymentNotificationFromResult(result);
             return res.status(200).json({
@@ -478,18 +477,6 @@ class PaymentService {
                 error: process.env.NODE_ENV === 'development' ? error.message : undefined,
             });
         }
-    };
-    getAvailablePaymentMethods = (...args) => {
-        return getAvailablePaymentMethods(...args);
-    };
-    createOrRefreshInvoiceForRequest = async (...args) => {
-        return createOrRefreshInvoiceForRequest(...args);
-    };
-    buildInvoiceSummary = async (...args) => {
-        return buildInvoiceSummary(...args);
-    };
-    createXenditPaymentSession = async (...args) => {
-        return createXenditPaymentSession(...args);
     };
 }
 module.exports = new PaymentService();

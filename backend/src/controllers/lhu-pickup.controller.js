@@ -1,4 +1,5 @@
 const pickupService = require('../services/lhu/lhu-pickup.service');
+const { getHariLibur } = require('../utils/holiday-calendar.util');
 class LhuPickupController {
     constructor(pickupService) {
         this.pickupService = pickupService;
@@ -21,6 +22,20 @@ class LhuPickupController {
             message: error.message || fallbackMessage,
         });
     };
+    getHolidays = async (req, res) => {
+        try {
+            const data = await getHariLibur();
+            return res.json({
+                success: true,
+                message: 'Berhasil mengambil hari libur',
+                data,
+            });
+        }
+        catch (error) {
+            return this.handleError(res, error, 'Gagal mengambil data hari libur.', 500);
+        }
+    };
+
     getPickupQueue = async (req, res) => {
         try {
             const data = await this.pickupService.getPickupQueue();

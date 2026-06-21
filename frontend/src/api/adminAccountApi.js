@@ -3,61 +3,67 @@ import { requestJson } from './httpClient';
 const authConfig = { auth: true };
 const jsonHeaders = { 'Content-Type': 'application/json' };
 
-function requestAdminJson(path, options = {}) {
-  return requestJson(
-    path,
-    {
-      ...options,
-      headers: {
-        ...jsonHeaders,
-        ...(options.headers || {}),
-      },
-    },
-    authConfig
-  );
-}
+const withQuery = (path, query = '') => {
+  const cleanQuery = String(query || '').trim();
+  if (!cleanQuery) return path;
+  return cleanQuery.startsWith('?') ? `${path}${cleanQuery}` : `${path}?${cleanQuery}`;
+};
+
+const jsonRequest = (path, method = 'GET', body = undefined) => {
+  const options = {
+    method,
+    headers: jsonHeaders,
+  };
+
+  if (body !== undefined) {
+    options.body = JSON.stringify(body);
+  }
+
+  return requestJson(path, options, authConfig);
+};
 
 export const adminAccountApi = {
-  getStaff(query = '') {
-    return requestAdminJson(`/admin/accounts/staff${query}`);
+  getRoles() {
+    return jsonRequest('/admin/accounts/roles');
   },
 
-  getCustomers(query = '') {
-    return requestAdminJson(`/admin/accounts/customers${query}`);
+  getStaff(query = '') {
+    return jsonRequest(withQuery('/admin/accounts/staff', query));
+  },
+
+  getStaffDetail(nik) {
+    return jsonRequest(`/admin/accounts/staff/${encodeURIComponent(nik)}`);
   },
 
   saveStaff(payload) {
-    return requestAdminJson('/admin/accounts/staff', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-  },
-
-  resetStaffPassword(nik) {
-    return requestAdminJson(`/admin/accounts/staff/${encodeURIComponent(nik)}/reset-password`, {
-      method: 'PATCH',
-      body: JSON.stringify({}),
-    });
+    return jsonRequest('/admin/accounts/staff', 'POST', payload);
   },
 
   toggleStaffStatus(nik, isActive) {
-    return requestAdminJson(`/admin/accounts/staff/${encodeURIComponent(nik)}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ isActive }),
+    return jsonRequest(`/admin/accounts/staff/${encodeURIComponent(nik)}/status`, 'PATCH', {
+      is_active: isActive,
     });
   },
 
-  resetCustomerPassword(customerId) {
-    return requestAdminJson(`/admin/accounts/customers/${encodeURIComponent(customerId)}/reset-password`, {
-      method: 'PATCH',
-      body: JSON.stringify({}),
+  resetStaffPassword(nik, payload = {}) {
+    return jsonRequest(`/admin/accounts/staff/${encodeURIComponent(nik)}/reset-password`, 'PATCH', payload);
+  },
+
+  getCustomers(query = '') {
+    return jsonRequest(withQuery('/admin/accounts/customers', query));
+  },
+
+  getCustomerDetail(idPelanggan) {
+    return jsonRequest(`/admin/accounts/customers/${encodeURIComponent(idPelanggan)}`);
+  },
+
+  toggleCustomerStatus(idPelanggan, isActive) {
+    return jsonRequest(`/admin/accounts/customers/${encodeURIComponent(idPelanggan)}/status`, 'PATCH', {
+      is_active: isActive,
     });
   },
 
-  toggleCustomerStatus(customerId, isActive) {
-    return requestAdminJson(`/admin/accounts/customers/${encodeURIComponent(customerId)}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ isActive }),
-    });
+  resetCustomerPassword(idPelanggan, payload = {}) {
+    return jsonRequest(`/admin/accounts/customers/${encodeURIComponent(idPelanggan)}/reset-password`, 'PATCH', payload);
   },
 };

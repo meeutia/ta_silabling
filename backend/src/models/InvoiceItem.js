@@ -1,7 +1,23 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const InvoiceItem = sequelize.define('invoice_item', {
+class InvoiceItem extends Model {
+  static associate(models) {
+    InvoiceItem.belongsTo(models.Invoice, { foreignKey: 'id_invoice' });
+    InvoiceItem.belongsTo(models.FpplParameterMetode, { foreignKey: 'id_fppl_parameter_metode' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+}
+
+InvoiceItem.init({
   id_invoice: {
     type: DataTypes.STRING(16),
     primaryKey: true,
@@ -21,7 +37,9 @@ const InvoiceItem = sequelize.define('invoice_item', {
     defaultValue: 0,
   },
 }, {
-  tableName: 'invoice_item',
+  sequelize,
+  modelName: 'invoice_item',
+tableName: 'invoice_item',
   timestamps: false,
 });
 

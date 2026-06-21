@@ -1,10 +1,11 @@
 const { Op } = require('sequelize');
+const { toCamelCaseDeep } = require('../../utils/case-transform.util');
 const { NotifikasiEmail, JadwalPengambilanLhu, JadwalSampel, Fppl, Pelanggan, User, Pegawai, Lhu, Sampel, FpplSampel, JenisSampel, Penugasan, PenugasanDetail, PenugasanItem, ParameterMetode, Parameter, Metode, Lka, LkaHasil, Invoice, PengajuanPerubahanJadwal, } = require('../../models/Associations');
 const { NOTIFICATION_TYPE, STATUS_PENGIRIMAN_EMAIL, } = require('../../constants/notification.constant');
 const Roles = require('../../constants/roles');
 const RequestStatus = require('../../constants/request-status');
 const { LHU_STATUS } = require('../../constants/lhu-status.constant');
-const { buildAdminRequestLink, buildAnalisTestingLink, buildKasiMethodsLink, buildKasiReviewLink, buildKalabApprovalLink, buildKasiReviewApprovedEmail, buildKasiReviewApprovedToQcEmail, buildLhuNeedsKalabApprovalEmail, buildPenyeliaAssignmentLink, buildPenyeliaReviewLink, buildRequestDetailLink, buildRequestLhusCompleteAdminEmail, buildTestResultRevisionByQcEmail, safeString, } = require('./notification-format.util');
+const { buildAdminRequestLink, buildAnalisTestingLink, buildKasiMethodsLink, buildKasiReviewLink, buildKalabApprovalLink, buildKasiReviewApprovedToQcEmail, buildLhuNeedsKalabApprovalEmail, buildPenyeliaAssignmentLink, buildPenyeliaReviewLink, buildRequestDetailLink, buildRequestLhusCompleteAdminEmail, safeString, } = require('./notification-format.util');
 const { addDays, buildEmailLogWhere, createEmailLog, findNotificationTypeById, findOrCreateNotificationTypeById, getPlain, markEmailFailed, markEmailSent, pickArray, pickObject, resolveRecipientEmail, sendNotificationEmail, startOfToday, startOfTomorrow, toDateOnly, } = require('./notification-core.service');
 const { buildJadwalPengambilanLhuEmail, } = require('../../templates/email/jadwal-pengambilan-lhu.template');
 const { buildDeadlineAnalisDekatEmail, } = require('../../templates/email/deadline-analis-dekat.template');
@@ -25,56 +26,22 @@ const { buildScheduleChangeSubmittedAdminEmail, buildScheduleChangeDecisionCusto
 const { buildKasiRevisionApprovalNeededEmail, } = require('../../templates/email/kasi-revision-approval-needed.template');
 const { buildKasiRevisionRejectedEmail, } = require('../../templates/email/kasi-revision-rejected-to-kasi.template');
 const { notifyJadwalPengambilanLhu, notifyJadwalSampel, notifyScheduleChangeApprovedToCustomer, notifyScheduleChangeRejectedToCustomer, notifyScheduleChangeSubmittedToAdmin, } = require('./notification-schedule.service');
-const { notifyAdminPermohonanBaru, notifyDeferredPaymentMarked, notifyInvoiceReady, notifyKasiMetodePerluDitentukan, notifyLhuReady, notifyPenyeliaPenugasanSampelMasuk, notifyRequestStatusChanged, notifySamplesReceived, } = require('./notification-request.service');
+const { notifyAdminPermohonanBaru, notifyCustomerRequestCancelledToAdmin, notifyCustomerRequestCancelledToCustomer, notifyDeferredPaymentMarked, notifyInvoiceReady, notifyKasiMetodePerluDitentukan, notifyLhuReady, notifyPaymentCompletedToAdmin, notifyPaymentCompletedToCustomer, notifyPenyeliaPenugasanSampelMasuk, notifyRequestStatusChanged, notifySamplesReceived, } = require('./notification-request.service');
 const { notifyAnalisSubmitKePenyelia, notifyDeadlineAnalisDekat, notifyPenugasanAnalisBaru, notifyPenyeliaApproveKeKasi, } = require('./notification-assignment-event.service');
 const { findRevisionTargetsBySample, getActiveUsersByRole, getPenugasanParameterMethodGroups, getPenugasanSampleNos, getKasiQcRequestNotificationContext, getRequestAndCustomer, getRequestLhuCompletionContext, getRequestWithCustomerAndSamples, getSampleNotificationContext, resolveRequestStatusNotificationType, } = require('./notification-query.service');
 class NotificationService {
-notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
-        const context = await getSampleNotificationContext(noSampel);
-        const tipe = await findOrCreateNotificationTypeById(NOTIFICATION_TYPE.LHU_MENUNGGU_KALAB, {
-            deskripsi: 'LHU menunggu persetujuan Kepala Lab',
-            konteks: 'LHU',
-        });
-        const recipients = await getActiveUsersByRole(Roles.KALAB);
-        const results = [];
-        for (const penerima of recipients) {
-            const nik = penerima.nik;
-            if (!nik)
-                continue;
-            const log = await createEmailLog({
-                idTipeNotifikasi: tipe.get('id_tipe_notifikasi'),
-                penerimaUserNik: nik,
-                penerimaPelangganId: null,
-                idRegistrasi: context.fpplSampel.id_registrasi || null,
-                idJadwalLhu: null,
-                nomorLhu: context.lhu.nomor_lhu || null,
-                idPenugasan: null,
-            });
-            try {
-                const to = await resolveRecipientEmail({ penerimaUserNik: nik, penerimaPelangganId: null });
-                const { subject, body, html } = buildKasiReviewApprovedEmail({ penerima, context });
-                await sendNotificationEmail({ to, subject, body, html });
-                results.push(await markEmailSent(log));
-            }
-            catch (error) {
-                results.push(await markEmailFailed(log, error));
-                console.error('Gagal kirim notifikasi hasil disetujui Kasi ke Kalab:', error);
-            }
-        }
-        return results;
-    };
     notifyKasiReviewApprovedToQc = async ({ noSampel } = {}) => {
         const context = await getKasiQcRequestNotificationContext(noSampel);
         if (!context.isComplete) {
             return {
                 skipped: true,
                 reason: 'Belum seluruh sampel dan parameter dalam permohonan disetujui Kasi Pengujian.',
-                id_registrasi: context.idRegistrasi,
-                no_sampel_trigger: noSampel,
-                total_sampel: context.totalSamples,
-                total_parameter: context.totalParameter,
-                total_approved_kasi: context.totalApprovedKasi,
-                sampel_belum_lengkap: (context.incompleteSamples || []).map((sample) => sample.no_sampel || sample.noSampel).filter(Boolean),
+                idRegistrasi: context.idRegistrasi,
+                noSampelTrigger: noSampel,
+                totalSamples: context.totalSamples,
+                totalParameter: context.totalParameter,
+                totalApprovedKasi: context.totalApprovedKasi,
+                sampelBelumLengkap: (context.incompleteSamples || []).map((sample) => sample.noSampel || sample.no_sampel).filter(Boolean),
             };
         }
         const tipe = await findOrCreateNotificationTypeById(NOTIFICATION_TYPE.HASIL_KASI_MENUNGGU_QC, {
@@ -151,43 +118,37 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
         const lhu = getPlain(lhuInstance) || {};
         const lhuSamples = pickArray(lhu, ['sampels', 'Sampels']);
         const firstSample = lhuSamples[0] || {};
-        const firstFpplSampel = pickObject(firstSample, ['fppl_sampel', 'FpplSampel']) || {};
+        const firstFpplSampel = pickObject(firstSample, ['fpplSampel', 'fppl_sampel', 'FpplSampel']) || {};
         const fpplFromSample = pickObject(firstFpplSampel, ['fppl', 'Fppl']) || {};
         const fppl = pickObject(lhu, ['fppl', 'Fppl']) || fpplFromSample || {};
         const pelanggan = pickObject(fppl, ['pelanggan', 'Pelanggan']) || pickObject(fpplFromSample, ['pelanggan', 'Pelanggan']) || {};
         const sampleNos = lhuSamples
-            .map((sample) => sample.no_sampel || sample.noSampel || null)
+            .map((sample) => sample.noSampel || sample.no_sampel || null)
             .filter(Boolean);
         const samples = lhuSamples.map((sample) => {
-            const fpplSampel = pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
-            const jenis = pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
+            const fpplSampel = pickObject(sample, ['fpplSampel', 'fppl_sampel', 'FpplSampel']) || {};
+            const jenis = pickObject(fpplSampel, ['jenisSampel', 'jenis_sampel', 'JenisSampel']) || {};
             return {
-                no_sampel: sample.no_sampel || sample.noSampel || null,
-                noSampel: sample.no_sampel || sample.noSampel || null,
-                jenis_sampel: jenis.jenis_sampel || jenis.nama_jenis || null,
-                jenisSampel: jenis.jenis_sampel || jenis.nama_jenis || null,
+                noSampel: sample.noSampel || sample.no_sampel || null,
+                jenisSampel: jenis.jenisSampel || jenis.jenis_sampel || jenis.namaJenis || jenis.nama_jenis || null,
             };
-        }).filter((item) => item.no_sampel || item.noSampel);
+        }).filter((item) => item.noSampel);
         const jenisList = Array.from(new Set(samples
-            .map((item) => item.jenis_sampel || item.jenisSampel)
+            .map((item) => item.jenisSampel)
             .filter(Boolean)));
-        const jenis = {
-            jenis_sampel: jenisList.join(', ') || null,
-            jenisSampel: jenisList.join(', ') || null,
-        };
-        return {
+        return toCamelCaseDeep({
             lhu,
             sample: firstSample,
             samples,
             sampleNos,
-            sample_nos: sampleNos,
             totalSamples: sampleNos.length,
-            total_sampel: sampleNos.length,
             fpplSampel: firstFpplSampel,
-            jenis,
+            jenis: {
+                jenisSampel: jenisList.join(', ') || null,
+            },
             fppl,
             pelanggan,
-        };
+        });
     };
     getRecentQcFinalizedLhus = async ({ since, fallbackLhuNo }) => {
         const rows = await Lhu.findAll({
@@ -226,47 +187,33 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
                 const jenis = pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
                 const noSampel = sample.no_sampel || sample.noSampel || null;
                 return {
-                    no_sampel: noSampel,
                     noSampel,
-                    jenis_sampel: jenis.jenis_sampel || jenis.nama_jenis || null,
-                    jenisSampel: jenis.jenis_sampel || jenis.nama_jenis || null,
+                    jenisSampel: jenis.jenisSampel || jenis.jenis_sampel || jenis.namaJenis || jenis.nama_jenis || null,
                 };
             })
-                .filter((sample) => sample.no_sampel || sample.noSampel);
-            const sampleNos = samples.map((sample) => sample.no_sampel || sample.noSampel).filter(Boolean);
-            const jenisList = Array.from(new Set(samples.map((sample) => sample.jenis_sampel || sample.jenisSampel).filter(Boolean)));
+                .filter((sample) => sample.noSampel);
+            const sampleNos = samples.map((sample) => sample.noSampel).filter(Boolean);
+            const jenisList = Array.from(new Set(samples.map((sample) => sample.jenisSampel).filter(Boolean)));
             return {
-                nomor_lhu: lhu.nomor_lhu,
-                nomorLhu: lhu.nomor_lhu,
-                id_registrasi: lhu.id_registrasi,
-                idRegistrasi: lhu.id_registrasi,
-                qc_at: lhu.qc_at,
-                qcAt: lhu.qc_at,
-                sample_nos: sampleNos,
+                nomorLhu: lhu.nomorLhu || lhu.nomor_lhu,
+                idRegistrasi: lhu.idRegistrasi || lhu.id_registrasi,
+                qcAt: lhu.qcAt || lhu.qc_at,
                 sampleNos,
                 samples,
-                total_sampel: sampleNos.length,
                 totalSamples: sampleNos.length,
-                no_sampel: sampleNos.join(', ') || null,
                 noSampel: sampleNos.join(', ') || null,
-                jenis_sampel: jenisList.join(', ') || null,
                 jenisSampel: jenisList.join(', ') || null,
             };
         });
-        if (!mapped.some((row) => row.nomor_lhu === fallbackLhuNo)) {
+        if (!mapped.some((row) => row.nomorLhu === fallbackLhuNo)) {
             const fallbackContext = await this.getLhuKalabNotificationContext(fallbackLhuNo);
             mapped.push({
-                nomor_lhu: fallbackLhuNo,
                 nomorLhu: fallbackLhuNo,
-                id_registrasi: fallbackContext.lhu.id_registrasi || fallbackContext.fpplSampel.id_registrasi || null,
-                idRegistrasi: fallbackContext.lhu.id_registrasi || fallbackContext.fpplSampel.id_registrasi || null,
-                sample_nos: fallbackContext.sampleNos || [],
+                idRegistrasi: fallbackContext.lhu.idRegistrasi || fallbackContext.lhu.id_registrasi || fallbackContext.fpplSampel.idRegistrasi || fallbackContext.fpplSampel.id_registrasi || null,
                 sampleNos: fallbackContext.sampleNos || [],
                 samples: fallbackContext.samples || [],
-                total_sampel: fallbackContext.totalSamples || 0,
                 totalSamples: fallbackContext.totalSamples || 0,
-                jenis_sampel: fallbackContext.jenis?.jenis_sampel || fallbackContext.jenis?.jenisSampel || null,
-                jenisSampel: fallbackContext.jenis?.jenis_sampel || fallbackContext.jenis?.jenisSampel || null,
+                jenisSampel: fallbackContext.jenis?.jenisSampel || null,
             });
         }
         return mapped;
@@ -310,8 +257,8 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
                 results.push({
                     skipped: true,
                     reason: 'Notifikasi Kalab sudah dikirim dalam rentang 20 menit terakhir.',
-                    nomor_lhu: lhuNo,
-                    penerima_user_nik: nik,
+                    nomorLhu: lhuNo,
+                    penerimaUserNik: nik,
                 });
                 continue;
             }
@@ -354,9 +301,9 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
             return {
                 skipped: true,
                 reason: 'Belum semua sampel dalam permohonan memiliki LHU berstatus Disahkan.',
-                id_registrasi: context.idRegistrasi,
-                total_sampel: context.totalSamples,
-                belum_lengkap: context.incompleteSamples.map((sample) => sample.no_sampel),
+                idRegistrasi: context.idRegistrasi,
+                totalSamples: context.totalSamples,
+                belumLengkap: context.incompleteSamples.map((sample) => sample.noSampel || sample.no_sampel),
             };
         }
         const tipe = await findOrCreateNotificationTypeById(NOTIFICATION_TYPE.LHU_PERMOHONAN_LENGKAP_ADMIN, {
@@ -378,7 +325,7 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
             });
             if (existing) {
                 results.push({
-                    penerima_user_nik: nik,
+                    penerimaUserNik: nik,
                     skipped: true,
                     reason: 'Notifikasi kelengkapan LHU permohonan sudah pernah dibuat untuk admin ini.',
                 });
@@ -408,64 +355,6 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
             }
         }
         return results;
-    };
-    notifyRevisiLhuQc = async () => {
-        return {
-            skipped: true,
-            reason: 'Alur notifikasi revisi LHU oleh QC sudah dinonaktifkan.',
-        };
-    };
-    findQcUserFromLhu = async (nomorLhu) => {
-        const lhuNo = safeString(nomorLhu).trim();
-        if (!lhuNo) {
-            const err = new Error('Nomor LHU wajib dikirim.');
-            err.statusCode = 400;
-            throw err;
-        }
-        const lhu = await Lhu.findOne({
-            where: { nomor_lhu: lhuNo },
-        });
-        if (!lhu) {
-            const err = new Error('LHU untuk notifikasi revisi Kalab tidak ditemukan.');
-            err.statusCode = 404;
-            throw err;
-        }
-        const row = getPlain(lhu);
-        const qcNik = row.qc_by;
-        if (!qcNik) {
-            const err = new Error('User Pengendalian Mutu pada LHU belum tersedia.');
-            err.statusCode = 400;
-            throw err;
-        }
-        const user = await User.findOne({
-            where: { nik: qcNik },
-            include: [
-                {
-                    model: Pegawai,
-                    required: false,
-                },
-            ],
-        });
-        if (!user) {
-            const err = new Error('User Pengendalian Mutu tidak ditemukan.');
-            err.statusCode = 404;
-            throw err;
-        }
-        const plainUser = getPlain(user);
-        const pegawai = plainUser.pegawai || plainUser.Pegawai || {};
-        return {
-            lhu: row,
-            qc: {
-                ...plainUser,
-                nama_pegawai: pegawai.nama_pegawai || null,
-            },
-        };
-    };
-    notifyRevisiLhuKalab = async () => {
-        return {
-            skipped: true,
-            reason: 'Alur revisi LHU oleh Kalab sudah dinonaktifkan.',
-        };
     };
     notifyRevisiPenyeliaKeAnalis = async ({ idPenugasanDetail, catatanRevisi, noSampel = [] } = {}) => {
         const detailId = safeString(idPenugasanDetail).trim();
@@ -581,15 +470,15 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
             const parameter = pickObject(parameterMetode, ['parameter', 'Parameter']) || {};
             const metode = pickObject(parameterMetode, ['metode', 'Metode']) || {};
             return {
-                id_penugasan_detail: resolvedDetailId || null,
-                nama_parameter: row.nama_parameter || row.namaParameter ||
-                    detail.nama_parameter || detail.namaParameter ||
-                    parameter.nama_parameter || parameterMetode.nama_parameter ||
+                idPenugasanDetail: resolvedDetailId || null,
+                namaParameter: row.namaParameter || row.nama_parameter ||
+                    detail.namaParameter || detail.nama_parameter ||
+                    parameter.namaParameter || parameter.nama_parameter || parameterMetode.namaParameter || parameterMetode.nama_parameter ||
                     `Parameter ${index + 1}`,
-                acuan_metode: row.acuan_metode || row.acuanMetode || row.nama_metode || row.namaMetode ||
-                    detail.acuan_metode || detail.acuanMetode ||
-                    parameterMetode.acuan_metode || metode.nama_metode || metode.namaMetode || '-',
-                catatan_revisi: row.catatan_revisi || row.catatanRevisi || row.catatan || null,
+                acuanMetode: row.acuanMetode || row.acuan_metode || row.namaMetode || row.nama_metode ||
+                    detail.acuanMetode || detail.acuan_metode ||
+                    parameterMetode.acuanMetode || parameterMetode.acuan_metode || metode.namaMetode || metode.nama_metode || '-',
+                catatanRevisi: row.catatanRevisi || row.catatan_revisi || row.catatan || null,
             };
         });
     };
@@ -656,7 +545,7 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
                 const pegawai = user.pegawai || user.Pegawai || {};
                 return {
                     ...user,
-                    nama_pegawai: pegawai.nama_pegawai || user.nama_pegawai || null,
+                    namaPegawai: pegawai.namaPegawai || pegawai.nama_pegawai || user.namaPegawai || user.nama_pegawai || null,
                 };
             });
         }
@@ -846,7 +735,7 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
             });
             if (existingToday) {
                 results.push({
-                    penerima_user_nik: penerimaNik,
+                    penerimaUserNik: penerimaNik,
                     skipped: true,
                     reason: 'Notifikasi subkontrak sudah dikirim hari ini.',
                 });
@@ -869,7 +758,7 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
                 const { subject, body, html } = buildSubcontractResultEntryEmail({
                     penerima: {
                         ...penerima,
-                        nama_pegawai: pegawai.nama_pegawai || null,
+                        namaPegawai: pegawai.namaPegawai || pegawai.nama_pegawai || null,
                     },
                     items: itemsToFill,
                 });
@@ -883,24 +772,8 @@ notifyKasiReviewApprovedToKalab = async ({ noSampel } = {}) => {
         }
         return results;
     };
-    notifyAdminPermohonanBaru = async (...args) => { return notifyAdminPermohonanBaru(...args); };
-    notifyRequestStatusChanged = async (...args) => { return notifyRequestStatusChanged(...args); };
-    notifyInvoiceReady = async (...args) => { return notifyInvoiceReady(...args); };
-    notifyDeferredPaymentMarked = async (...args) => { return notifyDeferredPaymentMarked(...args); };
-    notifySamplesReceived = async (...args) => { return notifySamplesReceived(...args); };
-    notifyLhuReady = async (...args) => { return notifyLhuReady(...args); };
-    notifyJadwalPengambilanLhu = async (...args) => { return notifyJadwalPengambilanLhu(...args); };
-    notifyJadwalSampel = async (...args) => { return notifyJadwalSampel(...args); };
-    notifyScheduleChangeRejectedToCustomer = async (...args) => { return notifyScheduleChangeRejectedToCustomer(...args); };
-    notifyScheduleChangeApprovedToCustomer = async (...args) => { return notifyScheduleChangeApprovedToCustomer(...args); };
-    notifyScheduleChangeSubmittedToAdmin = async (...args) => { return notifyScheduleChangeSubmittedToAdmin(...args); };
-    notifyKasiMetodePerluDitentukan = async (...args) => { return notifyKasiMetodePerluDitentukan(...args); };
-    notifyPenyeliaPenugasanSampelMasuk = async (...args) => { return notifyPenyeliaPenugasanSampelMasuk(...args); };
-    notifyDeadlineAnalisDekat = async (...args) => { return notifyDeadlineAnalisDekat(...args); };
-    notifyPenugasanAnalisBaru = async (...args) => { return notifyPenugasanAnalisBaru(...args); };
-    notifyAnalisSubmitKePenyelia = async (...args) => { return notifyAnalisSubmitKePenyelia(...args); };
-    notifyPenyeliaApproveKeKasi = async (...args) => { return notifyPenyeliaApproveKeKasi(...args); };
-    findNotificationTypeById = async (...args) => { return findNotificationTypeById(...args); };
 }
-module.exports = new NotificationService();
+const notificationService = new NotificationService();
+Object.assign(notificationService, { notifyAdminPermohonanBaru, notifyRequestStatusChanged, notifyInvoiceReady, notifyDeferredPaymentMarked, notifySamplesReceived, notifyLhuReady, notifyPaymentCompletedToAdmin, notifyPaymentCompletedToCustomer, notifyCustomerRequestCancelledToAdmin, notifyCustomerRequestCancelledToCustomer, notifyJadwalPengambilanLhu, notifyJadwalSampel, notifyScheduleChangeRejectedToCustomer, notifyScheduleChangeApprovedToCustomer, notifyScheduleChangeSubmittedToAdmin, notifyKasiMetodePerluDitentukan, notifyPenyeliaPenugasanSampelMasuk, notifyDeadlineAnalisDekat, notifyPenugasanAnalisBaru, notifyAnalisSubmitKePenyelia, notifyPenyeliaApproveKeKasi, findNotificationTypeById });
+module.exports = notificationService;
 module.exports.NotificationService = NotificationService;

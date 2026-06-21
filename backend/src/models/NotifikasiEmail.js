@@ -1,8 +1,42 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 const { NOTIFICATION_REFERENCE_TYPE } = require('../constants/notification.constant');
 
-const NotifikasiEmail = sequelize.define('notifikasi_email', {
+class NotifikasiEmail extends Model {
+  static associate(models) {
+    NotifikasiEmail.belongsTo(models.User, {
+  foreignKey: 'nik_penerima',
+  as: 'penerima_user',
+});
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_pengiriman === status;
+  }
+
+  isPending() {
+    return this.isStatus('MENUNGGU');
+  }
+
+  isSent() {
+    return this.isStatus('TERKIRIM');
+  }
+
+  isFailed() {
+    return this.isStatus('GAGAL');
+  }
+}
+
+NotifikasiEmail.init({
   id_notifikasi_email: {
     type: DataTypes.STRING(15),
     primaryKey: true,
@@ -60,7 +94,9 @@ const NotifikasiEmail = sequelize.define('notifikasi_email', {
     defaultValue: DataTypes.NOW,
   },
 }, {
-  tableName: 'notifikasi_email',
+  sequelize,
+  modelName: 'notifikasi_email',
+tableName: 'notifikasi_email',
   timestamps: false,
   underscored: true,
 });

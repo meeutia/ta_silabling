@@ -1,41 +1,42 @@
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
-const { Fppl, Pelanggan, FpplSampel, FpplParameterMetode, JenisSampel, RegBm, Parameter, ParameterMetode, Metode, Sampel, } = require('../models/Associations');
-const PaymentService = require('./payment/payment.service');
+const { Fppl, Pelanggan, FpplSampel, FpplParameterMetode, JenisSampel, RegBm, Parameter, ParameterMetode, Metode, Sampel, Invoice, } = require('../models/Associations');
+const { buildInvoiceSummary } = require('./payment/payment-billing.service');
+const { toCamelCaseDeep } = require('../utils/case-transform.util');
+const Roles = require('../constants/roles');
 const LOGO_SUMBAR_CANDIDATES = [
     path.join(__dirname, '../../public/assets/logos/logo-sumbar.jpg'),
 ];
 const LOGO_SUMBAR_PATH = LOGO_SUMBAR_CANDIDATES.find((filePath) => fs.existsSync(filePath)) || null;
+const PUBLIC_DIR = path.join(__dirname, '../../public');
+const INVOICE_DIR = path.join(PUBLIC_DIR, 'invoices');
 
 const sameFpplSampelComposite = (a = {}, b = {}) => {
-    const pick = (row, snake, camel) => String(row?.[snake] ?? row?.[camel] ?? '').trim();
-    return pick(a, 'id_registrasi', 'idRegistrasi') === pick(b, 'id_registrasi', 'idRegistrasi') &&
-        pick(a, 'id_jenis_sampel', 'idJenisSampel') === pick(b, 'id_jenis_sampel', 'idJenisSampel') &&
-        pick(a, 'id_reg_bm', 'idRegBm') === pick(b, 'id_reg_bm', 'idRegBm');
+    return String(a?.idRegistrasi || '').trim() === String(b?.idRegistrasi || '').trim() &&
+        String(a?.idJenisSampel || '').trim() === String(b?.idJenisSampel || '').trim() &&
+        String(a?.idRegBm || '').trim() === String(b?.idRegBm || '').trim();
 };
 const filterFpplSampelCompositeChildren = (row = {}) => {
     if (!row || typeof row !== 'object') {
         return row;
     }
-    ['fppl_parameter_metodes', 'FpplParameterMetodes', 'fpplParameterMetodes', 'sampels', 'Sampels'].forEach((key) => {
+    ['fpplParameterMetodes', 'sampels'].forEach((key) => {
         if (Array.isArray(row[key])) {
             row[key] = row[key].filter((child) => sameFpplSampelComposite(child, row));
         }
     });
     return row;
 };
-const normalizeRequestFpplSampelGraph = (requestJson = {}) => {
-    ['fppl_sampels', 'FpplSampels', 'fpplSampels'].forEach((key) => {
-        if (Array.isArray(requestJson[key])) {
-            requestJson[key] = requestJson[key].map(filterFpplSampelCompositeChildren);
-        }
-    });
-    return requestJson;
+const normalizeRequestFpplSampelGraph = (requestData = {}) => {
+    if (Array.isArray(requestData.fpplSampels)) {
+        requestData.fpplSampels = requestData.fpplSampels.map(filterFpplSampelCompositeChildren);
+    }
+    return requestData;
 };
 class InvoicePdfService {
-    constructor({ paymentService = PaymentService } = {}) {
-        this.paymentService = paymentService;
+    constructor({ invoiceSummaryBuilder = buildInvoiceSummary } = {}) {
+        this.invoiceSummaryBuilder = invoiceSummaryBuilder;
     }
     safeDrawImage = (doc, imagePath, x, y, options = {}) => {
         if (!imagePath || !fs.existsSync(imagePath))
@@ -82,7 +83,7 @@ class InvoicePdfService {
         }).format(date);
     };
     getInvoiceStatusLabel = (invoice) => {
-        const status = String(invoice?.status || invoice?.status_invoice || '').trim();
+        const status = String(invoice?.status || invoice?.statusInvoice || '').trim();
         if (status === 'Lunas')
             return 'LUNAS';
         if (status === 'Bayar Nanti')
@@ -154,22 +155,90 @@ class InvoicePdfService {
             .replace(/\s+/g, '-')
             .trim();
     };
+    ensureInvoiceDir = () => {
+        if (!fs.existsSync(INVOICE_DIR)) {
+            fs.mkdirSync(INVOICE_DIR, { recursive: true });
+        }
+    };
+    resolvePublicFilePath = (relativePath) => {
+        if (!relativePath)
+            return null;
+        const normalized = String(relativePath).replace(/^\/+/, '');
+        const cleanPath = normalized.replace(/^public[\/]/, '');
+        return path.join(PUBLIC_DIR, cleanPath);
+    };
+    getInvoiceWithAccess = async (idRegistrasi, user = {}) => {
+        const invoice = await Invoice.findOne({
+            where: { id_registrasi: idRegistrasi },
+        });
+        if (!invoice) {
+            const error = new Error('Invoice belum tersedia.');
+            error.statusCode = 404;
+            throw error;
+        }
+        const requestRecord = await Fppl.findByPk(idRegistrasi, {
+            include: [
+                {
+                    model: Pelanggan,
+                    as: 'pelanggan',
+                    attributes: ['id_pelanggan', 'nik'],
+                },
+            ],
+        });
+        if (!requestRecord) {
+            const error = new Error('Permohonan tidak ditemukan.');
+            error.statusCode = 404;
+            throw error;
+        }
+        const requestJson = requestRecord.toJSON();
+        const pelanggan = requestJson.pelanggan || requestJson.Pelanggan || null;
+        const roleId = user?.id_role || user?.idRole;
+        if (roleId === Roles.CUSTOMER && pelanggan?.nik !== user?.nik) {
+            const error = new Error('Anda tidak memiliki akses ke invoice ini.');
+            error.statusCode = 403;
+            throw error;
+        }
+        return invoice;
+    };
+    getOrCreateInvoicePdf = async (requestId, user = {}) => {
+        const invoice = await this.getInvoiceWithAccess(requestId, user);
+        const savedPath = invoice.file_invoice_path;
+        const absoluteSavedPath = this.resolvePublicFilePath(savedPath);
+        if (absoluteSavedPath && fs.existsSync(absoluteSavedPath)) {
+            return {
+                buffer: fs.readFileSync(absoluteSavedPath),
+                filename: path.basename(absoluteSavedPath),
+            };
+        }
+        const { buffer, filename } = await this.generateInvoicePdf(requestId, user);
+        this.ensureInvoiceDir();
+        const safeName = this.safeFilename(filename || `invoice-${requestId}.pdf`);
+        const finalFilename = safeName.toLowerCase().endsWith('.pdf')
+            ? safeName
+            : `${safeName}.pdf`;
+        const absolutePath = path.join(INVOICE_DIR, finalFilename);
+        const relativePath = `/invoices/${finalFilename}`;
+        fs.writeFileSync(absolutePath, buffer);
+        await invoice.update({
+            file_invoice_path: relativePath,
+        });
+        return {
+            buffer,
+            filename: finalFilename,
+        };
+    };
     getChildRows = (parent, lowerKey, upperKey) => {
-        return parent?.[lowerKey] || parent?.[upperKey] || [];
+        return parent?.[lowerKey] || [];
     };
     getSampleType = (sample) => {
-        return (sample?.jenis_sampel?.jenis_sampel ||
-            sample?.JenisSampel?.jenis_sampel ||
-            sample?.jenisSampel ||
-            sample?.id_jenis_sampel ||
-            '-');
+        return sample?.jenisSampel?.jenisSampel || sample?.jenisSampel || sample?.idJenisSampel || '-';
     };
     getRegBmLabel = (sample) => {
-        const reg = sample?.reg_bm || sample?.RegBm;
+        const reg = sample?.regBm;
         if (!reg)
-            return sample?.id_reg_bm || '-';
+            return sample?.idRegBm || '-';
         const instansi = reg.instansi || '';
-        const ref = reg.ref_reg || reg.refReg || reg.id_reg_bm || '';
+        const ref = reg.refReg || reg.idRegBm || '';
         return [instansi, ref].filter(Boolean).join(' - ') || '-';
     };
     loadInvoicePdfData = async (requestId, user) => {
@@ -261,47 +330,40 @@ class InvoicePdfService {
             error.statusCode = 404;
             throw error;
         }
-        const requestJson = normalizeRequestFpplSampelGraph(requestRecord.toJSON());
-        const pelanggan = requestJson.pelanggan || requestJson.Pelanggan || null;
-        if (user?.id_role === 'RL-001' && pelanggan?.nik !== user?.nik) {
+        const requestJson = normalizeRequestFpplSampelGraph(toCamelCaseDeep(requestRecord.toJSON()));
+        const pelanggan = requestJson.pelanggan || null;
+        if ((user?.idRole === Roles.CUSTOMER || user?.id_role === Roles.CUSTOMER) && pelanggan?.nik !== user?.nik) {
             const error = new Error('Anda tidak memiliki akses ke invoice ini.');
             error.statusCode = 403;
             throw error;
         }
-        const invoiceSummary = await this.paymentService.buildInvoiceSummary(requestId);
+        const invoiceSummary = await this.invoiceSummaryBuilder(requestId);
         if (!invoiceSummary?.nomorInvoice) {
             const error = new Error('Invoice belum tersedia.');
             error.statusCode = 404;
             throw error;
         }
-        const sampleRows = this.getChildRows(requestJson, 'fppl_sampels', 'FpplSampels');
+        const sampleRows = this.getChildRows(requestJson, 'fpplSampels');
         const noSampelList = sampleRows
-            .flatMap((sample) => this.getChildRows(sample, 'sampels', 'sampels'))
-            .map((sample) => sample.no_sampel)
+            .flatMap((sample) => this.getChildRows(sample, 'sampels'))
+            .map((sample) => sample.noSampel)
             .filter(Boolean);
         const rows = [];
         sampleRows.forEach((sample) => {
             const sampleType = this.getSampleType(sample);
             const regBmLabel = this.getRegBmLabel(sample);
-            const jumlahSampel = Number(sample.jumlah_sampel || 1) || 1;
-            const fpmRows = this.getChildRows(sample, 'fppl_parameter_metodes', 'FpplParameterMetodes');
+            const jumlahSampel = Number(sample.jumlahSampel || 1) || 1;
+            const fpmRows = this.getChildRows(sample, 'fpplParameterMetodes');
             fpmRows.forEach((fpm) => {
-                const parameterName = fpm.parameter?.nama_parameter ||
-                    fpm.Parameter?.nama_parameter ||
+                const parameterName = fpm.parameter?.namaParameter ||
                     '-';
-                const methodName = fpm.parameter_metode?.metode?.nama_metode ||
-                    fpm.parameter_metode?.Metode?.nama_metode ||
-                    fpm.ParameterMetode?.metode?.nama_metode ||
-                    fpm.ParameterMetode?.Metode?.nama_metode ||
-                    '-';
-                const acuanMetode = fpm.parameter_metode?.acuan_metode ||
-                    fpm.ParameterMetode?.acuan_metode ||
-                    '';
-                const parameterMetode = fpm.parameter_metode || fpm.ParameterMetode || null;
+                const methodName = fpm.parameterMetode?.metode?.namaMetode || '-';
+                const acuanMetode = fpm.parameterMetode?.acuanMetode || '';
+                const parameterMetode = fpm.parameterMetode || null;
                 const harga = Number(parameterMetode?.tarif || 0);
-                const isSubkontrak = parameterMetode?.is_subkontrak === true ||
-                    parameterMetode?.is_subkontrak === 1 ||
-                    parameterMetode?.is_subkontrak === '1';
+                const isSubkontrak = parameterMetode?.isSubkontrak === true ||
+                    parameterMetode?.isSubkontrak === 1 ||
+                    parameterMetode?.isSubkontrak === '1';
                 rows.push({
                     sampleType,
                     regBmLabel,
@@ -312,11 +374,11 @@ class InvoicePdfService {
                     harga,
                     subtotal: harga * jumlahSampel,
                     isSubkontrak,
-                    isInsitu: fpm.is_insitu === true ||
-                        fpm.is_insitu === 1 ||
-                        fpm.is_insitu === '1',
-                    statusKemampuanLab: fpm.status_kemampuan_lab || null,
-                    catatanKemampuan: fpm.catatan_kemampuan || null
+                    isInsitu: fpm.isInsitu === true ||
+                        fpm.isInsitu === 1 ||
+                        fpm.isInsitu === '1',
+                    statusKemampuanLab: fpm.statusKemampuanLab || null,
+                    catatanKemampuan: fpm.catatanKemampuan || null
                 });
             });
         });
@@ -579,7 +641,7 @@ class InvoicePdfService {
         const startY = 156;
         const labelX = 55;
         const valueX = 150;
-        const noFppl = request.nomor_fppl || request.id_registrasi || '-';
+        const noFppl = request.nomorFppl || request.idRegistrasi || '-';
         const noSampelText = noSampelList.length > 0 ? noSampelList.join(', ') : '-';
         doc.font('Helvetica').fontSize(9);
         doc.text('No. FPPL', labelX, startY);
@@ -590,7 +652,7 @@ class InvoicePdfService {
         doc.text(noSampelText, valueX, startY + 18, { width: 170 });
         doc.text('Pelanggan', labelX, startY + 36);
         doc.text(':', valueX - 10, startY + 36);
-        doc.text(pelanggan?.nama_instansi || pelanggan?.pic || '-', valueX, startY + 36, {
+        doc.text(pelanggan?.namaInstansi || pelanggan?.pic || '-', valueX, startY + 36, {
             width: 170
         });
         doc.text('No. Invoice', 340, startY);

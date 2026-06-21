@@ -1,20 +1,25 @@
+const path = require('path');
 const { Op } = require('sequelize');
 const sequelize = require('../../config/database');
 const { User, Pelanggan, Fppl, FpplSampel, RegBm, JenisSampel, Parameter, Metode, ParameterMetode, Penugasan, PenugasanDetail, PenugasanItem, Sampel, Lka, LkaHasil, LkaRevisi, } = require('../../models/Associations');
 const notificationService = require('../notification/notification.service');
 const WorkflowLogService = require('../workflow/workflow-log.service');
-const { asYmd } = require('../../utils/business-day.util');
+const { asYmd, isBusinessDay, validateTestingPhaseDate } = require('../../utils/business-day.util');
+const { getHariLibur } = require('../../utils/holiday-calendar.util');
+const { previewWorksheetFile: buildWorksheetPreview } = require('../../utils/worksheet-preview');
+const { createFileAccessToken } = require('../../utils/file-access-token.util');
 const { EDITABLE_LKA_STATUSES, LKA_HASIL_STATUS } = require('./assignment.constants');
 const { getPlain, pickObject, pickArray, uniqueText, firstDate } = require('./assignment-object.helper');
-const { parseWorksheetFiles, serializeWorksheetFiles, getPrimaryWorksheetPath, } = require('./assignment-worksheet-files.helper');
+const worksheetFileService = require('./assignment-worksheet-files.helper');
+const { parseWorksheetFiles, serializeWorksheetFiles, getPrimaryWorksheetPath, } = worksheetFileService;
 const { getDetailParameterInfo } = require('./assignment-monitor.mapper');
 const { getStatusOrderValue } = require('./assignment-fpm.helper');
 const { resolveLkaHasilStatus, normalizeLegacyLkaHasilStatuses, syncLkaAggregateStatus, syncAssignmentHeaderStatusFromDetail, syncDetailStatusFromLka, hasActiveRevisionForMonitorDetail, resolveMonitorDisplayStatus, } = require('./assignment-status.helper');
-const { assertPenugasanDetailSamplesEditableBeforeLhu, getSampleNosForPenugasanDetail, getLockedLhuRowsBySamples, toLhuLockPayload, } = require('./assignment-lhu-lock.helper');
+const { assertPenugasanDetailSamplesEditableBeforeLhu, getSampleNosForPenugasanDetail, getLockedLhuRowsBySamples, toLhuLockRequestData, } = require('./assignment-lhu-lock.helper');
 const { collectRevisionNotesForSample, buildWorksheetRevisionResponse, buildLkaHasilRevisionResponse, } = require('./assignment-revision.helper');
-const { getLkaRevisionHistory, loadRevisionRowsForLka } = require('./assignment-worksheet-revision-history.helper');
-const { assertWorksheetBusinessDatesOrThrow } = require('./assignment-worksheet-business-date.helper');
-const { normalizeResultRows, getLkaRevisionScope, upsertWorksheetResults, assertWorksheetReadyToSubmit, markRevisionItemsWorkedByAnalyst, markRevisionItemsApprovedByPenyelia, markRevisionItemsApprovedByKasi, } = require('./assignment-worksheet-result.helper');
+const worksheetRevisionHistoryService = require('./assignment-worksheet-revision-history.helper');
+const { loadRevisionRowsForLka } = worksheetRevisionHistoryService;
+const { normalizeResultRows, getLkaRevisionScope, upsertWorksheetResults, assertWorksheetReadyToSubmit, markRevisionItemsWorkedByAnalyst, } = require('./assignment-worksheet-result.helper');
 const RUNNING_ID_MODEL_MAP = {
     lka: {
         model: Lka,
@@ -25,6 +30,113 @@ class AssignmentWorksheetService {
     constructor({ notificationService: injectedNotificationService = notificationService } = {}) {
         this.notificationService = injectedNotificationService;
     }
+    assertWorksheetFileAccess = async (rawPath, user = {}, transaction = null) => {
+        return worksheetFileService.assertWorksheetFileAccess(rawPath, user, transaction);
+    };
+    getLkaRevisionHistory = async (kodeLka) => {
+        return worksheetRevisionHistoryService.getLkaRevisionHistory(kodeLka);
+    };
+    buildSignedWorksheetUrl = (filePath, download = false, expiresInSeconds = 12 * 60 * 60) => {
+        const token = createFileAccessToken({
+            scope: 'worksheet',
+            path: filePath,
+            expiresInSeconds,
+        });
+        return `/files/worksheet?token=${encodeURIComponent(token)}${download ? '&download=1' : ''}`;
+    };
+    attachSignedWorksheetUrl = (previewRequestData, sourcePath) => {
+        if (!previewRequestData || typeof previewRequestData !== 'object')
+            return previewRequestData;
+        const rawPath = sourcePath || previewRequestData.url;
+        if (!rawPath)
+            return previewRequestData;
+        const signedUrl = this.buildSignedWorksheetUrl(rawPath);
+        const signedDownloadUrl = this.buildSignedWorksheetUrl(rawPath, true);
+        return {
+            ...previewRequestData,
+            originalUrl: previewRequestData.url || rawPath,
+            url: previewRequestData.url ? signedUrl : previewRequestData.url,
+            downloadUrl: signedDownloadUrl,
+        };
+    };
+    getWorksheetPreview = async (worksheetPath, user = {}) => {
+        await this.assertWorksheetFileAccess(worksheetPath, user);
+        const data = await buildWorksheetPreview(worksheetPath);
+        return this.attachSignedWorksheetUrl(data, worksheetPath);
+    };
+    getWorksheetAccessUrl = async (worksheetPath, user = {}, download = false) => {
+        await this.assertWorksheetFileAccess(worksheetPath, user);
+        return {
+            path: worksheetPath,
+            url: this.buildSignedWorksheetUrl(worksheetPath, download),
+            downloadUrl: this.buildSignedWorksheetUrl(worksheetPath, true),
+        };
+    };
+    formatUploadedWorksheetFiles = (uploadedFiles = []) => {
+        return uploadedFiles.map((file) => {
+            const ext = path
+                .extname(file.originalname || file.filename || '')
+                .replace('.', '')
+                .toLowerCase();
+            const filePath = `/worksheets/${file.filename}`;
+            return {
+                path: filePath,
+                originalName: file.originalname || file.filename,
+                mimeType: file.mimetype || null,
+                size: file.size || null,
+                ext,
+                uploadedAt: new Date().toISOString(),
+                secureUrl: this.buildSignedWorksheetUrl(filePath),
+                downloadUrl: this.buildSignedWorksheetUrl(filePath, true),
+            };
+        });
+    };
+    getHolidayDateSet = async () => {
+            const holidays = await getHariLibur();
+            return new Set((Array.isArray(holidays) ? holidays : []).map((item) => asYmd(item?.date)).filter(Boolean));
+        };
+        getReceiptDateForPenugasanDetail = async (idPenugasanDetail, transaction = null) => {
+            const sampleNos = await getSampleNosForPenugasanDetail(idPenugasanDetail, transaction);
+            if (!sampleNos.length)
+                return null;
+            const samples = await Sampel.findAll({
+                where: { no_sampel: { [Op.in]: sampleNos } },
+                attributes: ['diterima_pada'],
+                transaction,
+            });
+            return samples
+                .map((row) => asYmd(getPlain(row)?.diterima_pada))
+                .filter(Boolean)
+                .sort()[0] || null;
+        };
+        assertWorksheetBusinessDatesOrThrow = async (idPenugasanDetail, tanggalMulaiPengujian, tanggalSelesaiPengujian, transaction = null) => {
+            const holidays = await this.getHolidayDateSet();
+            const dateRows = [
+                ['Tanggal pengerjaan', asYmd(tanggalMulaiPengujian)],
+                ['Tanggal selesai', asYmd(tanggalSelesaiPengujian)],
+            ].filter(([, value]) => Boolean(value));
+            for (const [label, value] of dateRows) {
+                if (!isBusinessDay(value, holidays)) {
+                    throw new Error(`${label} harus hari kerja dan tidak boleh Sabtu/Minggu/tanggal merah.`);
+                }
+            }
+            if (tanggalMulaiPengujian && tanggalSelesaiPengujian && asYmd(tanggalSelesaiPengujian) < asYmd(tanggalMulaiPengujian)) {
+                throw new Error('Tanggal selesai tidak boleh sebelum tanggal pengerjaan.');
+            }
+            const receiptDate = await this.getReceiptDateForPenugasanDetail(idPenugasanDetail, transaction);
+            if (!receiptDate)
+                return;
+            if (tanggalMulaiPengujian) {
+                const message = validateTestingPhaseDate({ value: tanggalMulaiPengujian, receivedYmd: receiptDate, label: 'Tanggal pengerjaan', holidays });
+                if (message)
+                    throw new Error(message);
+            }
+            if (tanggalSelesaiPengujian) {
+                const message = validateTestingPhaseDate({ value: tanggalSelesaiPengujian, receivedYmd: receiptDate, label: 'Tanggal selesai', holidays });
+                if (message)
+                    throw new Error(message);
+            }
+        };
     nextRunningId = async (tableName, fieldName, prefix, pad, transaction) => {
         const config = RUNNING_ID_MODEL_MAP[tableName];
         if (!config || config.field !== fieldName) {
@@ -161,17 +273,19 @@ class AssignmentWorksheetService {
             const sampelJenis = pickObject(sampelFppl, ['jenis_sampel', 'JenisSampel']) || {};
             const hasilRow = lkaHasilRows.find((hasil) => hasil.no_sampel === item.no_sampel || hasil.no_sampel === sampel.no_sampel) || {};
             const noSampel = item.no_sampel || sampel.no_sampel;
-            const revisionNotePayload = collectRevisionNotesForSample(lkaRevisionRows, noSampel, lka?.kode_lka || hasilRow.kode_lka || null, { audience: 'analis' });
+            const jenisContohSampel = sampelJenis.jenis_sampel || sampelJenis.jenisSampel || jenis.jenis_sampel || jenis.jenisSampel || '-';
+            const revisionNoteRequestData = collectRevisionNotesForSample(lkaRevisionRows, noSampel, lka?.kode_lka || hasilRow.kode_lka || null, { audience: 'analis' });
             return {
-                kode_lka: lka?.kode_lka || hasilRow.kode_lka || null,
                 kodeLka: lka?.kode_lka || hasilRow.kode_lka || null,
                 no_sampel: noSampel,
                 noSampel,
                 id_registrasi: sampelFppl.id_registrasi || sampel.id_registrasi || null,
                 id_jenis_sampel: sampelFppl.id_jenis_sampel || sampel.id_jenis_sampel || null,
                 id_reg_bm: sampelFppl.id_reg_bm || sampel.id_reg_bm || null,
-                jenis_sampel: sampelJenis.jenis_sampel || '-',
-                jenisSampel: sampelJenis.jenis_sampel || '-',
+                jenisSampel: jenisContohSampel,
+                jenis_sampel: jenisContohSampel,
+                jenisContoh: jenisContohSampel,
+                jenis_contoh: jenisContohSampel,
                 tanggal_pengambilan_sampel: sampel.tanggal_pengambilan_sampel || null,
                 tanggal_penerimaan: sampel.diterima_pada || null,
                 jam_penerimaan: (sampel.diterima_pada ? new Date(sampel.diterima_pada).toTimeString().slice(0, 8) : null) || null,
@@ -182,151 +296,107 @@ class AssignmentWorksheetService {
                 hasil: hasilRow.hasil || '',
                 catatan_hasil: hasilRow.catatan_hasil || '',
                 statusReviewHasil: resolveLkaHasilStatus(hasilRow, lka?.status_lka, lkaHasilRows),
-                ...buildLkaHasilRevisionResponse({ ...hasilRow, ...revisionNotePayload }),
+                ...buildLkaHasilRevisionResponse({ ...hasilRow, ...revisionNoteRequestData }),
             };
         })
             .filter((row) => row.no_sampel);
         const tanggalSampling = firstDate(sampleRows.map((row) => row.tanggal_pengambilan_sampel)) || lka?.tanggal_sampling || null;
         const abnormalitasSampel = uniqueText(sampleRows.map((row) => row.abnormalitas_sampel));
         const acuanPengambilanSampel = uniqueText(sampleRows.map((row) => row.acuan_pengambilan_sampel));
-        const jenisContoh = uniqueText(sampleRows.map((row) => row.jenis_sampel)) || jenis.jenis_sampel || '-';
+        const jenisContoh = uniqueText(sampleRows.map((row) => row.jenis_sampel || row.jenisSampel || row.jenis_contoh || row.jenisContoh)) || jenis.jenis_sampel || jenis.jenisSampel || '-';
         const worksheetFiles = parseWorksheetFiles(lka?.file_worksheet_path);
-        const worksheetRevisionPayload = buildWorksheetRevisionResponse(lka || {}, lkaRevisionRows, { audience: 'analis' });
-        const lhuLock = toLhuLockPayload(await getLockedLhuRowsBySamples(sampleRows.map((row) => row.no_sampel)));
+        const worksheetRevisionRequestData = buildWorksheetRevisionResponse(lka || {}, lkaRevisionRows, { audience: 'analis' });
+        const lhuLock = toLhuLockRequestData(await getLockedLhuRowsBySamples(sampleRows.map((row) => row.no_sampel)));
         const idJenisSampel = sampleRows.find((row) => row.id_jenis_sampel)?.id_jenis_sampel ||
             null;
         return {
             ...lhuLock,
             idPenugasan: detail.id_penugasan,
-            id_penugasan: detail.id_penugasan,
             catatanPenugasan: penugasan.catatan_penugasan || null,
-            catatan_penugasan: penugasan.catatan_penugasan || null,
             idPenugasanDetail: detail.id_penugasan_detail,
-            id_penugasan_detail: detail.id_penugasan_detail,
             idFpplParameterMetode: detail.id_fppl_parameter_metode,
-            id_fppl_parameter_metode: detail.id_fppl_parameter_metode,
             idAnalis: penugasan.id_user_analis || null,
-            id_analis: penugasan.id_user_analis || null,
             analisNama: analis.username || penugasan.id_user_analis || '-',
-            analis_nama: analis.username || penugasan.id_user_analis || '-',
             idPenyelia: lka?.diperiksa_oleh || penugasan.assigned_by || null,
-            id_penyelia: lka?.diperiksa_oleh || penugasan.assigned_by || null,
             penyeliaNama: lka?.Pemeriksa?.username || penugasan.assigned_by || '-',
-            penyelia_nama: lka?.Pemeriksa?.username || penugasan.assigned_by || '-',
             idJenisSampel,
             id_jenis_sampel: idJenisSampel,
             jenisContoh,
             jenis_contoh: jenisContoh,
             jenisSampel: jenisContoh,
-            jenis_sampel: jenisContoh,
             idMetodeParameter: info.idMetodeParameter || null,
-            id_metode_parameter: info.idMetodeParameter || null,
             parameter: info.namaParameter,
             namaParameter: info.namaParameter,
-            nama_parameter: info.namaParameter,
             metode: info.acuanMetode || info.namaMetode || info.idMetodeParameter || '-',
             namaMetode: info.namaMetode,
-            nama_metode: info.namaMetode,
             acuanMetode: info.acuanMetode,
-            acuan_metode: info.acuanMetode,
             tanggalSampling,
             tanggal_sampling: tanggalSampling,
             tanggalPengambilanSampel: tanggalSampling,
-            tanggal_pengambilan_sampel: tanggalSampling,
             abnormalitasSampel,
             abnormalitas_sampel: abnormalitasSampel,
             abnormalitasContoh: abnormalitasSampel,
-            abnormalitas_contoh: abnormalitasSampel,
             acuanPengambilanSampel,
             acuan_pengambilan_sampel: acuanPengambilanSampel,
             deadline: detail.tanggal_tenggat,
             tanggalTenggat: detail.tanggal_tenggat,
-            tanggal_tenggat: detail.tanggal_tenggat,
             statusDetail: detail.status_detail,
-            status_detail: detail.status_detail,
             worksheet: {
                 kodeLka: lka?.kode_lka || null,
-                kode_lka: lka?.kode_lka || null,
                 tanggalSampling,
                 tanggal_sampling: tanggalSampling,
                 tanggalPengambilanSampel: tanggalSampling,
-                tanggal_pengambilan_sampel: tanggalSampling,
                 abnormalitasSampel,
                 abnormalitas_sampel: abnormalitasSampel,
                 abnormalitasContoh: abnormalitasSampel,
-                abnormalitas_contoh: abnormalitasSampel,
                 acuanPengambilanSampel,
                 acuan_pengambilan_sampel: acuanPengambilanSampel,
                 tanggalMulaiPengujian: lka?.tanggal_mulai_pengujian || null,
-                tanggal_mulai_pengujian: lka?.tanggal_mulai_pengujian || null,
                 tanggalSelesaiPengujian: lka?.tanggal_selesai_pengujian || null,
-                tanggal_selesai_pengujian: lka?.tanggal_selesai_pengujian || null,
                 dhlAkuades: lka?.dhl_akuades || null,
-                dhl_akuades: lka?.dhl_akuades || null,
                 fileWorksheetPath: getPrimaryWorksheetPath(lka?.file_worksheet_path),
-                file_worksheet_path: getPrimaryWorksheetPath(lka?.file_worksheet_path),
                 worksheetFiles,
                 statusLka: lka?.status_lka || 'Draft',
-                status_lka: lka?.status_lka || 'Draft',
-                ...worksheetRevisionPayload,
-                catatanRevisi: worksheetRevisionPayload.catatanRevisiLka || worksheetRevisionPayload.catatanRevisi || null,
-                catatan_revisi: worksheetRevisionPayload.catatan_revisi_lka || worksheetRevisionPayload.catatan_revisi || null,
-                lkaRevisionNote: worksheetRevisionPayload.lkaRevisionNote || null,
-                lka_revision_note: worksheetRevisionPayload.lka_revision_note || null,
+                ...worksheetRevisionRequestData,
+                catatanRevisi: worksheetRevisionRequestData.catatanRevisiLka || worksheetRevisionRequestData.catatanRevisi || null,
+                lkaRevisionNote: worksheetRevisionRequestData.lkaRevisionNote || null,
                 dilaporkanOleh: lka?.dilaporkan_oleh || penugasan.id_user_analis || null,
-                dilaporkan_oleh: lka?.dilaporkan_oleh || penugasan.id_user_analis || null,
                 dilaporkanOlehNama: lka?.Pelapor?.username || analis.username || penugasan.id_user_analis || '-',
-                dilaporkan_oleh_nama: lka?.Pelapor?.username || analis.username || penugasan.id_user_analis || '-',
                 tanggalPelaporan: lka?.tanggal_pelaporan || null,
-                tanggal_pelaporan: lka?.tanggal_pelaporan || null,
                 diperiksaOleh: lka?.diperiksa_oleh || null,
-                diperiksa_oleh: lka?.diperiksa_oleh || null,
                 diperiksaOlehNama: lka?.Pemeriksa?.username || lka?.diperiksa_oleh || '-',
-                diperiksa_oleh_nama: lka?.Pemeriksa?.username || lka?.diperiksa_oleh || '-',
                 tanggalPemeriksaan: lka?.tanggal_pemeriksaan || null,
-                tanggal_pemeriksaan: lka?.tanggal_pemeriksaan || null,
             },
             samples: sampleRows.map((row) => ({
                 kodeLka: row.kodeLka || row.kode_lka || lka?.kode_lka || null,
-                kode_lka: row.kode_lka || row.kodeLka || lka?.kode_lka || null,
                 noSampel: row.no_sampel,
-                no_sampel: row.no_sampel,
-                jenisSampel: row.jenis_sampel || '-',
-                jenis_sampel: row.jenis_sampel || '-',
+                jenisSampel: row.jenis_sampel || row.jenisSampel || '-',
+                jenis_sampel: row.jenis_sampel || row.jenisSampel || '-',
+                jenisContoh: row.jenis_contoh || row.jenisContoh || row.jenis_sampel || row.jenisSampel || '-',
+                jenis_contoh: row.jenis_contoh || row.jenisContoh || row.jenis_sampel || row.jenisSampel || '-',
                 idJenisSampel: row.id_jenis_sampel || null,
-                id_jenis_sampel: row.id_jenis_sampel || null,
                 tanggalPengambilanSampel: row.tanggal_pengambilan_sampel || null,
-                tanggal_pengambilan_sampel: row.tanggal_pengambilan_sampel || null,
                 tanggalSampling: row.tanggal_pengambilan_sampel || null,
-                tanggal_sampling: row.tanggal_pengambilan_sampel || null,
                 tanggalPenerimaan: row.tanggal_penerimaan || null,
-                tanggal_penerimaan: row.tanggal_penerimaan || null,
                 jamPenerimaan: row.jam_penerimaan || null,
-                jam_penerimaan: row.jam_penerimaan || null,
                 kondisiSampel: row.kondisi_sampel || '-',
-                kondisi_sampel: row.kondisi_sampel || '-',
                 koordinat: row.koordinat || '-',
                 abnormalitasSampel: row.abnormalitas_sampel || '-',
-                abnormalitas_sampel: row.abnormalitas_sampel || '-',
                 acuanPengambilanSampel: row.acuan_pengambilan_sampel || '-',
-                acuan_pengambilan_sampel: row.acuan_pengambilan_sampel || '-',
                 hasil: row.hasil || '',
                 hasHasil: Boolean(String(row.hasil || '').trim()),
-                has_hasil: Boolean(String(row.hasil || '').trim()),
                 catatanHasil: row.catatan_hasil || '',
-                catatan_hasil: row.catatan_hasil || '',
                 statusReviewHasil: row.statusReviewHasil || null,
-                status_review_hasil: row.statusReviewHasil || null,
                 ...buildLkaHasilRevisionResponse(row),
             })),
         };
     };
-    saveWorksheetDraft = async (idPenugasanDetail, payload, userNik) => {
-        const { tanggalMulaiPengujian = null, tanggalSelesaiPengujian = null, dhlAkuades = null, fileWorksheetPath = null } = payload || {};
+    saveWorksheetDraft = async (idPenugasanDetail, requestData, userNik) => {
+        const { tanggalMulaiPengujian = null, tanggalSelesaiPengujian = null, dhlAkuades = null, fileWorksheetPath = null } = requestData || {};
         return sequelize.transaction(async (transaction) => {
             await this.assertWorksheetEditableForAnalyst(idPenugasanDetail, userNik, transaction);
             await assertPenugasanDetailSamplesEditableBeforeLhu(idPenugasanDetail, transaction);
-            await assertWorksheetBusinessDatesOrThrow(idPenugasanDetail, tanggalMulaiPengujian, tanggalSelesaiPengujian, transaction);
+            await this.assertWorksheetBusinessDatesOrThrow(idPenugasanDetail, tanggalMulaiPengujian, tanggalSelesaiPengujian, transaction);
             const kodeLka = await this.ensureLkaForDetail(idPenugasanDetail, transaction);
             const lka = await Lka.findOne({
                 where: { kode_lka: kodeLka },
@@ -341,7 +411,7 @@ class AssignmentWorksheetService {
             const canEditLkaMeta = lka.status_lka !== 'Perlu Perbaikan' ||
                 !revisionScope.hasSpecificRevisionRows ||
                 revisionScope.allRowsRevision;
-            const lkaPayload = {
+            const lkaRequestData = {
                 file_worksheet_path: fileWorksheetPath
                     ? serializeWorksheetFiles(fileWorksheetPath)
                     : lka.file_worksheet_path,
@@ -352,18 +422,18 @@ class AssignmentWorksheetService {
                 status_lka: nextStatusLka,
             };
             if (canEditLkaMeta) {
-                lkaPayload.tanggal_mulai_pengujian = tanggalMulaiPengujian;
-                lkaPayload.tanggal_selesai_pengujian = tanggalSelesaiPengujian;
-                lkaPayload.dhl_akuades = dhlAkuades;
+                lkaRequestData.tanggal_mulai_pengujian = tanggalMulaiPengujian;
+                lkaRequestData.tanggal_selesai_pengujian = tanggalSelesaiPengujian;
+                lkaRequestData.dhl_akuades = dhlAkuades;
             }
-            await lka.update(lkaPayload, { transaction });
+            await lka.update(lkaRequestData, { transaction });
             await PenugasanDetail.update({ status_detail: 'Sedang Dikerjakan' }, { where: { id_penugasan_detail: idPenugasanDetail }, transaction });
             await syncAssignmentHeaderStatusFromDetail(idPenugasanDetail, transaction);
             return { kodeLka };
         });
     };
-    saveWorksheetResults = async (idPenugasanDetail, payload, userNik) => {
-        const { results = [] } = payload || {};
+    saveWorksheetResults = async (idPenugasanDetail, requestData, userNik) => {
+        const { results = [] } = requestData || {};
         return sequelize.transaction(async (transaction) => {
             await this.assertWorksheetEditableForAnalyst(idPenugasanDetail, userNik, transaction);
             await assertPenugasanDetailSamplesEditableBeforeLhu(idPenugasanDetail, transaction);
@@ -379,8 +449,8 @@ class AssignmentWorksheetService {
             return { kodeLka };
         });
     };
-    submitWorksheet = async (idPenugasanDetail, userNik, payload = {}) => {
-        const { worksheet = null, results = null } = payload || {};
+    submitWorksheet = async (idPenugasanDetail, userNik, requestData = {}) => {
+        const { worksheet = null, results = null } = requestData || {};
         const requiredWorksheet = worksheet || {};
         const tanggalMulaiPengujian = String(requiredWorksheet.tanggalMulaiPengujian || '').trim();
         const tanggalSelesaiPengujian = String(requiredWorksheet.tanggalSelesaiPengujian || '').trim();
@@ -404,7 +474,7 @@ class AssignmentWorksheetService {
         const result = await sequelize.transaction(async (transaction) => {
             await this.assertWorksheetEditableForAnalyst(idPenugasanDetail, userNik, transaction);
             await assertPenugasanDetailSamplesEditableBeforeLhu(idPenugasanDetail, transaction);
-            await assertWorksheetBusinessDatesOrThrow(idPenugasanDetail, tanggalMulaiPengujian, tanggalSelesaiPengujian, transaction);
+            await this.assertWorksheetBusinessDatesOrThrow(idPenugasanDetail, tanggalMulaiPengujian, tanggalSelesaiPengujian, transaction);
             const kodeLka = await this.ensureLkaForDetail(idPenugasanDetail, transaction);
             const lka = await Lka.findOne({
                 where: { kode_lka: kodeLka },
@@ -418,7 +488,7 @@ class AssignmentWorksheetService {
             const canEditLkaMeta = lka.status_lka !== 'Perlu Perbaikan' ||
                 !revisionScope.hasSpecificRevisionRows ||
                 revisionScope.allRowsRevision;
-            const lkaPayload = {
+            const lkaRequestData = {
                 file_worksheet_path: fileWorksheetPath
                     ? serializeWorksheetFiles(fileWorksheetPath)
                     : lka.file_worksheet_path,
@@ -427,11 +497,11 @@ class AssignmentWorksheetService {
                 diperiksa_oleh: null,
             };
             if (canEditLkaMeta) {
-                lkaPayload.tanggal_mulai_pengujian = tanggalMulaiPengujian;
-                lkaPayload.tanggal_selesai_pengujian = tanggalSelesaiPengujian;
-                lkaPayload.dhl_akuades = dhlAkuades;
+                lkaRequestData.tanggal_mulai_pengujian = tanggalMulaiPengujian;
+                lkaRequestData.tanggal_selesai_pengujian = tanggalSelesaiPengujian;
+                lkaRequestData.dhl_akuades = dhlAkuades;
             }
-            await lka.update(lkaPayload, { transaction });
+            await lka.update(lkaRequestData, { transaction });
             await normalizeLegacyLkaHasilStatuses(kodeLka, transaction);
             await upsertWorksheetResults(idPenugasanDetail, kodeLka, results, transaction);
             await assertWorksheetReadyToSubmit(idPenugasanDetail, kodeLka, transaction);
@@ -511,18 +581,6 @@ class AssignmentWorksheetService {
             throw new Error('LKA sudah dikirim ke penyelia dan tidak dapat diubah sebelum diminta revisi.');
         }
         return state;
-    };
-    loadRevisionRowsForLka = (...args) => {
-        return loadRevisionRowsForLka(...args);
-    };
-    getLkaRevisionHistory = (...args) => {
-        return getLkaRevisionHistory(...args);
-    };
-    markRevisionItemsApprovedByPenyelia = (...args) => {
-        return markRevisionItemsApprovedByPenyelia(...args);
-    };
-    markRevisionItemsApprovedByKasi = (...args) => {
-        return markRevisionItemsApprovedByKasi(...args);
     };
 }
 module.exports = new AssignmentWorksheetService();

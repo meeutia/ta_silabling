@@ -1,17 +1,31 @@
 const RequestWorkflowService = require('../services/request/request-workflow.service');
 const RequestService = require('../services/request/request.service');
+const assignmentReadService = require('../services/assignment/assignment-read.service');
+const { getHariLibur } = require('../utils/holiday-calendar.util');
 const PaymentService = require('../services/payment/payment.service');
-const assignmentService = require('../services/assignment.service');
+const assignmentSubkontrakService = require('../services/assignment/assignment-subkontrak.service');
 const notificationService = require('../services/notification/notification.service');
 const { successResponse, errorResponse } = require('../utils/response');
 class RequestWorkflowController {
-    constructor({ requestWorkflowService, requestService, paymentService, notificationService, assignmentService }) {
+    constructor({ requestWorkflowService, requestService, assignmentReadService, paymentService, notificationService, assignmentSubkontrakService }) {
         this.requestWorkflowService = requestWorkflowService;
         this.requestService = requestService;
+        this.assignmentReadService = assignmentReadService;
         this.paymentService = paymentService;
         this.notificationService = notificationService;
-        this.assignmentService = assignmentService;
+        this.assignmentSubkontrakService = assignmentSubkontrakService;
     }
+    getScheduleHolidays = async (req, res) => {
+        try {
+            const data = await getHariLibur();
+            return successResponse(res, 'Berhasil mengambil hari libur', data);
+        }
+        catch (error) {
+            console.error('this.getScheduleHolidays error:', error.message);
+            return errorResponse(res, error.message || 'Gagal mengambil data hari libur.');
+        }
+    };
+
     verifyRequest = async (req, res) => {
         try {
             const { id } = req.params;
@@ -103,7 +117,7 @@ class RequestWorkflowController {
     };
     getAnalystOptions = async (req, res) => {
         try {
-            const data = await this.requestService.getAnalystOptions();
+            const data = await this.assignmentReadService.getAnalystOptions();
             return successResponse(res, 'Berhasil mengambil daftar analis.', data);
         }
         catch (error) {
@@ -149,6 +163,14 @@ class RequestWorkflowController {
             const { id } = req.params;
             const { tanggal_jadwal, jam_jadwal, scheduleDate, scheduleTime, tanggal, jam } = req.body;
             const data = await this.requestWorkflowService.saveSamplingSchedule(id, tanggal_jadwal || scheduleDate || tanggal, jam_jadwal || scheduleTime || jam);
+            setImmediate(() => {
+                this.notificationService.notifyJadwalSampel({
+                    idRegistrasi: data?.id_registrasi || data?.idRegistrasi || id,
+                    idJadwal: data?.jadwal?.id_jadwal || data?.jadwal?.idJadwal || null,
+                }).catch((notifyError) => {
+                    console.error('notifyJadwalSampel this.saveSamplingSchedule error:', notifyError);
+                });
+            });
             const msg = data.actionType === 'created'
                 ? 'Jadwal sampling berhasil disetujui.'
                 : 'Jadwal sampling berhasil diperbarui.';
@@ -169,15 +191,14 @@ class RequestWorkflowController {
                 jamPengambilan,
                 idPegawaiPcc
             });
-            try {
-                await this.notificationService.notifyJadwalSampel({
-                    idRegistrasi: result?.id_registrasi || id,
-                    idJadwal: result?.jadwal?.id_jadwal || null,
+            setImmediate(() => {
+                this.notificationService.notifyJadwalSampel({
+                    idRegistrasi: result?.id_registrasi || result?.idRegistrasi || id,
+                    idJadwal: result?.jadwal?.id_jadwal || result?.jadwal?.idJadwal || null,
+                }).catch((notifyError) => {
+                    console.error('notifyJadwalSampel this.createOrUpdateSamplingSchedule error:', notifyError);
                 });
-            }
-            catch (notifyError) {
-                console.error('notifyJadwalSampel this.createOrUpdateSamplingSchedule error:', notifyError);
-            }
+            });
             const message = result.jenis_pengambilan_sampel === 'Mandiri'
                 ? 'Jadwal pengantaran mandiri berhasil disimpan.'
                 : 'Jadwal pengambilan oleh petugas berhasil disimpan.';
@@ -200,38 +221,45 @@ class RequestWorkflowController {
     receiveSamplesAndGenerateCodes = async (req, res) => {
         try {
             const { id } = req.params;
-            const payload = req.body || {};
-            const sampels = Array.isArray(payload) ? payload : payload.sampels;
+            const requestData = req.body || {};
+            const sampels = Array.isArray(requestData) ? requestData : requestData.sampels;
             const receivedByNik = req.user?.nik;
             if (!receivedByNik) {
                 return errorResponse(res, 'User NIK tidak ditemukan.', 401);
             }
-            const result = await this.requestWorkflowService.receiveSamplesAndGenerateCodes(id, payload, receivedByNik);
-            try {
-                await this.notificationService.notifyRequestStatusChanged({
-                    idRegistrasi: result?.id_registrasi || id,
-                    statusTerbaru: result?.status,
-                    catatanPetugas: null,
+            const result = await this.requestWorkflowService.receiveSamplesAndGenerateCodes(id, requestData, receivedByNik);
+            setImmediate(() => {
+                const idRegistrasi = result?.id_registrasi || result?.idRegistrasi || id;
+                const samples = result?.sampels || result?.samples || [];
+                Promise.allSettled([
+                    this.notificationService.notifyRequestStatusChanged({
+                        idRegistrasi,
+                        statusTerbaru: result?.status,
+                        catatanPetugas: null,
+                    }),
+                    this.notificationService.notifySamplesReceived({
+                        idRegistrasi,
+                        samples,
+                    }),
+                    this.notificationService.notifyPenyeliaPenugasanSampelMasuk({
+                        idRegistrasi,
+                        samples,
+                    }),
+                ]).then((results) => {
+                    results.forEach((notifyResult, index) => {
+                        if (notifyResult.status === 'rejected') {
+                            const label = ['notifyRequestStatusChanged', 'notifySamplesReceived', 'notifyPenyeliaPenugasanSampelMasuk'][index];
+                            console.error(`${label} this.receiveSamplesAndGenerateCodes error:`, notifyResult.reason);
+                        }
+                    });
                 });
-            }
-            catch (notifyError) {
-                console.error('notifyRequestStatusChanged this.receiveSamplesAndGenerateCodes error:', notifyError);
-            }
-            try {
-                await this.notificationService.notifyPenyeliaPenugasanSampelMasuk({
-                    idRegistrasi: result?.id_registrasi || id,
-                    samples: result?.sampels || result?.samples || [],
-                });
-            }
-            catch (notifyError) {
-                console.error('notifyPenyeliaPenugasanSampelMasuk this.receiveSamplesAndGenerateCodes error:', notifyError);
-            }
+            });
             try {
                 const receivedSampleNos = new Set((result?.sampels || result?.samples || [])
                     .map((sample) => sample?.no_sampel || sample?.noSampel)
                     .filter(Boolean));
                 if (receivedSampleNos.size > 0) {
-                    const pendingSubkontrakItems = await this.assignmentService.getSubkontrakItems();
+                    const pendingSubkontrakItems = await this.assignmentSubkontrakService.getSubkontrakItems();
                     const itemsToNotify = pendingSubkontrakItems.filter((item) => {
                         const noSampel = item.no_sampel || item.noSampel;
                         const statusHasil = item.status_hasil || item.statusHasil;
@@ -256,8 +284,9 @@ class RequestWorkflowController {
 module.exports = new RequestWorkflowController({
     requestWorkflowService: RequestWorkflowService,
     requestService: RequestService,
+    assignmentReadService,
     paymentService: PaymentService,
     notificationService,
-    assignmentService,
+    assignmentSubkontrakService,
 });
 module.exports.RequestWorkflowController = RequestWorkflowController;

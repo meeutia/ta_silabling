@@ -1,7 +1,43 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const JadwalPengambilanLhu = sequelize.define('jadwal_pengambilan_lhu', {
+class JadwalPengambilanLhu extends Model {
+  static associate(models) {
+    JadwalPengambilanLhu.belongsTo(models.Fppl, {
+  foreignKey: 'id_registrasi',
+  targetKey: 'id_registrasi',
+  as: 'fppl',
+});
+    JadwalPengambilanLhu.hasMany(models.PengajuanPerubahanJadwal, {
+  foreignKey: 'id_jadwal_lhu',
+  sourceKey: 'id_jadwal_lhu',
+  as: 'pengajuan_perubahan',
+});
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_pengambilan === status;
+  }
+
+  isScheduled() {
+    return this.isStatus('Dijadwalkan');
+  }
+
+  isTaken() {
+    return this.isStatus('Sudah Diambil');
+  }
+}
+
+JadwalPengambilanLhu.init({
   id_jadwal_lhu: {
     type: DataTypes.STRING(10),
     primaryKey: true,
@@ -53,9 +89,10 @@ const JadwalPengambilanLhu = sequelize.define('jadwal_pengambilan_lhu', {
     allowNull: false,
     defaultValue: DataTypes.NOW,
   },
-}, 
-{
-  tableName: 'jadwal_pengambilan_lhu',
+}, {
+  sequelize,
+  modelName: 'jadwal_pengambilan_lhu',
+tableName: 'jadwal_pengambilan_lhu',
   underscored: true,
   timestamps: false,
 });

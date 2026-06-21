@@ -8,7 +8,7 @@ const { getPlain, pickObject, pickArray, } = require('./assignment-object.helper
 const { parseWorksheetFiles, getPrimaryWorksheetPath, } = require('./assignment-worksheet-files.helper');
 const { isSubkontrakAssignment, } = require('./assignment-scope.helper');
 const { getActiveJadwalFromFppl, getAssociatedFpmsFromSample, isSubkontrakFpm, } = require('./assignment-fpm.helper');
-const { loadRevisionRowsForLka, } = require('./assignment-worksheet.service');
+const { loadRevisionRowsForLka } = require('./assignment-worksheet-revision-history.helper');
 class AssignmentKasiReviewQueryService {
 getBmParamMap = async (sample = {}) => {
         const fpplSampel = pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
@@ -139,7 +139,7 @@ getBmParamMap = async (sample = {}) => {
                     continue;
                 }
                 const lkaRevisionRows = lka?.kode_lka ? await loadRevisionRowsForLka(lka.kode_lka, transaction) : [];
-                const revisionNotePayload = collectRevisionNotesForSample(lkaRevisionRows, noSampel, lka?.kode_lka || hasilRow.kode_lka || null, { audience: 'kasi' });
+                const revisionNoteRequestData = collectRevisionNotesForSample(lkaRevisionRows, noSampel, lka?.kode_lka || hasilRow.kode_lka || null, { audience: 'kasi' });
                 const bm = bmMap.get(String(fpm.id_parameter)) || {};
                 completedRows.push({
                     kode_lka: hasilRow.kode_lka,
@@ -147,13 +147,15 @@ getBmParamMap = async (sample = {}) => {
                     hasil: hasilRow.hasil,
                     catatan_hasil: hasilRow.catatan_hasil,
                     statusReviewHasil: statusReviewHasil,
-                    ...buildLkaHasilRevisionResponse({ ...hasilRow, ...revisionNotePayload }),
-                    status_lka: lka.status_lka,
+                    status_review_hasil: statusReviewHasil,
+                    ...buildLkaHasilRevisionResponse({ ...hasilRow, ...revisionNoteRequestData }),
+                    status_lka: statusReviewHasil,
+                    statusLka: statusReviewHasil,
+                    status_lka_induk: lka.status_lka,
+                    statusLkaInduk: lka.status_lka,
                     tanggal_mulai_pengujian: lka.tanggal_mulai_pengujian,
                     tanggal_selesai_pengujian: lka.tanggal_selesai_pengujian,
-                    file_worksheet_path: getPrimaryWorksheetPath(lka.file_worksheet_path),
                     fileWorksheetPath: getPrimaryWorksheetPath(lka.file_worksheet_path),
-                    worksheet_files: parseWorksheetFiles(lka.file_worksheet_path),
                     worksheetFiles: parseWorksheetFiles(lka.file_worksheet_path),
                     id_penugasan_detail: detail.id_penugasan_detail,
                     id_fppl_parameter_metode: fpm.id_fppl_parameter_metode,
@@ -164,17 +166,11 @@ getBmParamMap = async (sample = {}) => {
                     acuan_metode: parameterMetode.acuan_metode,
                     is_terakreditasi: parameterMetode.is_terakreditasi,
                     nama_metode: metode.nama_metode,
-                    satuan_bm: bm.satuan_bm || null,
                     satuanBm: bm.satuan_bm || null,
-                    nilai_bm: bm.nilai_bm || null,
                     nilaiBm: bm.nilai_bm || null,
-                    status_kemampuan_lab: fpm.status_kemampuan_lab || null,
                     statusKemampuanLab: fpm.status_kemampuan_lab || null,
-                    is_subkontrak: isSubkontrakTarget ? 1 : 0,
                     isSubkontrak: isSubkontrakTarget ? 1 : 0,
-                    is_insitu: Number(fpm.is_insitu || 0),
                     isInsitu: Number(fpm.is_insitu || 0),
-                    catatan_kemampuan: fpm.catatan_kemampuan || null,
                     catatanKemampuan: fpm.catatan_kemampuan || null,
                 });
             }
@@ -207,47 +203,28 @@ getBmParamMap = async (sample = {}) => {
         const tanggalPengambilanSampel = sample.tanggal_pengambilan_sampel || jadwal?.tanggal_jadwal || null;
         return {
             noSampel: sample.no_sampel,
-            no_sampel: sample.no_sampel,
             idRegistrasi: fpplSampel.id_registrasi,
-            id_registrasi: fpplSampel.id_registrasi,
             nomorFppl: fppl.nomor_fppl || null,
-            nomor_fppl: fppl.nomor_fppl || null,
             jenisSampel: jenis.jenis_sampel,
-            jenis_sampel: jenis.jenis_sampel,
             idJenisSampel: fpplSampel.id_jenis_sampel,
-            id_jenis_sampel: fpplSampel.id_jenis_sampel,
             idRegBm: fpplSampel.id_reg_bm,
-            id_reg_bm: fpplSampel.id_reg_bm,
             regBm: standarLabel,
-            reg_bm: standarLabel,
             standar: standarLabel,
             tanggalPenerimaan: sample.diterima_pada,
-            tanggal_penerimaan: sample.diterima_pada,
             jamPenerimaan: (sample.diterima_pada ? new Date(sample.diterima_pada).toTimeString().slice(0, 8) : null),
-            jam_penerimaan: (sample.diterima_pada ? new Date(sample.diterima_pada).toTimeString().slice(0, 8) : null),
             tanggalPengambilanSampel,
             tanggal_pengambilan_sampel: tanggalPengambilanSampel,
             tanggalSampling: tanggalPengambilanSampel,
-            tanggal_sampling: tanggalPengambilanSampel,
             tanggalJadwal: jadwal?.tanggal_jadwal || null,
-            tanggal_jadwal: jadwal?.tanggal_jadwal || null,
             jamJadwal: jadwal?.jam_jadwal || null,
-            jam_jadwal: jadwal?.jam_jadwal || null,
             kondisiSampel: sample.kondisi_sampel,
-            kondisi_sampel: sample.kondisi_sampel,
             koordinat: sample.koordinat,
             abnormalitasSampel: sample.abnormalitas_sampel,
-            abnormalitas_sampel: sample.abnormalitas_sampel,
             acuanPengambilanSampel: sample.acuan_pengambilan_sampel || '-',
-            acuan_pengambilan_sampel: sample.acuan_pengambilan_sampel || '-',
             statusSample: sample.status_sample,
-            status_sample: sample.status_sample,
             statusReviewHasil: sample.statusReviewHasil || SAMPLE_REVIEW_STATUS.WAIT_KASI_PENGUJIAN,
-            status_review_hasil: sample.statusReviewHasil || SAMPLE_REVIEW_STATUS.WAIT_KASI_PENGUJIAN,
             kasiPengujianReviewBy: sample.kasiPengujianReviewBy,
-            kasi_pengujian_review_by: sample.kasiPengujianReviewBy,
             kasiPengujianReviewAt: sample.kasiPengujianReviewAt,
-            kasi_pengujian_review_at: sample.kasiPengujianReviewAt,
         };
     };
     findKasiReviewSample = async (noSampel, transaction = null) => {

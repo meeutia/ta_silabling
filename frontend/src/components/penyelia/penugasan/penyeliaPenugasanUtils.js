@@ -9,7 +9,11 @@ export const createDraftItem = () => ({
 export const normalizeKeyPart = (value) => String(value || '').trim().toLowerCase();
 
 export const buildGroupKey = (item) =>
-  `${normalizeKeyPart(item.nama_parameter)}__${normalizeKeyPart(item.nama_metode)}`;
+  [
+    'label',
+    normalizeKeyPart(item.nama_parameter),
+    normalizeKeyPart(item.nama_metode),
+  ].join('__');
 
 export const buildGroupLabel = (item) =>
   [item.nama_parameter, item.nama_metode].filter(Boolean).join(' — ');

@@ -246,9 +246,7 @@ const attachSnapshotToRow = (row = {}, snapshots = {}) => {
 
     const revisionComparison = {
         idRevisiLka: row.id_revisi_lka || row.idRevisiLka || null,
-        id_revisi_lka: row.id_revisi_lka || row.idRevisiLka || null,
         idRevisiSebelumnya: row.id_revisi_sebelumnya || row.idRevisiSebelumnya || null,
-        id_revisi_sebelumnya: row.id_revisi_sebelumnya || row.idRevisiSebelumnya || null,
         hasilSebelumRevisi,
         hasil_sebelum_revisi: hasilSebelumRevisi,
         hasilSetelahRevisi,
@@ -378,7 +376,6 @@ const enrichRevisionRowsWithResultSnapshots = async (rows = [], transaction = nu
             ...enriched,
             RevisiSebelumnya: enrichedPrevious,
             revisiSebelumnya: enrichedPrevious,
-            revisi_sebelumnya: enrichedPrevious,
         };
     });
 };

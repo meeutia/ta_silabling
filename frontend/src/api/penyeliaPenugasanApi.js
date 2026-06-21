@@ -33,7 +33,7 @@ export const penyeliaPenugasanApi = {
   },
 
   getHolidays() {
-    return requestData('/references/holidays', {}, { auth: true });
+    return requestData('/assignments/schedule/holidays', {}, { auth: true });
   },
 
   saveSubkontrakResults(results) {

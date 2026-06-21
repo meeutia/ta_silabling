@@ -1,7 +1,37 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const ParameterMetode = sequelize.define('parameter_metode', {
+class ParameterMetode extends Model {
+  static associate(models) {
+    ParameterMetode.belongsTo(models.Parameter, { foreignKey: 'id_parameter' });
+    ParameterMetode.belongsTo(models.Metode, { foreignKey: 'id_metode' });
+    ParameterMetode.hasMany(models.FpplParameterMetode, { foreignKey: 'id_metode_parameter' });
+    ParameterMetode.hasMany(models.PenugasanDetail, {foreignKey: 'id_metode_parameter',});
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isActive() {
+    return this.is_active === true || this.is_active === 1;
+  }
+
+  isSubcontract() {
+    return this.is_subkontrak === true || this.is_subkontrak === 1;
+  }
+
+  isAccredited() {
+    return this.is_terakreditasi === true || this.is_terakreditasi === 1;
+  }
+}
+
+ParameterMetode.init({
     id_metode_parameter: {
         type: DataTypes.STRING(6),
         primaryKey: true
@@ -39,7 +69,9 @@ const ParameterMetode = sequelize.define('parameter_metode', {
         defaultValue: true
     }
 }, {
-    indexes: [
+  sequelize,
+  modelName: 'parameter_metode',
+indexes: [
         {
             fields: ['id_metode_parameter', 'id_parameter'],
             name: 'idx_parameter_metode_idparam'

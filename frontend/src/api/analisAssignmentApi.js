@@ -2,7 +2,7 @@ import { requestData, requestJson } from './httpClient';
 
 export const analisAssignmentApi = {
   getHolidays() {
-    return requestData('/references/holidays', {}, { auth: true });
+    return requestData('/assignments/schedule/holidays', {}, { auth: true });
   },
 
   getMyAssignments() {

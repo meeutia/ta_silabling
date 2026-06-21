@@ -7,7 +7,7 @@ const { SCHEDULE_CHANGE_STATUS, SCHEDULE_STATUS } = require('../../constants/wor
 const WorkflowGuard = require('../workflow/workflow-guard.service');
 const notificationService = require('../notification/notification.service');
 const WorkflowLogService = require('../workflow/workflow-log.service');
-const ReferenceService = require('../reference.service');
+const { getHariLibur } = require('../../utils/holiday-calendar.util');
 const { assertBusinessDateOrThrow: assertScheduleBusinessDateOrThrow, normalizeDateOnly, normalizeTimeForDb: normalizeScheduleTimeForDb, } = require('../../utils/schedule-policy.util');
 const STATUS_PENDING = SCHEDULE_CHANGE_STATUS.PENDING;
 const STATUS_APPROVED = SCHEDULE_CHANGE_STATUS.APPROVED;
@@ -26,9 +26,8 @@ const LHU_STATUS_CANCELLED = 'Dibatalkan';
 const SAMPLE_APPROVED_STATUSES = [SAMPLE_STATUS_APPROVED_CUSTOMER];
 const LHU_APPROVED_STATUSES = [LHU_STATUS_APPROVED_CUSTOMER];
 class ScheduleChangeService {
-    constructor({ notificationService: injectedNotificationService = notificationService, referenceService = ReferenceService } = {}) {
+    constructor({ notificationService: injectedNotificationService = notificationService } = {}) {
         this.notificationService = injectedNotificationService;
-        this.referenceService = referenceService;
         this.STATUS_PENDING = STATUS_PENDING;
         this.STATUS_APPROVED = STATUS_APPROVED;
         this.STATUS_REJECTED = STATUS_REJECTED;
@@ -54,6 +53,81 @@ class ScheduleChangeService {
         if (typeof instance.get === 'function')
             return instance.get({ plain: true });
         return instance;
+    };
+    mapFpplSummary = (fppl = {}) => {
+        const row = this.getPlain(fppl) || {};
+        const pelanggan = this.getPlain(row.pelanggan || row.Pelanggan) || {};
+        return {
+            idRegistrasi: row.id_registrasi || null,
+            nomorFppl: row.nomor_fppl || null,
+            statusFppl: row.status_fppl || null,
+            pelanggan: {
+                namaInstansi: pelanggan.nama_instansi || null,
+                pic: pelanggan.pic || null,
+                noTelp: pelanggan.no_telp || null,
+            },
+        };
+    };
+
+    mapSampleSchedule = (schedule = {}) => {
+        const row = this.getPlain(schedule) || {};
+        const pegawai = this.getPlain(row.pegawai_pcc || row.Pegawai) || {};
+        return {
+            idJadwal: row.id_jadwal || null,
+            idRegistrasi: row.id_registrasi || null,
+            tanggalJadwal: row.tanggal_jadwal || null,
+            jamJadwal: row.jam_jadwal || null,
+            idPegawaiPcc: row.id_pegawai_pcc || null,
+            dibuatOleh: row.dibuat_oleh || null,
+            dibuatPada: row.dibuat_pada || null,
+            statusJadwal: row.status_jadwal || null,
+            pegawaiPcc: pegawai.id_pegawai ? {
+                idPegawai: pegawai.id_pegawai,
+                namaPegawai: pegawai.nama_pegawai || null,
+            } : null,
+        };
+    };
+
+    mapLhuSchedule = (schedule = {}) => {
+        const row = this.getPlain(schedule) || {};
+        return {
+            idJadwalLhu: row.id_jadwal_lhu || null,
+            idRegistrasi: row.id_registrasi || null,
+            tanggalPengambilan: row.tanggal_pengambilan || null,
+            jamPengambilan: row.jam_pengambilan || null,
+            statusPengambilan: row.status_pengambilan || null,
+            catatan: row.catatan || null,
+            dijadwalkanOleh: row.dijadwalkan_oleh || null,
+            dijadwalkanPada: row.dijadwalkan_pada || null,
+            namaPengambil: row.nama_pengambil || null,
+            diambilPada: row.diambil_pada || null,
+            createdAt: row.created_at || null,
+            updatedAt: row.updated_at || null,
+        };
+    };
+
+    mapScheduleChangeResponse = (data = {}) => {
+        const row = this.getPlain(data) || {};
+        return {
+            idPengajuanJadwal: row.id_pengajuan_jadwal || null,
+            jenisJadwal: row.jenis_jadwal || null,
+            idRegistrasi: row.id_registrasi || null,
+            idJadwalSampel: row.id_jadwal_sampel || null,
+            idJadwalLhu: row.id_jadwal_lhu || null,
+            tanggalSebelumnya: row.tanggal_sebelumnya || null,
+            jamSebelumnya: row.jam_sebelumnya || null,
+            tanggalUsulan: row.tanggal_usulan || null,
+            jamUsulan: row.jam_usulan || null,
+            alasanPengajuan: row.alasan_pengajuan || null,
+            statusPengajuan: row.status_pengajuan || null,
+            catatanAdmin: row.catatan_admin || null,
+            diajukanPada: row.diajukan_pada || null,
+            createdAt: row.created_at || null,
+            updatedAt: row.updated_at || null,
+            fppl: row.fppl || row.Fppl ? this.mapFpplSummary(row.fppl || row.Fppl) : null,
+            jadwalSampel: row.jadwal_sampel || row.JadwalSampel ? this.mapSampleSchedule(row.jadwal_sampel || row.JadwalSampel) : null,
+            jadwalPengambilanLhu: row.jadwal_pengambilan_lhu || row.JadwalPengambilanLhu ? this.mapLhuSchedule(row.jadwal_pengambilan_lhu || row.JadwalPengambilanLhu) : null,
+        };
     };
     normalizeText = (value) => {
         return String(value || '').trim();
@@ -88,9 +162,8 @@ class ScheduleChangeService {
             transaction,
         });
         return {
-            ...getPlain(updated),
+            ...this.mapScheduleChangeResponse(updated),
             autoRejected: true,
-            auto_rejected: true,
             message: note,
         };
     };
@@ -104,7 +177,7 @@ class ScheduleChangeService {
     };
     loadHolidaysForScheduleValidation = async () => {
         try {
-            return await this.referenceService.getHariLibur();
+            return await getHariLibur();
         }
         catch (error) {
             const err = new Error(`Gagal memvalidasi tanggal merah: ${error.message || 'referensi hari libur tidak tersedia'}.`);
@@ -157,9 +230,9 @@ class ScheduleChangeService {
             lock: lock ? transaction?.LOCK?.UPDATE : undefined,
         });
     };
-    confirmScheduleApproval = async (payload = {}, currentNik) => {
-        const requestId = String(payload.idRegistrasi || payload.id_registrasi || '').trim();
-        const jenisJadwal = this.normalizeScheduleKind(payload.jenisJadwal || payload.jenis_jadwal || payload.type);
+    confirmScheduleApproval = async (requestData = {}, currentNik) => {
+        const requestId = String(requestData.idRegistrasi || '').trim();
+        const jenisJadwal = this.normalizeScheduleKind(requestData.jenisJadwal || requestData.type);
         const userNik = String(currentNik || '').trim();
         if (!requestId) {
             const err = new Error('ID registrasi wajib dikirim.');
@@ -203,7 +276,7 @@ class ScheduleChangeService {
             }
             if (jenisJadwal === 'SAMPEL') {
                 if (SAMPLE_APPROVED_STATUSES.includes(schedule.status_jadwal)) {
-                    return this.getPlain(schedule);
+                    return this.mapSampleSchedule(schedule);
                 }
                 const previousStatus = schedule.status_jadwal;
                 const updated = await schedule.update({ status_jadwal: SAMPLE_STATUS_APPROVED_CUSTOMER }, { transaction });
@@ -218,10 +291,10 @@ class ScheduleChangeService {
                     actorNik: userNik,
                     transaction,
                 });
-                return this.getPlain(updated);
+                return this.mapSampleSchedule(updated);
             }
             if (LHU_APPROVED_STATUSES.includes(schedule.status_pengambilan)) {
-                return this.getPlain(schedule);
+                return this.mapLhuSchedule(schedule);
             }
             const previousStatus = schedule.status_pengambilan;
             const updated = await schedule.update({ status_pengambilan: LHU_STATUS_APPROVED_CUSTOMER }, { transaction });
@@ -236,15 +309,15 @@ class ScheduleChangeService {
                 actorNik: userNik,
                 transaction,
             });
-            return this.getPlain(updated);
+            return this.mapLhuSchedule(updated);
         });
     };
-    createScheduleChangeRequest = async (payload = {}, currentNik) => {
-        const requestId = String(payload.idRegistrasi || payload.id_registrasi || '').trim();
-        const jenisJadwal = this.normalizeScheduleKind(payload.jenisJadwal || payload.jenis_jadwal || payload.type);
-        let tanggalUsulan = normalizeDateOnly(payload.tanggalUsulan || payload.tanggal_usulan, 'Tanggal usulan');
-        const jamUsulan = normalizeScheduleTimeForDb(payload.jamUsulan || payload.jam_usulan, 'Jam usulan');
-        const alasanPengajuan = String(payload.alasanPengajuan || payload.alasan_pengajuan || payload.alasan || '').trim();
+    createScheduleChangeRequest = async (requestData = {}, currentNik) => {
+        const requestId = String(requestData.idRegistrasi || '').trim();
+        const jenisJadwal = this.normalizeScheduleKind(requestData.jenisJadwal || requestData.type);
+        let tanggalUsulan = normalizeDateOnly(requestData.tanggalUsulan, 'Tanggal usulan');
+        const jamUsulan = normalizeScheduleTimeForDb(requestData.jamUsulan, 'Jam usulan');
+        const alasanPengajuan = String(requestData.alasanPengajuan || requestData.alasan || '').trim();
         const userNik = String(currentNik || '').trim();
         if (!requestId) {
             const err = new Error('ID registrasi wajib dikirim.');
@@ -344,10 +417,10 @@ class ScheduleChangeService {
                 actorNik: userNik,
                 transaction,
             });
-            return this.getPlain(created);
+            return this.mapScheduleChangeResponse(created);
         });
         await this.sendScheduleChangeNotification('pengajuan perubahan jadwal ke admin', () => this.notificationService.notifyScheduleChangeSubmittedToAdmin({
-            idPengajuanJadwal: created.id_pengajuan_jadwal,
+            idPengajuanJadwal: created.idPengajuanJadwal,
         }));
         return created;
     };
@@ -370,25 +443,24 @@ class ScheduleChangeService {
         return rows
             .map(this.getPlain)
             .filter((row) => {
-            if (row.status_pengajuan !== STATUS_PENDING && row.statusPengajuan !== STATUS_PENDING)
+            if (row.status_pengajuan !== STATUS_PENDING)
                 return true;
             if (this.isCompletedRequestStatus(row.fppl?.status_fppl || row.Fppl?.status_fppl))
                 return false;
             if (row.jenis_jadwal === 'SAMPEL') {
-                const schedule = row.jadwal_sampel || row.jadwalSampel || row.JadwalSampel;
-                return !this.isSampleScheduleClosed(schedule);
+                return !this.isSampleScheduleClosed(row.jadwal_sampel || row.JadwalSampel);
             }
             if (row.jenis_jadwal === 'LHU') {
-                const schedule = row.jadwal_pengambilan_lhu || row.jadwalPengambilanLhu || row.JadwalPengambilanLhu;
-                return !this.isLhuScheduleClosed(schedule);
+                return !this.isLhuScheduleClosed(row.jadwal_pengambilan_lhu || row.JadwalPengambilanLhu);
             }
             return true;
-        });
+        })
+            .map(this.mapScheduleChangeResponse);
     };
-    decideScheduleChangeRequest = async (idPengajuan, payload = {}, currentNik) => {
-        const pengajuanId = String(idPengajuan || payload.idPengajuanJadwal || payload.id_pengajuan_jadwal || '').trim();
-        const action = String(payload.action || '').trim().toLowerCase();
-        const catatanAdmin = String(payload.catatanAdmin || payload.catatan_admin || payload.catatan || '').trim() || null;
+    decideScheduleChangeRequest = async (idPengajuan, requestData = {}, currentNik) => {
+        const pengajuanId = String(idPengajuan || requestData.idPengajuanJadwal || '').trim();
+        const action = String(requestData.action || '').trim().toLowerCase();
+        const catatanAdmin = String(requestData.catatanAdmin || requestData.catatan || '').trim() || null;
         const userNik = String(currentNik || '').trim();
         if (!pengajuanId) {
             const err = new Error('ID pengajuan jadwal wajib dikirim.');
@@ -454,7 +526,7 @@ class ScheduleChangeService {
                     actorNik: userNik,
                     transaction,
                 });
-                return this.getPlain(updated);
+                return this.mapScheduleChangeResponse(updated);
             }
             if (row.jenis_jadwal === 'SAMPEL') {
                 const schedule = await JadwalSampel.findByPk(row.id_jadwal_sampel, {
@@ -539,16 +611,16 @@ class ScheduleChangeService {
                 actorNik: userNik,
                 transaction,
             });
-            return this.getPlain(updated);
+            return this.mapScheduleChangeResponse(updated);
         });
         if (action === 'approve') {
             await this.sendScheduleChangeNotification('persetujuan perubahan jadwal ke pelanggan', () => this.notificationService.notifyScheduleChangeApprovedToCustomer({
-                idPengajuanJadwal: decided.id_pengajuan_jadwal,
+                idPengajuanJadwal: decided.idPengajuanJadwal,
             }));
         }
         else {
             await this.sendScheduleChangeNotification('penolakan perubahan jadwal ke pelanggan', () => this.notificationService.notifyScheduleChangeRejectedToCustomer({
-                idPengajuanJadwal: decided.id_pengajuan_jadwal,
+                idPengajuanJadwal: decided.idPengajuanJadwal,
             }));
         }
         return decided;
@@ -591,7 +663,7 @@ class ScheduleChangeService {
                 actorNik: userNik,
                 transaction,
             });
-            return this.getPlain(updated);
+            return this.mapScheduleChangeResponse(updated);
         });
     };
 }

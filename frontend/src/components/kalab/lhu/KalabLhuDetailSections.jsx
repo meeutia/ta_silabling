@@ -74,13 +74,13 @@ function DetailLhuTable({ details = [], sampleNos = [] }) {
     value !== undefined &&
     String(value).trim() !== '';
 
-  const orderedSampleNos = Array.isArray(sampleNos) && sampleNos.length
-    ? sampleNos.filter(Boolean)
-    : Array.from(
-        new Set(
-          details.flatMap((row) => row.samples || row.sampels || Object.keys(row.hasil_by_sample || row.hasilBySample || {}))
-        )
-      ).filter(Boolean);
+    const orderedSampleNos = Array.isArray(sampleNos) && sampleNos.length
+      ? sampleNos.filter(Boolean)
+      : Array.from(
+          new Set(
+            details.flatMap((row) => row.samples || row.sampels || Object.keys(row.resultsBySample || {}))
+          )
+        ).filter(Boolean);
 
   const displayedSampleNos = orderedSampleNos.length ? orderedSampleNos : ['-'];
   const hasilMinWidth = Math.max(110, displayedSampleNos.length * 92);
@@ -141,7 +141,7 @@ function DetailLhuTable({ details = [], sampleNos = [] }) {
                 row.acuanMetode ||
                 '';
 
-              const hasilBySample = row.hasil_by_sample || row.hasilBySample || {};
+              const resultsBySample = row.resultsBySample || {};
               const nilaiBm = getNilaiBm(row);
               const satuanBm = getSatuanBm(row);
               const insituLabel = getInsituLabel(row);
@@ -161,7 +161,7 @@ function DetailLhuTable({ details = [], sampleNos = [] }) {
                     {acuan && <p className="mt-1 text-xs text-gray-500">{acuan}</p>}
                   </td>
                   {displayedSampleNos.map((sampleNo) => {
-                    const value = sampleNo === '-' ? (row.hasil_snapshot || row.hasilSnapshot || row.hasil) : hasilBySample[sampleNo];
+                    const value = sampleNo === '-' ? (row.hasil_snapshot || row.hasilSnapshot || row.hasil) : resultsBySample[sampleNo];
                     return (
                       <td key={sampleNo} className="border-r border-gray-200 px-3 py-3 text-center font-semibold text-gray-900">
                         {hasValue(value) ? value : <span className="text-gray-400">-</span>}

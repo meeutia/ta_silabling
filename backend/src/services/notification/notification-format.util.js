@@ -1,4 +1,5 @@
 const { buildEmailResponse } = require('../../templates/email/email-layout.template');
+const { toCamelCaseDeep } = require('../../utils/case-transform.util');
 class NotificationFormatUtil {
 safeString = (value) => {
         if (value === null || value === undefined)
@@ -91,54 +92,12 @@ safeString = (value) => {
         return result;
     };
     getSampleTypeLabel = (sample = {}) => {
-        return (sample.jenis_sampel ||
-            sample.jenisSampel ||
-            sample.nama_jenis_sampel ||
-            sample.namaJenisSampel ||
-            sample.jenis ||
-            null);
+        const data = toCamelCaseDeep(sample);
+        return data.jenisSampel || data.namaJenisSampel || data.jenis || null;
     };
     formatSampleTypesForDisplay = (samples = [], fallback = '-') => {
         const values = this.dedupeTextValues((Array.isArray(samples) ? samples : []).map(this.getSampleTypeLabel));
         return values.length ? values.join(', ') : fallback;
-    };
-    buildTestResultRevisionByQcEmail = ({ analis, noSampel, catatanRevisi, items = [], testingLink = null, }) => {
-        const namaAnalis = analis?.username || analis?.nama_pegawai || analis?.nik || 'Analis';
-        const subject = `Revisi Hasil Pengujian dari QC - ${noSampel}`;
-        const daftarParameter = items.length
-            ? items
-                .map((item, index) => {
-                const parameter = item.nama_parameter || item.namaParameter || '-';
-                const metode = item.acuan_metode || item.acuanMetode || item.nama_metode || item.namaMetode || '-';
-                return `${index + 1}. ${parameter}\n   Metode: ${metode}`;
-            })
-                .join('\n')
-            : '-';
-        const body = [
-            `Yth. ${namaAnalis},`,
-            '',
-            `Pengendalian Mutu meminta revisi hasil pengujian untuk sampel ${noSampel}.`,
-            '',
-            'Parameter/metode yang perlu direvisi:',
-            daftarParameter,
-            '',
-            'Catatan revisi:',
-            catatanRevisi || '-',
-            '',
-            `Link ke halaman pengujian: ${testingLink || '-'}`,
-            '',
-            'Mohon segera melakukan perbaikan hasil pengujian/LKA pada sistem.',
-            '',
-            'Terima kasih.',
-        ].join('\n');
-        return buildEmailResponse({
-            subject,
-            body,
-            title: subject,
-            preheader: `Revisi hasil pengujian untuk sampel ${noSampel}.`,
-            actionUrl: testingLink,
-            actionLabel: 'Buka Tugas Pengujian',
-        });
     };
     buildKalabApprovalLink = (nomorLhu = '') => {
         const frontendUrl = this.safeString(process.env.FRONTEND_URL || 'http://localhost:5173')
@@ -151,69 +110,34 @@ safeString = (value) => {
             ? `${frontendUrl}/kalab/lhu/${encodeURIComponent(lhuNumber)}`
             : `${frontendUrl}/kalab/lhu`;
     };
-    buildKasiReviewApprovedEmail = ({ penerima = {}, context = {} }) => {
-        const { sample = {}, fppl = {}, pelanggan = {}, jenis = {}, lhu = {} } = context;
-        const nomorSampel = sample.no_sampel || '-';
-        const nomorFppl = fppl.nomor_fppl || fppl.id_registrasi || '-';
-        const nomorLhu = lhu.nomor_lhu || '-';
-        const namaPelanggan = pelanggan.nama_instansi || pelanggan.nama_pelanggan || '-';
-        const jenisSampel = jenis.jenis_sampel || '-';
-        const namaPenerima = penerima.nama_pegawai || penerima.username || penerima.nik || 'Kepala Laboratorium';
-        const detailLink = this.buildKalabApprovalLink(lhu.nomor_lhu || '');
-        const subject = `Hasil sampel disetujui Kasi - ${nomorSampel}`;
-        const body = [
-            `Yth. ${namaPenerima},`,
-            '',
-            'Hasil pengujian sampel sudah disetujui oleh Kasi Pengujian.',
-            '',
-            `Nomor sampel: ${nomorSampel}`,
-            `Nomor FPPL: ${nomorFppl}`,
-            `Jenis sampel: ${jenisSampel}`,
-            `Pelanggan: ${namaPelanggan}`,
-            nomorLhu !== '-' ? `Nomor LHU: ${nomorLhu}` : null,
-            '',
-            detailLink ? `Buka halaman Kepala Lab: ${detailLink}` : null,
-            'Silakan cek antrean LHU pada sistem.',
-            '',
-            'Terima kasih.',
-        ].filter(Boolean).join('\n');
-        return buildEmailResponse({
-            subject,
-            body,
-            title: subject,
-            preheader: `Sampel ${nomorSampel} sudah disetujui Kasi Pengujian.`,
-            actionUrl: detailLink,
-            actionLabel: 'Buka Antrean LHU',
-        });
-    };
     buildLhuNeedsKalabApprovalEmail = ({ penerima = {}, context = {}, nomorLhu = '', lhus = [] }) => {
-        const { sample = {}, fppl = {}, pelanggan = {}, jenis = {} } = context;
-        const contextSampleNos = Array.isArray(context.sample_nos || context.sampleNos)
-            ? (context.sample_nos || context.sampleNos).filter(Boolean)
-            : [];
-        const fallbackNomorSampel = sample.no_sampel || sample.noSampel || '-';
+        const data = toCamelCaseDeep(context);
+        const recipient = toCamelCaseDeep(penerima);
+        const { sample = {}, fppl = {}, pelanggan = {}, jenis = {} } = data;
+        const contextSampleNos = Array.isArray(data.sampleNos) ? data.sampleNos.filter(Boolean) : [];
+        const fallbackNomorSampel = sample.noSampel || '-';
         const nomorSampel = contextSampleNos.length ? this.formatSampleNosForDisplay(contextSampleNos) : fallbackNomorSampel;
-        const totalSampel = context.total_sampel || context.totalSamples || contextSampleNos.length || (fallbackNomorSampel !== '-' ? 1 : 0);
-        const nomorFppl = fppl.nomor_fppl || fppl.nomorFppl || fppl.id_registrasi || context?.lhu?.id_registrasi || '-';
-        const namaPelanggan = pelanggan.nama_instansi || pelanggan.nama_pelanggan || pelanggan.nama || '-';
-        const jenisSampel = jenis.jenis_sampel || jenis.jenisSampel || this.formatSampleTypesForDisplay(context.samples || [], '-');
-        const namaPenerima = penerima.nama_pegawai || penerima.username || penerima.nik || 'Kepala Laboratorium';
+        const totalSampel = data.totalSamples || contextSampleNos.length || (fallbackNomorSampel !== '-' ? 1 : 0);
+        const nomorFppl = fppl.nomorFppl || fppl.idRegistrasi || data?.lhu?.idRegistrasi || '-';
+        const namaPelanggan = pelanggan.namaInstansi || pelanggan.namaPelanggan || pelanggan.nama || '-';
+        const jenisSampel = jenis.jenisSampel || this.formatSampleTypesForDisplay(data.samples || [], '-');
+        const namaPenerima = recipient.namaPegawai || recipient.username || recipient.nik || 'Kepala Laboratorium';
         const lhuRows = Array.isArray(lhus) && lhus.length
-            ? lhus
-            : [{ nomor_lhu: nomorLhu, id_registrasi: context?.lhu?.id_registrasi, sample_nos: contextSampleNos, no_sampel: nomorSampel }];
-        const detailLink = this.buildKalabApprovalLink(nomorLhu || lhuRows[0]?.nomor_lhu || '');
+            ? toCamelCaseDeep(lhus)
+            : [{ nomorLhu, idRegistrasi: data?.lhu?.idRegistrasi, sampleNos: contextSampleNos, noSampel: nomorSampel }];
+        const detailLink = this.buildKalabApprovalLink(nomorLhu || lhuRows[0]?.nomorLhu || '');
         const subject = lhuRows.length > 1
             ? `${lhuRows.length} LHU menunggu persetujuan Kepala Lab`
-            : `LHU menunggu persetujuan Kepala Lab - ${nomorLhu || lhuRows[0]?.nomor_lhu || '-'}`;
+            : `LHU menunggu persetujuan Kepala Lab - ${nomorLhu || lhuRows[0]?.nomorLhu || '-'}`;
         const daftarLhu = lhuRows.map((row, index) => {
-            const rowNomorLhu = row.nomor_lhu || row.nomorLhu || '-';
-            const rowRegistrasi = row.id_registrasi || row.idRegistrasi || '-';
-            const rowSampleNoList = Array.isArray(row.sample_nos || row.sampleNos)
-                ? (row.sample_nos || row.sampleNos).filter(Boolean)
-                : [row.no_sampel || row.noSampel || '-'];
+            const rowNomorLhu = row.nomorLhu || '-';
+            const rowRegistrasi = row.idRegistrasi || '-';
+            const rowSampleNoList = Array.isArray(row.sampleNos)
+                ? row.sampleNos.filter(Boolean)
+                : [row.noSampel || '-'];
             const rowSampleNos = this.formatSampleNosForDisplay(rowSampleNoList);
-            const rowTotalSampel = row.total_sampel || row.totalSamples || this.dedupeSampleNos(rowSampleNoList).length || 0;
-            const rowJenisSampel = row.jenis_sampel || row.jenisSampel || this.formatSampleTypesForDisplay(row.samples || [], '');
+            const rowTotalSampel = row.totalSamples || this.dedupeSampleNos(rowSampleNoList).length || 0;
+            const rowJenisSampel = row.jenisSampel || this.formatSampleTypesForDisplay(row.samples || [], '');
             const jenisInfo = rowJenisSampel ? ` | Jenis: ${rowJenisSampel}` : '';
             return `${index + 1}. ${rowNomorLhu} | ${rowRegistrasi} | ${rowTotalSampel} sampel: ${rowSampleNos || '-'}${jenisInfo}`;
         });
@@ -222,7 +146,7 @@ safeString = (value) => {
             '',
             'QC telah menyelesaikan finalisasi LHU dan mengirimkannya ke tahap persetujuan Kepala Laboratorium.',
             '',
-            lhuRows.length > 1 ? 'Daftar LHU dalam rentang 20 menit terakhir:' : `Nomor LHU: ${nomorLhu || lhuRows[0]?.nomor_lhu || '-'}`,
+            lhuRows.length > 1 ? 'Daftar LHU dalam rentang 20 menit terakhir:' : `Nomor LHU: ${nomorLhu || lhuRows[0]?.nomorLhu || '-'}`,
             ...(lhuRows.length > 1 ? daftarLhu : []),
             lhuRows.length > 1 ? null : `Total sampel: ${totalSampel}`,
             lhuRows.length > 1 ? null : `Nomor sampel: ${nomorSampel}`,
@@ -241,22 +165,25 @@ safeString = (value) => {
             title: subject,
             preheader: lhuRows.length > 1
                 ? `${lhuRows.length} LHU menunggu persetujuan Kepala Lab.`
-                : `LHU ${nomorLhu || lhuRows[0]?.nomor_lhu || '-'} dengan ${totalSampel} sampel menunggu persetujuan Kepala Lab.`,
+                : `LHU ${nomorLhu || lhuRows[0]?.nomorLhu || '-'} dengan ${totalSampel} sampel menunggu persetujuan Kepala Lab.`,
             actionUrl: detailLink,
             actionLabel: 'Review LHU',
         });
     };
     buildRequestLhusCompleteAdminEmail = ({ penerima = {}, context = {} }) => {
-        const { fppl = {}, pelanggan = {}, lhuRows = [], totalSamples = 0, idRegistrasi = '', } = context;
-        const nomorFppl = fppl.nomor_fppl || fppl.id_registrasi || idRegistrasi || '-';
-        const namaPelanggan = pelanggan.nama_instansi || pelanggan.nama_pelanggan || pelanggan.nama || '-';
-        const namaPenerima = penerima.nama_pegawai || penerima.username || penerima.nik || 'Admin';
-        const detailLink = this.buildAdminLhuPickupScheduleLink(idRegistrasi || fppl.id_registrasi || '');
+        const data = toCamelCaseDeep(context);
+        const recipient = toCamelCaseDeep(penerima);
+        const { fppl = {}, pelanggan = {}, lhuRows = [], totalSamples = 0, idRegistrasi = '', } = data;
+        const nomorFppl = fppl.nomorFppl || fppl.idRegistrasi || idRegistrasi || '-';
+        const namaPelanggan = pelanggan.namaInstansi || pelanggan.namaPelanggan || pelanggan.nama || '-';
+        const namaPenerima = recipient.namaPegawai || recipient.username || recipient.nik || 'Admin';
+        const detailLink = this.buildAdminLhuPickupScheduleLink(idRegistrasi || fppl.idRegistrasi || '');
         const subject = `Semua LHU permohonan sudah disahkan - ${nomorFppl}`;
         const daftarLhu = lhuRows.length
             ? lhuRows.map((row, index) => {
-                const nomorLhu = row.nomor_lhu || row.nomorLhu || '-';
-                const noSampel = row.no_sampel || row.noSampel || '-';
+                const rowData = toCamelCaseDeep(row || {});
+                const nomorLhu = rowData.nomorLhu || '-';
+                const noSampel = rowData.noSampel || '-';
                 return `${index + 1}. ${nomorLhu} (${noSampel})`;
             })
             : ['-'];
@@ -265,7 +192,7 @@ safeString = (value) => {
             '',
             'Seluruh LHU untuk satu permohonan pelanggan sudah disahkan oleh Kepala Laboratorium.',
             '',
-            `Nomor permohonan : ${fppl.id_registrasi || idRegistrasi || '-'}`,
+            `Nomor permohonan : ${fppl.idRegistrasi || idRegistrasi || '-'}`,
             `Nomor FPPL       : ${nomorFppl}`,
             `Pelanggan        : ${namaPelanggan}`,
             `Total sampel     : ${totalSamples || lhuRows.length}`,
@@ -399,27 +326,30 @@ safeString = (value) => {
             : `${frontendUrl}/qc/verifikasi`;
     };
     buildKasiReviewApprovedToQcEmail = ({ penerima = {}, context = {} }) => {
-        const { sample = {}, fppl = {}, pelanggan = {}, jenis = {}, lhu = {} } = context;
-        const requestId = context.idRegistrasi || context.id_registrasi || fppl.id_registrasi || '-';
-        const nomorFppl = fppl.nomor_fppl || fppl.nomorFppl || fppl.id_registrasi || requestId;
-        const namaPelanggan = pelanggan.nama_instansi || pelanggan.nama_pelanggan || pelanggan.nama || '-';
-        const namaPenerima = penerima.nama_pegawai || penerima.username || penerima.nik || 'Pengendalian Mutu';
-        const samples = Array.isArray(context.samples) ? context.samples : [];
-        const sampleNos = Array.isArray(context.sampleNos || context.sample_nos)
-            ? (context.sampleNos || context.sample_nos).filter(Boolean)
-            : [sample.no_sampel || sample.noSampel].filter(Boolean);
+        const data = toCamelCaseDeep(context);
+        const recipient = toCamelCaseDeep(penerima);
+        const { sample = {}, fppl = {}, pelanggan = {}, jenis = {}, lhu = {} } = data;
+        const requestId = data.idRegistrasi || fppl.idRegistrasi || '-';
+        const nomorFppl = fppl.nomorFppl || fppl.idRegistrasi || requestId;
+        const namaPelanggan = pelanggan.namaInstansi || pelanggan.namaPelanggan || pelanggan.nama || '-';
+        const namaPenerima = recipient.namaPegawai || recipient.username || recipient.nik || 'Pengendalian Mutu';
+        const samples = Array.isArray(data.samples) ? data.samples : [];
+        const sampleNos = Array.isArray(data.sampleNos)
+            ? data.sampleNos.filter(Boolean)
+            : [sample.noSampel].filter(Boolean);
         const nomorSampel = this.formatSampleNosForDisplay(sampleNos);
         const jenisSampel = samples.length
             ? this.formatSampleTypesForDisplay(samples, '-')
-            : (jenis.jenis_sampel || jenis.jenisSampel || '-');
-        const totalSampel = context.totalSamples || context.total_sampel || sampleNos.length || 1;
-        const totalParameter = context.totalParameter || context.total_parameter || 0;
-        const detailLink = this.buildQcVerificationLink(lhu.nomor_lhu || lhu.nomorLhu || '');
+            : (jenis.jenisSampel || '-');
+        const totalSampel = data.totalSamples || sampleNos.length || 1;
+        const totalParameter = data.totalParameter || 0;
+        const detailLink = this.buildQcVerificationLink(lhu.nomorLhu || '');
         const daftarSampel = samples.length
             ? samples.map((row, index) => {
-                const no = row.no_sampel || row.noSampel || '-';
-                const jenisRow = row.jenis_sampel || row.jenisSampel || '-';
-                const totalParam = row.total_parameter || row.totalParameter || 0;
+                const sampleData = toCamelCaseDeep(row || {});
+                const no = sampleData.noSampel || '-';
+                const jenisRow = sampleData.jenisSampel || '-';
+                const totalParam = sampleData.totalParameter || 0;
                 return `${index + 1}. ${no} | ${jenisRow} | ${totalParam} parameter`;
             })
             : [`1. ${nomorSampel}`];

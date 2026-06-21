@@ -1,7 +1,45 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Invoice = sequelize.define('invoice', {
+class Invoice extends Model {
+  static associate(models) {
+    Invoice.belongsTo(models.Fppl, { foreignKey: 'id_registrasi' });
+    Invoice.hasMany(models.InvoiceItem, { foreignKey: 'id_invoice' });
+    Invoice.belongsToMany(models.FpplParameterMetode, { through: models.InvoiceItem, foreignKey: 'id_invoice', otherKey: 'id_fppl_parameter_metode', as: 'ItemParameter' });
+    Invoice.hasMany(models.Payment, { foreignKey: 'id_invoice' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_invoice === status;
+  }
+
+  isPaid() {
+    return this.isStatus('Lunas');
+  }
+
+  isWaitingPayment() {
+    return this.isStatus('Belum Dibayar');
+  }
+
+  isWaitingVerification() {
+    return this.isStatus('Menunggu Verifikasi');
+  }
+
+  getTotal() {
+    return Number(this.subtotal_uji || 0) + Number(this.subtotal_pengambilan || 0);
+  }
+}
+
+Invoice.init({
     id_invoice: {
         type: DataTypes.STRING(16),
         primaryKey: true
@@ -43,6 +81,9 @@ const Invoice = sequelize.define('invoice', {
         type: DataTypes.STRING(255),
         allowNull: true,
     }
+}, {
+  sequelize,
+  modelName: 'invoice',
 });
 
 module.exports = Invoice;

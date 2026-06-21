@@ -195,7 +195,7 @@ export const mapHolidaysToLookup = (rows = []) => {
 };
 
 export const buildRegistrationPayload = (formData) => ({
-  id_pelanggan: formData.id_pelanggan,
+  idPelanggan: formData.id_pelanggan,
   namaInstansi: asTrimmedText(formData.namaInstansi),
   pic: asTrimmedText(formData.pic),
   emailPic: asTrimmedText(formData.emailPic),
@@ -211,7 +211,7 @@ export const buildRegistrationPayload = (formData) => ({
   sampleEntries: normalizeSampleEntries(formData.sampleEntries)
     .filter((entry) => entry.jenisSampel && entry.idRegBm && entry.parameters.length > 0)
     .map((entry) => ({
-      jenisSampel: entry.jenisSampel,
+      idJenisSampel: entry.jenisSampel,
       idRegBm: entry.idRegBm,
       jumlahSampel: toPositiveInteger(entry.jumlahSampel),
       parameters: [...new Set(entry.parameters.filter(Boolean))],

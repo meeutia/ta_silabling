@@ -58,7 +58,7 @@ generateToken = (user) => {
             return user.Pelanggan;
         return [];
     };
-    buildUserPayload = (userInstance) => {
+    buildUserRequestData = (userInstance) => {
         const user = this.getPlain(userInstance) || {};
         const role = this.getRoleFromUser(user);
         const pelanggans = this.getPelanggansFromUser(user);
@@ -151,7 +151,7 @@ generateToken = (user) => {
         const userWithProfile = await this.findUserWithProfile({ nik: normalizedNik });
         const token = this.generateToken(userWithProfile);
         return {
-            user: this.buildUserPayload(userWithProfile),
+            user: this.buildUserRequestData(userWithProfile),
             token,
             expiresIn: ACCESS_TOKEN_EXPIRES_IN,
             refreshToken,
@@ -208,7 +208,7 @@ generateToken = (user) => {
         });
         const token = this.generateToken(user);
         return {
-            user: this.buildUserPayload(user),
+            user: this.buildUserRequestData(user),
             token,
             expiresIn: ACCESS_TOKEN_EXPIRES_IN,
             refreshToken,
@@ -343,7 +343,7 @@ generateToken = (user) => {
         });
         const token = this.generateToken(user);
         return {
-            user: this.buildUserPayload(user),
+            user: this.buildUserRequestData(user),
             token,
             expiresIn: ACCESS_TOKEN_EXPIRES_IN,
             refreshToken: newRefreshToken,
@@ -369,7 +369,7 @@ generateToken = (user) => {
         if (!user) {
             throw new Error('User tidak ditemukan.');
         }
-        return this.buildUserPayload(user);
+        return this.buildUserRequestData(user);
     };
 }
 module.exports = new AuthService();

@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
 const LKA_REVISION_STATUSES = [
@@ -14,7 +14,39 @@ const LKA_REVISION_STATUSES = [
   'Selesai',
 ];
 
-const LkaRevisi = sequelize.define('lka_revisi', {
+class LkaRevisi extends Model {
+  static associate(models) {
+    LkaRevisi.belongsTo(models.Lka, { foreignKey: 'kode_lka', as: 'lka' });
+    LkaRevisi.belongsTo(models.LkaRevisi, { foreignKey: 'id_revisi_sebelumnya', as: 'RevisiSebelumnya' });
+    LkaRevisi.hasMany(models.LkaRevisi, { foreignKey: 'id_revisi_sebelumnya', as: 'RevisiBerikutnya' });
+    LkaRevisi.belongsTo(models.User, { foreignKey: 'diajukan_oleh', as: 'PengajuRevisi' });
+    LkaRevisi.belongsTo(models.User, { foreignKey: 'ditinjau_oleh', as: 'PeninjauRevisi' });
+    LkaRevisi.belongsTo(models.Sampel, { foreignKey: 'no_sampel', as: 'sampel' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_revisi === status;
+  }
+
+  isSubmitted() {
+    return this.isStatus('Diajukan');
+  }
+
+  hasPreviousRevision() {
+    return Boolean(this.id_revisi_sebelumnya);
+  }
+}
+
+LkaRevisi.init({
   id_revisi_lka: {
     type: DataTypes.STRING(10),
     primaryKey: true,
@@ -80,7 +112,9 @@ const LkaRevisi = sequelize.define('lka_revisi', {
     allowNull: true,
   },
 }, {
-  tableName: 'lka_revisi',
+  sequelize,
+  modelName: 'lka_revisi',
+tableName: 'lka_revisi',
   timestamps: false,
 });
 

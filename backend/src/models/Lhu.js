@@ -1,7 +1,52 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Lhu = sequelize.define('lhu', {
+class Lhu extends Model {
+  static associate(models) {
+    Lhu.belongsTo(models.Fppl, { foreignKey: 'id_registrasi', as: 'fppl' });
+    Lhu.belongsTo(models.PktBm, { foreignKey: 'id_pkt_bm' });
+    Lhu.hasMany(models.Sampel, { foreignKey: 'nomor_lhu', as: 'sampels' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_lhu === status;
+  }
+
+  isDraft() {
+    return this.isStatus('Draft');
+  }
+
+  isFinalized() {
+    return this.isStatus('Menunggu Pengesahan');
+  }
+
+  isApproved() {
+    return this.isStatus('Disahkan');
+  }
+
+  canBeFinalized() {
+    return this.isDraft();
+  }
+
+  canBeApproved() {
+    return this.isFinalized();
+  }
+
+  hasPublishedFile() {
+    return Boolean(this.file_lhu_path);
+  }
+}
+
+Lhu.init({
   nomor_lhu: {
     type: DataTypes.STRING(20),
     primaryKey: true,
@@ -61,7 +106,9 @@ const Lhu = sequelize.define('lhu', {
     defaultValue: 'Draft',
   },
 }, {
-  tableName: 'lhu',
+  sequelize,
+  modelName: 'lhu',
+tableName: 'lhu',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',

@@ -30,6 +30,7 @@ router.get('/finalization/history', authorizeRoles(Roles.QC, Roles.KALAB, Roles.
 router.get('/kalab/queue', authorizeRoles(Roles.KALAB), lhuController.getKalabApprovalQueue);
 router.post('/kalab/approve', authorizeRoles(Roles.KALAB), validateKalabApproval, validateKalabApprovalBusinessTimeline, lhuController.approveByKalab);
 
+router.get('/pickup/holidays', authorizeRoles(Roles.ADMIN), lhuPickupController.getHolidays);
 router.get('/pickup/queue', authorizeRoles(Roles.ADMIN), lhuPickupController.getPickupQueue);
 router.post('/pickup/schedule', authorizeRoles(Roles.ADMIN), validateLhuPickupSchedule, lhuPickupController.schedulePickup);
 router.post('/pickup/complete', authorizeRoles(Roles.ADMIN), validateLhuPickupCompletion, lhuPickupController.completePickup);

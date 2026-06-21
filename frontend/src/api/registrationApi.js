@@ -2,7 +2,7 @@ import { requestData, requestJson } from './httpClient';
 
 export const registrationApi = {
   getSampleTypes() {
-    return requestData('/references/sample-types');
+    return requestData('/catalog/sample-types');
   },
 
   getBmStandards(params = {}) {
@@ -13,15 +13,15 @@ export const registrationApi = {
     }
 
     const query = search.toString();
-    return requestData(`/references/bm-standards${query ? `?${query}` : ''}`);
+    return requestData(`/catalog/bm-standards${query ? `?${query}` : ''}`);
   },
 
   getPickupTariffs() {
-    return requestData('/references/pickup-tariffs');
+    return requestData('/catalog/pickup-tariffs');
   },
 
   getHolidays() {
-    return requestData('/references/holidays');
+    return requestData('/requests/schedule/holidays');
   },
 
   getCustomerProfiles() {
@@ -30,7 +30,7 @@ export const registrationApi = {
 
   getParametersBySampleTypeAndStandard(jenisSampelId, idRegBm) {
     return requestData(
-      `/references/sample-types/${encodeURIComponent(jenisSampelId)}/parameters?id_reg_bm=${encodeURIComponent(idRegBm)}`
+      `/catalog/sample-types/${encodeURIComponent(jenisSampelId)}/parameters?id_reg_bm=${encodeURIComponent(idRegBm)}`
     );
   },
 

@@ -1,38 +1,30 @@
-const path = require('path');
-const assignmentService = require('../services/assignment.service');
+const assignmentReadService = require('../services/assignment/assignment-read.service');
+const assignmentCreateService = require('../services/assignment/assignment-create.service');
+const assignmentWorksheetService = require('../services/assignment/assignment-worksheet.service');
+const assignmentPenyeliaReviewService = require('../services/assignment/assignment-penyelia-review.service');
+const assignmentKasiReviewService = require('../services/assignment/assignment-kasi-review.service');
+const assignmentSubkontrakService = require('../services/assignment/assignment-subkontrak.service');
 const notificationService = require('../services/notification/notification.service');
-const { previewWorksheetFile: buildWorksheetPreview } = require('../utils/worksheet-preview');
-const { createFileAccessToken } = require('../utils/file-access-token.util');
 const { secureKnownFileFields } = require('../utils/file-url.util');
-const WORKSHEET_DIR = path.join(process.cwd(), 'uploads', 'worksheets');
+const { getHariLibur } = require('../utils/holiday-calendar.util');
 class AssignmentController {
-    constructor({ assignmentService, notificationService }) {
-        this.assignmentService = assignmentService;
+    constructor({
+        assignmentReadService,
+        assignmentCreateService,
+        assignmentWorksheetService,
+        assignmentPenyeliaReviewService,
+        assignmentKasiReviewService,
+        assignmentSubkontrakService,
+        notificationService,
+    }) {
+        this.assignmentReadService = assignmentReadService;
+        this.assignmentCreateService = assignmentCreateService;
+        this.assignmentWorksheetService = assignmentWorksheetService;
+        this.assignmentPenyeliaReviewService = assignmentPenyeliaReviewService;
+        this.assignmentKasiReviewService = assignmentKasiReviewService;
+        this.assignmentSubkontrakService = assignmentSubkontrakService;
         this.notificationService = notificationService;
     }
-    buildSignedWorksheetUrl = (filePath, download = false, expiresInSeconds = 12 * 60 * 60) => {
-        const token = createFileAccessToken({
-            scope: 'worksheet',
-            path: filePath,
-            expiresInSeconds,
-        });
-        return `/files/worksheet?token=${encodeURIComponent(token)}${download ? '&download=1' : ''}`;
-    };
-    attachSignedWorksheetUrl = (previewPayload, sourcePath) => {
-        if (!previewPayload || typeof previewPayload !== 'object')
-            return previewPayload;
-        const rawPath = sourcePath || previewPayload.url;
-        if (!rawPath)
-            return previewPayload;
-        const signedUrl = this.buildSignedWorksheetUrl(rawPath);
-        const signedDownloadUrl = this.buildSignedWorksheetUrl(rawPath, true);
-        return {
-            ...previewPayload,
-            originalUrl: previewPayload.url || rawPath,
-            url: previewPayload.url ? signedUrl : previewPayload.url,
-            downloadUrl: signedDownloadUrl,
-        };
-    };
     getCurrentNik = (req) => {
         return req.user?.nik || req.user?.id || req.user?.id_user || null;
     };
@@ -62,9 +54,23 @@ class AssignmentController {
             message: error.message || fallbackMessage,
         });
     };
+    getScheduleHolidays = async (req, res) => {
+        try {
+            const data = await getHariLibur();
+            return res.json({
+                success: true,
+                message: 'Berhasil mengambil hari libur',
+                data,
+            });
+        }
+        catch (error) {
+            return this.handleError(res, error, 'Gagal mengambil data hari libur.', 500);
+        }
+    };
+
     getAnalysts = async (req, res) => {
         try {
-            const data = await this.assignmentService.getAnalystOptions();
+            const data = await this.assignmentReadService.getAnalystOptions();
             return res.json({
                 success: true,
                 data,
@@ -76,7 +82,7 @@ class AssignmentController {
     };
     getPendingItems = async (req, res) => {
         try {
-            const data = await this.assignmentService.getPendingItems();
+            const data = await this.assignmentReadService.getPendingItems();
             return res.json({
                 success: true,
                 data,
@@ -89,7 +95,7 @@ class AssignmentController {
     createAssignment = async (req, res) => {
         try {
             const currentUserNik = this.getCurrentNik(req);
-            const data = await this.assignmentService.createAssignment(req.body, currentUserNik);
+            const data = await this.assignmentCreateService.createAssignment(req.body, currentUserNik);
             return res.status(201).json({
                 success: true,
                 message: 'Penugasan berhasil dibuat.',
@@ -108,7 +114,7 @@ class AssignmentController {
                 req.body?.tanggal_tenggat ||
                 req.body?.deadline ||
                 null;
-            const data = await this.assignmentService.updateAssignmentDetailDeadline(idPenugasanDetail, tanggalTenggat, currentUserNik);
+            const data = await this.assignmentPenyeliaReviewService.updateAssignmentDetailDeadline(idPenugasanDetail, tanggalTenggat, currentUserNik);
             return res.json({
                 success: true,
                 message: 'Deadline penugasan berhasil diperbarui.',
@@ -121,7 +127,7 @@ class AssignmentController {
     };
     getMonitor = async (req, res) => {
         try {
-            const data = await this.assignmentService.getAssignmentMonitor();
+            const data = await this.assignmentReadService.getAssignmentMonitor();
             return res.json({
                 success: true,
                 data,
@@ -133,7 +139,7 @@ class AssignmentController {
     };
     getTestingOverview = async (req, res) => {
         try {
-            const data = await this.assignmentService.getTestingOverview();
+            const data = await this.assignmentReadService.getTestingOverview();
             return res.json({
                 success: true,
                 data,
@@ -146,7 +152,7 @@ class AssignmentController {
     getMyAssignments = async (req, res) => {
         try {
             const currentUserNik = this.getCurrentNik(req);
-            const data = await this.assignmentService.getMyAssignments(currentUserNik);
+            const data = await this.assignmentReadService.getMyAssignments(currentUserNik);
             return res.json({
                 success: true,
                 data,
@@ -160,7 +166,7 @@ class AssignmentController {
         try {
             const currentUserNik = this.getCurrentNik(req);
             const { idPenugasanDetail } = req.params;
-            const data = await this.assignmentService.getAssignmentWorkDetail(idPenugasanDetail, currentUserNik);
+            const data = await this.assignmentWorksheetService.getAssignmentWorkDetail(idPenugasanDetail, currentUserNik);
             return res.json({
                 success: true,
                 data,
@@ -173,7 +179,7 @@ class AssignmentController {
     getLkaRevisionHistory = async (req, res) => {
         try {
             const kodeLka = this.requireValue(req.params?.kodeLka || req.query?.kodeLka || req.query?.kode_lka, 'Kode LKA wajib dikirim.');
-            const data = await this.assignmentService.getLkaRevisionHistory(kodeLka);
+            const data = await this.assignmentWorksheetService.getLkaRevisionHistory(kodeLka);
             return res.json({
                 success: true,
                 message: 'Riwayat revisi LKA berhasil dimuat.',
@@ -188,7 +194,7 @@ class AssignmentController {
         try {
             const currentUserNik = this.getCurrentNik(req);
             const { idPenugasanDetail } = req.params;
-            const data = await this.assignmentService.saveWorksheetDraft(idPenugasanDetail, req.body, currentUserNik);
+            const data = await this.assignmentWorksheetService.saveWorksheetDraft(idPenugasanDetail, req.body, currentUserNik);
             return res.json({
                 success: true,
                 message: 'Worksheet draft tersimpan.',
@@ -203,7 +209,7 @@ class AssignmentController {
         try {
             const currentUserNik = this.getCurrentNik(req);
             const { idPenugasanDetail } = req.params;
-            const data = await this.assignmentService.saveWorksheetResults(idPenugasanDetail, req.body, currentUserNik);
+            const data = await this.assignmentWorksheetService.saveWorksheetResults(idPenugasanDetail, req.body, currentUserNik);
             return res.json({
                 success: true,
                 message: 'Hasil pengujian tersimpan.',
@@ -218,7 +224,7 @@ class AssignmentController {
         try {
             const currentUserNik = this.getCurrentNik(req);
             const { idPenugasanDetail } = req.params;
-            const data = await this.assignmentService.submitWorksheet(idPenugasanDetail, currentUserNik, req.body);
+            const data = await this.assignmentWorksheetService.submitWorksheet(idPenugasanDetail, currentUserNik, req.body);
             return res.json({
                 success: true,
                 message: 'Worksheet berhasil dikirim.',
@@ -231,7 +237,7 @@ class AssignmentController {
     };
     getReviewQueue = async (req, res) => {
         try {
-            const data = await this.assignmentService.getReviewQueue();
+            const data = await this.assignmentPenyeliaReviewService.getReviewQueue();
             return res.json({
                 success: true,
                 data,
@@ -244,7 +250,7 @@ class AssignmentController {
     getReviewDetail = async (req, res) => {
         try {
             const { idPenugasanDetail } = req.params;
-            const data = await this.assignmentService.getReviewDetail(idPenugasanDetail);
+            const data = await this.assignmentPenyeliaReviewService.getReviewDetail(idPenugasanDetail);
             return res.json({
                 success: true,
                 data,
@@ -258,7 +264,7 @@ class AssignmentController {
         try {
             const currentUserNik = this.getCurrentNik(req);
             const { idPenugasanDetail } = req.params;
-            const data = await this.assignmentService.reviewWorksheet(idPenugasanDetail, req.body, currentUserNik);
+            const data = await this.assignmentPenyeliaReviewService.reviewWorksheet(idPenugasanDetail, req.body, currentUserNik);
             // Jalankan juga pada aksi revisi, karena dalam satu LKA/detail penugasan
             // bisa ada sebagian sampel yang sudah lengkap disetujui Penyelia,
             // sementara sampel lain masih diminta revisi. Service notifikasi akan
@@ -284,7 +290,7 @@ class AssignmentController {
         try {
             const currentUserNik = this.getCurrentNik(req);
             const { idPenugasanDetail } = req.params;
-            const data = await this.assignmentService.reviewWorksheet(idPenugasanDetail, { action: 'approve' }, currentUserNik);
+            const data = await this.assignmentPenyeliaReviewService.reviewWorksheet(idPenugasanDetail, { action: 'approve' }, currentUserNik);
             try {
                 await this.notificationService.notifyPenyeliaApproveKeKasi(idPenugasanDetail);
             }
@@ -305,7 +311,7 @@ class AssignmentController {
         try {
             const currentUserNik = this.getCurrentNik(req);
             const { idPenugasanDetail } = req.params;
-            const data = await this.assignmentService.reviewWorksheet(idPenugasanDetail, {
+            const data = await this.assignmentPenyeliaReviewService.reviewWorksheet(idPenugasanDetail, {
                 action: 'revise',
                 catatanRevisi: req.body?.catatanRevisi || req.body?.catatan_revisi || null,
                 hasilTargets: req.body?.hasilTargets ||
@@ -344,7 +350,7 @@ class AssignmentController {
     getAssignmentDetailsByPenugasan = async (req, res) => {
         try {
             const { idPenugasan } = req.params;
-            const data = await this.assignmentService.getAssignmentDetailsByPenugasan(idPenugasan, {
+            const data = await this.assignmentReadService.getAssignmentDetailsByPenugasan(idPenugasan, {
                 idPenugasanDetail: req.query?.idPenugasanDetail ||
                     req.query?.id_penugasan_detail ||
                     req.query?.detail ||
@@ -359,66 +365,13 @@ class AssignmentController {
             return this.handleError(res, error, 'Gagal memuat detail penugasan.', error.statusCode || 400);
         }
     };
-    escapeHtml = (value = '') => {
-        return String(value)
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#039;');
-    };
-    normalizeRequestPath = (rawPath = '') => {
-        const value = String(rawPath || '').trim();
-        if (!value)
-            return '';
-        try {
-            if (/^https?:\/\//i.test(value)) {
-                const parsedUrl = new URL(value);
-                return parsedUrl.pathname;
-            }
-        }
-        catch {
-            return value;
-        }
-        return value;
-    };
-    resolveWorksheetAbsolutePath = (rawPath = '') => {
-        const normalizedPath = this.normalizeRequestPath(rawPath);
-        let relativePath = normalizedPath
-            .replace(/\\/g, '/')
-            .replace(/^\/+/, '');
-        if (relativePath.startsWith('worksheets/')) {
-            relativePath = relativePath.replace(/^worksheets\//, '');
-        }
-        if (relativePath.startsWith('uploads/worksheets/')) {
-            relativePath = relativePath.replace(/^uploads\/worksheets\//, '');
-        }
-        const absolutePath = path.resolve(WORKSHEET_DIR, relativePath);
-        const allowedRoot = path.resolve(WORKSHEET_DIR);
-        if (!absolutePath.startsWith(allowedRoot)) {
-            throw new Error('Path file worksheet tidak valid.');
-        }
-        return {
-            absolutePath,
-            relativePath: relativePath.split('/').filter(Boolean).join('/'),
-        };
-    };
-    buildWorksheetPublicUrl = (relativePath = '') => {
-        const safePath = relativePath
-            .split('/')
-            .map((part) => encodeURIComponent(part))
-            .join('/');
-        return `/worksheets/${safePath}`;
-    };
     previewWorksheet = async (req, res) => {
         try {
             const worksheetPath = req.query.path || '';
-            await this.assignmentService.assertWorksheetFileAccess(worksheetPath, req.user);
-            const data = await buildWorksheetPreview(worksheetPath);
-            const securedData = this.attachSignedWorksheetUrl(data, worksheetPath);
+            const data = await this.assignmentWorksheetService.getWorksheetPreview(worksheetPath, req.user);
             return res.json({
                 success: true,
-                data: securedData,
+                data,
             });
         }
         catch (error) {
@@ -429,14 +382,10 @@ class AssignmentController {
         try {
             const worksheetPath = req.query.path || '';
             const download = req.query.download === '1';
-            await this.assignmentService.assertWorksheetFileAccess(worksheetPath, req.user);
+            const data = await this.assignmentWorksheetService.getWorksheetAccessUrl(worksheetPath, req.user, download);
             return res.json({
                 success: true,
-                data: {
-                    path: worksheetPath,
-                    url: this.buildSignedWorksheetUrl(worksheetPath, download),
-                    downloadUrl: this.buildSignedWorksheetUrl(worksheetPath, true),
-                },
+                data,
             });
         }
         catch (error) {
@@ -457,23 +406,7 @@ class AssignmentController {
                     message: 'Minimal upload satu file LKA.',
                 });
             }
-            const files = uploadedFiles.map((file) => {
-                const ext = path
-                    .extname(file.originalname || file.filename || '')
-                    .replace('.', '')
-                    .toLowerCase();
-                const filePath = `/worksheets/${file.filename}`;
-                return {
-                    path: filePath,
-                    originalName: file.originalname || file.filename,
-                    mimeType: file.mimetype || null,
-                    size: file.size || null,
-                    ext,
-                    uploadedAt: new Date().toISOString(),
-                    secureUrl: this.buildSignedWorksheetUrl(filePath),
-                    downloadUrl: this.buildSignedWorksheetUrl(filePath, true),
-                };
-            });
+            const files = this.assignmentWorksheetService.formatUploadedWorksheetFiles(uploadedFiles);
             return res.json({
                 success: true,
                 message: 'File LKA berhasil diupload.',
@@ -489,7 +422,7 @@ class AssignmentController {
     };
     getKasiReviewQueue = async (req, res) => {
         try {
-            const data = await this.assignmentService.getKasiReviewQueue();
+            const data = await this.assignmentKasiReviewService.getKasiReviewQueue();
             return res.json({
                 success: true,
                 data,
@@ -501,7 +434,7 @@ class AssignmentController {
     };
     getKasiReviewHistory = async (req, res) => {
         try {
-            const data = await this.assignmentService.getKasiReviewHistory();
+            const data = await this.assignmentKasiReviewService.getKasiReviewHistory();
             return res.json({
                 success: true,
                 data: secureKnownFileFields(data),
@@ -514,7 +447,7 @@ class AssignmentController {
     getKasiReviewDetail = async (req, res) => {
         try {
             const noSampel = this.requireValue(req.query.noSampel || req.body?.noSampel, 'Nomor sampel wajib dikirim.');
-            const data = await this.assignmentService.getKasiReviewDetail(noSampel);
+            const data = await this.assignmentKasiReviewService.getKasiReviewDetail(noSampel);
             return res.json({
                 success: true,
                 data,
@@ -534,7 +467,7 @@ class AssignmentController {
                 });
             }
             const noSampel = this.requireValue(req.body?.noSampel || req.query.noSampel, 'Nomor sampel wajib dikirim.');
-            const data = await this.assignmentService.approveKasiReview(noSampel, currentUserNik);
+            const data = await this.assignmentKasiReviewService.approveKasiReview(noSampel, currentUserNik);
             return res.json({
                 success: true,
                 message: 'Hasil sampel berhasil disetujui Kasi Pengujian.',
@@ -560,7 +493,7 @@ class AssignmentController {
                 ? null
                 : this.requireValue(req.body?.catatanRevisi || req.body?.catatan_revisi || req.body?.catatan, 'Catatan revisi wajib diisi.');
             const hasilTargets = req.body?.hasilTargets || req.body?.hasil_targets || [];
-            const data = await this.assignmentService.reviseKasiReview(noSampel, catatanRevisi, currentUserNik, hasilTargets, revisions);
+            const data = await this.assignmentKasiReviewService.reviseKasiReview(noSampel, catatanRevisi, currentUserNik, hasilTargets, revisions);
             try {
                 await this.notificationService.notifyRevisiKasiKePenyelia({
                     noSampel,
@@ -584,7 +517,7 @@ class AssignmentController {
     };
     getPendingKasiRevisionRequests = async (req, res) => {
         try {
-            const data = await this.assignmentService.getPendingKasiRevisionRequests();
+            const data = await this.assignmentKasiReviewService.getPendingKasiRevisionRequests();
             return res.json({
                 success: true,
                 data,
@@ -598,7 +531,7 @@ class AssignmentController {
         try {
             const currentUserNik = this.getCurrentNik(req);
             const { idRevisiLka } = req.params;
-            const data = await this.assignmentService.reviewKasiRevisionRequest(idRevisiLka, req.body, currentUserNik);
+            const data = await this.assignmentKasiReviewService.reviewKasiRevisionRequest(idRevisiLka, req.body, currentUserNik);
             try {
                 if (data?.action === 'approve') {
                     await this.notificationService.notifyRevisiKasiPengujian({
@@ -632,7 +565,7 @@ class AssignmentController {
     };
     getSubkontrakItems = async (req, res) => {
         try {
-            const data = await this.assignmentService.getSubkontrakItems();
+            const data = await this.assignmentSubkontrakService.getSubkontrakItems();
             return res.json({
                 success: true,
                 data,
@@ -651,10 +584,10 @@ class AssignmentController {
                     message: 'User tidak valid. Silakan login ulang.',
                 });
             }
-            const data = await this.assignmentService.saveSubkontrakResults(req.body, currentUserNik);
+            const data = await this.assignmentSubkontrakService.saveSubkontrakResults(req.body, currentUserNik);
             // Send notification for pending subcontract items
             try {
-                const pendingItems = await this.assignmentService.getSubkontrakItems();
+                const pendingItems = await this.assignmentSubkontrakService.getSubkontrakItems();
                 const itemsToNotify = pendingItems.filter((item) => item.status_hasil === 'Belum Diisi' ||
                     item.statusHasil === 'Belum Diisi');
                 if (itemsToNotify.length > 0) {
@@ -677,7 +610,12 @@ class AssignmentController {
     };
 }
 module.exports = new AssignmentController({
-    assignmentService,
+    assignmentReadService,
+    assignmentCreateService,
+    assignmentWorksheetService,
+    assignmentPenyeliaReviewService,
+    assignmentKasiReviewService,
+    assignmentSubkontrakService,
     notificationService,
 });
 module.exports.AssignmentController = AssignmentController;

@@ -96,7 +96,6 @@ nextRunningId = async (tableName, fieldName, prefix, padLength, transaction) => 
         const rowsToCreate = rowsBySample.size > 0
             ? Array.from(rowsBySample.values())
             : [{
-                kode_lka: kodeLka,
                 no_sampel: null,
                 catatan_revisi: catatanRevisi || null,
                 status_revisi: this.normalizeLkaRevisionStatus(statusRevisi),

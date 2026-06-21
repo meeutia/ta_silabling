@@ -1,7 +1,39 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Penugasan = sequelize.define('penugasan', {
+class Penugasan extends Model {
+  static associate(models) {
+    Penugasan.hasMany(models.PenugasanDetail, { foreignKey: 'id_penugasan' });
+    Penugasan.belongsTo(models.User, { foreignKey: 'id_user_analis', as: 'Analis' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_penugasan === status;
+  }
+
+  isDraft() {
+    return this.isStatus('Draft');
+  }
+
+  isInternal() {
+    return this.jenis_penugasan === 'INTERNAL';
+  }
+
+  isSubcontract() {
+    return this.jenis_penugasan === 'SUBKONTRAK';
+  }
+}
+
+Penugasan.init({
     id_penugasan: {
         type: DataTypes.STRING(10),
         primaryKey: true
@@ -38,6 +70,9 @@ const Penugasan = sequelize.define('penugasan', {
         type: DataTypes.TEXT,
         allowNull: true
     }
+}, {
+  sequelize,
+  modelName: 'penugasan',
 });
 
 module.exports = Penugasan;

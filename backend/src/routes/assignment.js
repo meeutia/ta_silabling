@@ -30,6 +30,7 @@ const {
 
 router.use(verifyToken);
 
+router.get('/schedule/holidays', authorizeRoles(Roles.ANALIS, Roles.PENYELIA, Roles.KASI), assignmentController.getScheduleHolidays);
 router.get('/references/analysts', authorizeRoles(Roles.PENYELIA), assignmentController.getAnalysts);
 router.get('/pending-items', authorizeRoles(Roles.PENYELIA), assignmentController.getPendingItems);
 router.post('/', authorizeRoles(Roles.PENYELIA), validateCreateAssignment, validateAssignmentBusinessTimeline, assignmentController.createAssignment);

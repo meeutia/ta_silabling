@@ -1,7 +1,22 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const KategoriParameter = sequelize.define('kategori_parameter', {
+class KategoriParameter extends Model {
+  static associate(models) {
+    KategoriParameter.hasMany(models.Parameter, { foreignKey: 'id_kategori_parameter', as: 'parameters' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+}
+
+KategoriParameter.init({
   id_kategori_parameter: {
     type: DataTypes.STRING(4),
     primaryKey: true,
@@ -11,6 +26,9 @@ const KategoriParameter = sequelize.define('kategori_parameter', {
     allowNull: false,
     unique: true,
   },
+}, {
+  sequelize,
+  modelName: 'kategori_parameter',
 });
 
 module.exports = KategoriParameter;

@@ -75,25 +75,25 @@ normalizeNullable = (value) => {
             return [];
         }
     };
-    createActivityLog = async (payload = {}, options = {}) => {
+    createActivityLog = async (requestData = {}, options = {}) => {
         const transaction = options.transaction || null;
         try {
-            if (!payload.entityType || !payload.entityId || !payload.action)
+            if (!requestData.entityType || !requestData.entityId || !requestData.action)
                 return null;
             const idLog = await generateId(AktivitasSistemLog, 'id_aktivitas_log', 'LOG-', transaction, 9);
-            const source = this.normalizeLogSource(payload.source);
-            const actorNik = this.normalizeActorNik(payload.actorNik, source);
+            const source = this.normalizeLogSource(requestData.source);
+            const actorNik = this.normalizeActorNik(requestData.actorNik, source);
             const row = await AktivitasSistemLog.create({
                 id_aktivitas_log: idLog,
-                entity_type: this.safeString(payload.entityType, 30),
-                entity_id: this.safeString(payload.entityId, 30),
-                aksi: this.safeString(payload.action, 50),
-                status_sebelumnya: this.safeString(this.normalizeNullable(payload.statusBefore), 50),
-                status_baru: this.safeString(this.normalizeNullable(payload.statusAfter), 50),
+                entity_type: this.safeString(requestData.entityType, 30),
+                entity_id: this.safeString(requestData.entityId, 30),
+                aksi: this.safeString(requestData.action, 50),
+                status_sebelumnya: this.safeString(this.normalizeNullable(requestData.statusBefore), 50),
+                status_baru: this.safeString(this.normalizeNullable(requestData.statusAfter), 50),
                 sumber_aksi: source,
-                catatan: this.normalizeNullable(payload.note),
+                catatan: this.normalizeNullable(requestData.note),
                 dibuat_oleh: actorNik,
-                dibuat_pada: payload.createdAt || new Date(),
+                dibuat_pada: requestData.createdAt || new Date(),
             }, { transaction });
             return row;
         }
@@ -102,20 +102,20 @@ normalizeNullable = (value) => {
             return null;
         }
     };
-    createActivityLogIfMissing = async (payload = {}, options = {}) => {
+    createActivityLogIfMissing = async (requestData = {}, options = {}) => {
         const transaction = options.transaction || null;
         try {
-            if (!payload.entityType || !payload.entityId || !payload.action)
+            if (!requestData.entityType || !requestData.entityId || !requestData.action)
                 return null;
             const where = {
-                entity_type: this.safeString(payload.entityType, 30),
-                entity_id: this.safeString(payload.entityId, 30),
-                aksi: this.safeString(payload.action, 50),
+                entity_type: this.safeString(requestData.entityType, 30),
+                entity_id: this.safeString(requestData.entityId, 30),
+                aksi: this.safeString(requestData.action, 50),
             };
             const existing = await AktivitasSistemLog.findOne({ where, transaction });
             if (existing)
                 return existing;
-            return this.createActivityLog(payload, { transaction });
+            return this.createActivityLog(requestData, { transaction });
         }
         catch (error) {
             console.warn('[activity-log] Gagal memastikan log aktivitas:', error.message);

@@ -71,7 +71,11 @@ export const lhuReviewApi = {
   },
 
   getLhuDetailByNomor(nomorLhu) {
-    return requestData(`/lhu/detail?${buildQuery({ nomorLhu })}`, {}, { auth: true });
+    const normalizedNomorLhu = String(nomorLhu ?? '').trim();
+    if (!normalizedNomorLhu || ['undefined', 'null', '-'].includes(normalizedNomorLhu.toLowerCase())) {
+      return Promise.reject(new Error('Nomor LHU tidak valid.'));
+    }
+    return requestData(`/lhu/detail?${buildQuery({ nomorLhu: normalizedNomorLhu })}`, {}, { auth: true });
   },
 
   finalizeLhu(payload) {
@@ -100,7 +104,6 @@ export const lhuReviewApi = {
         method: 'POST',
         body: JSON.stringify({
           nomorLhu: normalizedNomorLhu,
-          nomor_lhu: normalizedNomorLhu,
         }),
       },
       { auth: true }

@@ -22,10 +22,10 @@ function base64UrlDecode(value) {
   return Buffer.from(value, 'base64url').toString('utf8');
 }
 
-function signPayload(encodedPayload) {
+function signRequestData(encodedRequestData) {
   return crypto
     .createHmac('sha256', getSecret())
-    .update(encodedPayload)
+    .update(encodedRequestData)
     .digest('base64url');
 }
 
@@ -37,17 +37,17 @@ function createFileAccessToken({ scope, path, expiresInSeconds = DEFAULT_EXPIRES
     throw new Error('Scope dan path file wajib dikirim untuk token akses file.');
   }
 
-  const payload = {
+  const requestData = {
     scope: cleanScope,
     path: cleanPath,
     exp: Math.floor(Date.now() / 1000) + Number(expiresInSeconds || DEFAULT_EXPIRES_IN_SECONDS),
     meta,
   };
 
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
-  const signature = signPayload(encodedPayload);
+  const encodedRequestData = base64UrlEncode(JSON.stringify(requestData));
+  const signature = signRequestData(encodedRequestData);
 
-  return `${encodedPayload}.${signature}`;
+  return `${encodedRequestData}.${signature}`;
 }
 
 function verifyFileAccessToken(token, expectedScope = '') {
@@ -59,8 +59,8 @@ function verifyFileAccessToken(token, expectedScope = '') {
     throw error;
   }
 
-  const [encodedPayload, signature] = value.split('.');
-  const expectedSignature = signPayload(encodedPayload);
+  const [encodedRequestData, signature] = value.split('.');
+  const expectedSignature = signRequestData(encodedRequestData);
 
   const signatureBuffer = Buffer.from(signature || '');
   const expectedSignatureBuffer = Buffer.from(expectedSignature);
@@ -75,28 +75,28 @@ function verifyFileAccessToken(token, expectedScope = '') {
     throw error;
   }
 
-  let payload;
+  let requestData;
   try {
-    payload = JSON.parse(base64UrlDecode(encodedPayload));
+    requestData = JSON.parse(base64UrlDecode(encodedRequestData));
   } catch {
     const error = new Error('Token akses file tidak valid.');
     error.statusCode = 401;
     throw error;
   }
 
-  if (expectedScope && payload.scope !== expectedScope) {
+  if (expectedScope && requestData.scope !== expectedScope) {
     const error = new Error('Token akses file tidak sesuai.');
     error.statusCode = 403;
     throw error;
   }
 
-  if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
+  if (!requestData.exp || requestData.exp < Math.floor(Date.now() / 1000)) {
     const error = new Error('Token akses file sudah kedaluwarsa.');
     error.statusCode = 401;
     throw error;
   }
 
-  return payload;
+  return requestData;
 }
 
 module.exports = {

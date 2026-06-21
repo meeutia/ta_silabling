@@ -83,27 +83,29 @@ class NotificationCoreService {
                 err.statusCode = 400;
                 throw err;
             }
-            nik = safeString(pelanggan.get('nik')).trim();
+            nik = safeString(pelanggan.get('nik') || nik).trim();
         }
 
-        if (!nik) {
-            const err = new Error('NIK penerima notifikasi belum ditentukan.');
-            err.statusCode = 400;
-            throw err;
+        if (nik) {
+            user = await User.findOne({ where: { nik } });
+            if (!user && !pelanggan) {
+                const err = new Error('User penerima notifikasi tidak ditemukan.');
+                err.statusCode = 400;
+                throw err;
+            }
         }
 
-        user = await User.findOne({ where: { nik } });
-        if (!user) {
-            const err = new Error('User penerima notifikasi tidak ditemukan.');
-            err.statusCode = 400;
-            throw err;
-        }
-
-        if (!pelanggan) {
+        if (!pelanggan && nik) {
             pelanggan = await Pelanggan.findOne({ where: { nik } });
         }
 
-        const emailTujuan = safeString(pelanggan?.get('email_kontak')).trim() || safeString(user.get('email')).trim();
+        if (!nik && !pelanggan) {
+            const err = new Error('Penerima notifikasi belum ditentukan.');
+            err.statusCode = 400;
+            throw err;
+        }
+
+        const emailTujuan = safeString(pelanggan?.get('email_kontak')).trim() || safeString(user?.get('email')).trim();
         if (!emailTujuan && requireEmail) {
             const err = new Error('Email penerima tidak ditemukan pada pelanggan.email_kontak atau user.email.');
             err.statusCode = 400;
@@ -112,11 +114,12 @@ class NotificationCoreService {
 
         const namaPenerima = safeString(pelanggan?.get('pic')).trim() ||
             safeString(pelanggan?.get('nama_instansi')).trim() ||
-            safeString(user.get('username')).trim() ||
-            nik;
+            safeString(user?.get('username')).trim() ||
+            nik ||
+            pelangganId;
 
         return {
-            nik_penerima: safeString(nik, 16),
+            nik_penerima: nik ? safeString(nik, 16) : null,
             email_tujuan: emailTujuan ? safeString(emailTujuan, 100) : null,
             nama_penerima: safeString(namaPenerima, 100),
         };
@@ -259,7 +262,18 @@ class NotificationCoreService {
     };
 
     sendNotificationEmail = async ({ to, subject, body, html = null }) => {
+        const emailTo = safeString(to).trim();
+        const emailSubject = safeString(subject).trim();
         const text = safeString(body);
+
+        if (!emailTo) {
+            throw new Error('Email tujuan belum diisi.');
+        }
+
+        if (!emailSubject) {
+            throw new Error('Subject email belum diisi.');
+        }
+
         const fallbackHtml = text
             .split('\n')
             .map((line) => line
@@ -267,9 +281,10 @@ class NotificationCoreService {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;'))
             .join('<br/>');
-        await mailer.sendMail({
-            to,
-            subject,
+
+        return mailer.sendMail({
+            to: emailTo,
+            subject: emailSubject,
             text,
             html: html || fallbackHtml,
         });
@@ -281,7 +296,14 @@ class NotificationCoreService {
             pesan_error: null,
             dikirim_pada: new Date(),
         });
-        return this.getPlain(log);
+        const plain = this.getPlain(log);
+        console.info('[EMAIL TERKIRIM]', {
+            id: plain?.id_notifikasi_email,
+            tipe: plain?.id_tipe_notifikasi,
+            to: plain?.email_tujuan,
+            referensi: plain?.referensi_id,
+        });
+        return plain;
     };
 
     markEmailFailed = async (log, error) => {
@@ -291,7 +313,15 @@ class NotificationCoreService {
                 'Gagal mengirim email.',
             dikirim_pada: null,
         });
-        return this.getPlain(log);
+        const plain = this.getPlain(log);
+        console.error('[EMAIL GAGAL]', {
+            id: plain?.id_notifikasi_email,
+            tipe: plain?.id_tipe_notifikasi,
+            to: plain?.email_tujuan,
+            referensi: plain?.referensi_id,
+            error: plain?.pesan_error,
+        });
+        return plain;
     };
 }
 

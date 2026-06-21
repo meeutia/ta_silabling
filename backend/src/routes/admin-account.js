@@ -13,6 +13,7 @@ const {
 
   getCustomerAccounts,
   getCustomerAccountDetail,
+  getPccEmployees,
   updateCustomerStatus,
   resetCustomerPassword,
 } = require('../controllers/admin-account.controller');
@@ -24,6 +25,7 @@ router.use(verifyToken);
 router.use(authorizeRoles(Roles.ADMIN));
 
 router.get('/roles', getRoles);
+router.get('/pcc-employees', getPccEmployees);
 
 router.get('/staff', getStaffAccounts);
 router.post('/staff', createStaffAccount);

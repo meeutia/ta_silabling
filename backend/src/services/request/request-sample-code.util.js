@@ -33,16 +33,43 @@ monthToRoman = (month) => {
     isPetugasSampling = (value) => {
         return String(value || '').toLowerCase() === 'petugas';
     };
-    resolveTanggalPengambilanSampel = ({ itemPayload = {}, payload = {}, request = {}, jadwal = null }) => {
-        const explicitDate = itemPayload.tanggal_pengambilan_sampel ||
-            itemPayload.tanggalPengambilanSampel ||
-            payload.tanggal_pengambilan_sampel ||
-            payload.tanggalPengambilanSampel ||
-            null;
+    pickValue = (source = {}, ...keys) => {
+        if (!source)
+            return null;
+        for (const key of keys) {
+            const directValue = source[key];
+            if (directValue !== undefined && directValue !== null && String(directValue).trim() !== '')
+                return directValue;
+            if (typeof source.getDataValue === 'function') {
+                const dataValue = source.getDataValue(key);
+                if (dataValue !== undefined && dataValue !== null && String(dataValue).trim() !== '')
+                    return dataValue;
+            }
+        }
+        return null;
+    };
+    resolveTanggalPengambilanSampel = ({ itemRequestData = {}, requestData = {}, request = {}, jadwal = null }) => {
+        const explicitDate = this.pickValue(
+            itemRequestData,
+            'tanggal_pengambilan_sampel',
+            'tanggalPengambilanSampel',
+            'tanggalPengambilan',
+            'tanggal_pengambilan'
+        ) || this.pickValue(
+            requestData,
+            'tanggal_pengambilan_sampel',
+            'tanggalPengambilanSampel',
+            'tanggalPengambilan',
+            'tanggal_pengambilan'
+        );
         if (explicitDate)
             return this.normalizeDateOnly(explicitDate);
-        if (this.isPetugasSampling(request.jenis_pengambilan_sampel))
-            return this.normalizeDateOnly(jadwal?.tanggal_jadwal);
+        const jadwalDate = this.pickValue(jadwal, 'tanggal_jadwal', 'tanggalJadwal');
+        const samplingType = this.pickValue(request, 'jenis_pengambilan_sampel', 'jenisPengambilanSampel');
+        if (this.isPetugasSampling(samplingType) && jadwalDate)
+            return this.normalizeDateOnly(jadwalDate);
+        if (jadwalDate)
+            return this.normalizeDateOnly(jadwalDate);
         return null;
     };
     generateSampleAbbreviation = (jenisSampelName, idJenisSampel = null) => {
@@ -146,7 +173,7 @@ monthToRoman = (month) => {
         }
         const invoice = await this.getLatestInvoiceForSampleReceipt(request.id_registrasi, transaction);
         if (invoice && this.isSettledInvoiceStatus(invoice.status_invoice)) {
-            const nextWaitingSampleStatus = RequestStatus.getWaitingSampleStatusBySamplingType(request.jenis_pengambilan_sampel);
+            const nextWaitingSampleStatus = RequestStatus.getWaitingSampleStatusBySamplingType(request.jenisPengambilanSampel);
             await request.update({ status_fppl: nextWaitingSampleStatus }, { transaction });
             request.status_fppl = nextWaitingSampleStatus;
             return { invoice, normalized: true };

@@ -1,9 +1,33 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
 const REVIEW_STATUS_FIELD = ['status', 'review', 'hasil'].join('_');
 
-const LkaHasil = sequelize.define('lka_hasil', {
+class LkaHasil extends Model {
+  static associate(models) {
+    LkaHasil.belongsTo(models.Lka, { foreignKey: 'kode_lka' });
+    LkaHasil.belongsTo(models.Sampel, { foreignKey: 'no_sampel' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  hasResult() {
+    return this.hasil !== null && this.hasil !== undefined && this.hasil !== '';
+  }
+
+  isReviewStatus(status) {
+    return this.statusReviewHasil === status;
+  }
+}
+
+LkaHasil.init({
   kode_lka: {
     type: DataTypes.STRING(20),
     primaryKey: true,
@@ -37,7 +61,9 @@ const LkaHasil = sequelize.define('lka_hasil', {
     field: REVIEW_STATUS_FIELD,
   },
 }, {
-  tableName: 'lka_hasil',
+  sequelize,
+  modelName: 'lka_hasil',
+tableName: 'lka_hasil',
   timestamps: false,
 });
 

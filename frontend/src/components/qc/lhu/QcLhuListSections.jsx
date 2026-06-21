@@ -149,8 +149,12 @@ export function QcLhuFinalizationTable({ loadingQueue, filteredQueue, openFinali
               filteredQueue.map((item) => {
                 const status = getStatusLhu(item);
                 const displayStatus = getLhuStatusDisplayLabel(status, status || '-');
-                const sampleNos = dedupeTextList(item.sampleNos || item.sample_nos || [])
-                  .sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }));
+                const sampleSource = item.sampleNos || item.sample_nos || item.samples || item.sampels || item.allSamples || item.all_samples || [];
+                const sampleNos = dedupeTextList(
+                  (Array.isArray(sampleSource) ? sampleSource : [])
+                    .map((sample) => (typeof sample === 'string' ? sample : sample?.noSampel || sample?.no_sampel))
+                    .filter(Boolean)
+                ).sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true, sensitivity: 'base' }));
 
                 return (
                   <tr key={item.idRegistrasi || item.id_registrasi || item.nomorFppl || item.nomor_fppl} className="transition-all hover:bg-gray-50">

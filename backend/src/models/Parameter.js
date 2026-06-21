@@ -1,7 +1,26 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Parameter = sequelize.define('parameter', {
+class Parameter extends Model {
+  static associate(models) {
+    Parameter.hasMany(models.PktBmParam, { foreignKey: 'id_parameter' });
+    Parameter.hasMany(models.PktBmNilai, { foreignKey: 'id_parameter' });
+    Parameter.belongsTo(models.KategoriParameter, { foreignKey: 'id_kategori_parameter', as: 'kategori' });
+    Parameter.hasMany(models.ParameterMetode, { foreignKey: 'id_parameter' });
+    Parameter.hasMany(models.FpplParameterMetode, { foreignKey: 'id_parameter' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+}
+
+Parameter.init({
     id_parameter: {
         type: DataTypes.STRING(10),
         primaryKey: true
@@ -26,6 +45,9 @@ const Parameter = sequelize.define('parameter', {
         type: DataTypes.STRING(100),
         allowNull: false
     }
+}, {
+  sequelize,
+  modelName: 'parameter',
 });
 
 module.exports = Parameter;

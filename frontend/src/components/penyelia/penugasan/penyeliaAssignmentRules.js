@@ -157,36 +157,35 @@ export function buildPayloadAssignments(assignmentDrafts = [], pendingGroupMap) 
 
     if (selectedSamples.length === 0) return;
 
-    const representativeFpmId =
-      selectedSamples[0]?.fpmId ||
-      group.items?.[0]?.id_fppl_parameter_metode ||
-      group.items?.[0]?.idFpplParameterMetode ||
-      '';
+    const samplesByFpmId = new Map();
 
-    const uniqueSampleNos = Array.from(
-      new Set(selectedSamples.map((sample) => sample.noSampel).filter(Boolean))
-    );
+    selectedSamples.forEach((sample) => {
+      const fpmId = String(sample.fpmId || '').trim();
+      const noSampel = String(sample.noSampel || '').trim();
 
-    const uniquePairs = Array.from(
-      new Map(
-        selectedSamples
-          .filter((sample) => sample.fpmId && sample.noSampel)
-          .map((sample) => [
-            `${sample.fpmId}::${sample.noSampel}`,
-            {
-              id_fppl_parameter_metode: sample.fpmId,
-              no_sampel: sample.noSampel,
-            },
-          ])
-      ).values()
-    );
+      if (!fpmId || !noSampel) return;
 
-    assignments.push({
-      id_fppl_parameter_metode: representativeFpmId,
-      tanggal_tenggat: draft.deadline || null,
-      catatan_detail: String(draft.catatanDetail || '').trim() || null,
-      no_sampel: uniqueSampleNos,
-      pairs: uniquePairs,
+      if (!samplesByFpmId.has(fpmId)) {
+        samplesByFpmId.set(fpmId, new Map());
+      }
+
+      samplesByFpmId.get(fpmId).set(noSampel, {
+        id_fppl_parameter_metode: fpmId,
+        no_sampel: noSampel,
+      });
+    });
+
+    samplesByFpmId.forEach((pairMap, fpmId) => {
+      const pairs = Array.from(pairMap.values());
+      const uniqueSampleNos = pairs.map((pair) => pair.no_sampel);
+
+      assignments.push({
+        id_fppl_parameter_metode: fpmId,
+        tanggal_tenggat: draft.deadline || null,
+        catatan_detail: String(draft.catatanDetail || '').trim() || null,
+        no_sampel: uniqueSampleNos,
+        pairs,
+      });
     });
   });
 

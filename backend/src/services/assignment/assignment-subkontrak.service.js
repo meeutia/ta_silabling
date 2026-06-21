@@ -334,56 +334,33 @@ isValidResultExpression = (value) => {
                 const regBmLabel = [regBm.instansi, regBm.ref_reg].filter(Boolean).join(' - ') || '-';
                 return {
                     idRegistrasi: fppl.id_registrasi || fpplSampel.id_registrasi || '-',
-                    id_registrasi: fppl.id_registrasi || fpplSampel.id_registrasi || '-',
                     pelanggan: pelanggan.nama_instansi || '-',
                     idJenisSampel: fpplSampel.id_jenis_sampel || fpm.id_jenis_sampel || null,
-                    id_jenis_sampel: fpplSampel.id_jenis_sampel || fpm.id_jenis_sampel || null,
                     idRegBm: fpplSampel.id_reg_bm || fpm.id_reg_bm || null,
-                    id_reg_bm: fpplSampel.id_reg_bm || fpm.id_reg_bm || null,
                     noSampel: sampel.no_sampel,
-                    no_sampel: sampel.no_sampel,
                     jenisSampel: jenis.jenis_sampel || '-',
-                    jenis_sampel: jenis.jenis_sampel || '-',
                     regBm: regBmLabel,
-                    reg_bm: regBmLabel,
                     tanggalPengambilanSampel: sampel.tanggal_pengambilan_sampel || null,
-                    tanggal_pengambilan_sampel: sampel.tanggal_pengambilan_sampel || null,
                     tanggalSampling: sampel.tanggal_pengambilan_sampel || null,
-                    tanggal_sampling: sampel.tanggal_pengambilan_sampel || null,
                     tanggalPenerimaan: sampel.diterima_pada || null,
-                    tanggal_penerimaan: sampel.diterima_pada || null,
                     jamPenerimaan: (sampel.diterima_pada ? new Date(sampel.diterima_pada).toTimeString().slice(0, 8) : null) || null,
-                    jam_penerimaan: (sampel.diterima_pada ? new Date(sampel.diterima_pada).toTimeString().slice(0, 8) : null) || null,
                     kondisiSampel: sampel.kondisi_sampel || '-',
-                    kondisi_sampel: sampel.kondisi_sampel || '-',
                     abnormalitasSampel: sampel.abnormalitas_sampel || '-',
-                    abnormalitas_sampel: sampel.abnormalitas_sampel || '-',
                     acuanPengambilanSampel: sampel.acuan_pengambilan_sampel || '-',
-                    acuan_pengambilan_sampel: sampel.acuan_pengambilan_sampel || '-',
                     koordinat: sampel.koordinat || '-',
                     idFpplParameterMetode: fpm.id_fppl_parameter_metode,
-                    id_fppl_parameter_metode: fpm.id_fppl_parameter_metode,
                     idMetodeParameter,
                     id_metode_parameter: idMetodeParameter,
                     namaParameter: parameter.nama_parameter || '-',
-                    nama_parameter: parameter.nama_parameter || '-',
                     namaMetode: metode.nama_metode || '-',
-                    nama_metode: metode.nama_metode || '-',
                     acuanMetode: parameterMetode.acuan_metode || '-',
-                    acuan_metode: parameterMetode.acuan_metode || '-',
                     statusKemampuanLab: fpm.status_kemampuan_lab,
-                    status_kemampuan_lab: fpm.status_kemampuan_lab,
                     isSubkontrak: true,
-                    is_subkontrak: 1,
                     idPenugasanDetail: subkontrakDetail?.id_penugasan_detail || null,
-                    id_penugasan_detail: subkontrakDetail?.id_penugasan_detail || null,
                     kodeLka: lka.kode_lka || null,
-                    kode_lka: lka.kode_lka || null,
                     hasil: hasilRow.hasil || '',
                     tanggalTerimaHasil: lka.tanggal_selesai_pengujian || null,
-                    tanggal_terima_hasil: lka.tanggal_selesai_pengujian || null,
                     statusHasil: lka.status_lka || 'Belum Diisi',
-                    status_hasil: lka.status_lka || 'Belum Diisi',
                     catatan: '',
                 };
             });
@@ -396,8 +373,8 @@ isValidResultExpression = (value) => {
                 String(a.nama_parameter || '').localeCompare(String(b.nama_parameter || '')));
         });
     };
-    saveSubkontrakResults = async (payload, currentUserNik) => {
-        const { results = [] } = payload || {};
+    saveSubkontrakResults = async (requestData, currentUserNik) => {
+        const { results = [] } = requestData || {};
         if (!Array.isArray(results) || results.length === 0) {
             throw new Error('Minimal satu hasil subkontrak harus dikirim.');
         }

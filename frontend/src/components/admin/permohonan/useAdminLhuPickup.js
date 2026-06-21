@@ -41,13 +41,16 @@ export function useAdminLhuPickup({
   const [holidayDateSet, setHolidayDateSet] = useState(new Set());
   const [holidayNameByDate, setHolidayNameByDate] = useState({});
 
+  const [isPickupModalLoading, setIsPickupModalLoading] = useState(false);
+  const [isSavingPickupSchedule, setIsSavingPickupSchedule] = useState(false);
+
 
 
   useEffect(() => {
     let mounted = true;
 
     adminPermohonanApi
-      .getScheduleReferences()
+      .getLhuPickupReferences()
       .then(({ holidays = [] } = {}) => {
         if (!mounted) return;
 
@@ -107,6 +110,8 @@ export function useAdminLhuPickup({
       return;
     }
 
+    setIsSavingPickupSchedule(false);
+    setIsPickupModalLoading(false);
     setSelectedPickup(row);
     setPickupModalMode('schedule');
     setPickupForm(buildSchedulePickupForm(row));
@@ -118,6 +123,8 @@ export function useAdminLhuPickup({
       return;
     }
 
+    setIsSavingPickupSchedule(false);
+    setIsPickupModalLoading(false);
     setSelectedPickup(row);
     setPickupModalMode('complete');
     setShowCompletePickupConfirm(false);
@@ -125,6 +132,8 @@ export function useAdminLhuPickup({
   }, [resetPickupForm]);
 
   const closePickupModal = useCallback(() => {
+    setIsSavingPickupSchedule(false);
+    setIsPickupModalLoading(false);
     setSelectedPickup(null);
     setPickupModalMode(null);
     setShowCompletePickupConfirm(false);
@@ -158,7 +167,7 @@ export function useAdminLhuPickup({
       return false;
     }
 
-    setSaving(true);
+    setIsSavingPickupSchedule(true);
 
     try {
       const data = await adminPermohonanApi.savePickupSchedule({
@@ -176,9 +185,9 @@ export function useAdminLhuPickup({
       showError(error?.message || 'Gagal menyimpan jadwal pengambilan LHU.');
       return false;
     } finally {
-      setSaving(false);
+      setIsSavingPickupSchedule(false);
     }
-  }, [closePickupModal, fetchPickupQueue, isBusinessDay, pickupForm, selectedPickup, setSaving]);
+  }, [closePickupModal, fetchPickupQueue, isBusinessDay, pickupForm, selectedPickup]);
 
   const handleCompletePickup = useCallback(async () => {
     if (!selectedPickup) return false;
@@ -191,7 +200,7 @@ export function useAdminLhuPickup({
       return false;
     }
 
-    setSaving(true);
+    setIsSavingPickupSchedule(true);
 
     try {
       const data = await adminPermohonanApi.completePickup({
@@ -215,7 +224,7 @@ export function useAdminLhuPickup({
       showError(error?.message || 'Gagal menandai pengambilan LHU.');
       return false;
     } finally {
-      setSaving(false);
+      setIsSavingPickupSchedule(false);
     }
   }, [
     closePickupModal,
@@ -225,7 +234,6 @@ export function useAdminLhuPickup({
     pickupForm,
     selectedPickup,
     selectedRequest?.id_registrasi,
-    setSaving,
     setSelectedRequest,
   ]);
 
@@ -248,5 +256,7 @@ export function useAdminLhuPickup({
     handleCompletePickup,
     isPickupBusinessDay: isBusinessDay,
     pickupTimeOptions: PICKUP_TIME_OPTIONS,
+    isPickupModalLoading,
+    isSavingPickupSchedule,
   };
 }

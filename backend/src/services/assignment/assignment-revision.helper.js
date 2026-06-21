@@ -118,9 +118,7 @@ pickArray = (source, keys = []) => {
         const revisionComparison = (hasilSebelumRevisi || hasilSetelahRevisi || catatanHasilSebelumRevisi || catatanHasilSetelahRevisi)
             ? {
                 idRevisiLka: row.idRevisiLka || row.id_revisi_lka || null,
-                id_revisi_lka: row.id_revisi_lka || row.idRevisiLka || null,
                 idRevisiSebelumnya: row.idRevisiSebelumnya || row.id_revisi_sebelumnya || null,
-                id_revisi_sebelumnya: row.id_revisi_sebelumnya || row.idRevisiSebelumnya || null,
                 hasilSebelumRevisi,
                 hasil_sebelum_revisi: hasilSebelumRevisi,
                 hasilSetelahRevisi,
@@ -133,35 +131,20 @@ pickArray = (source, keys = []) => {
             : null;
         return {
             catatanRevisiHasilPenyelia: penyeliaNote,
-            catatan_revisi_hasil_penyelia: penyeliaNote,
             catatanRevisiHasilKasiPengujian: kasiNote,
-            catatan_revisi_hasil_kasi_pengujian: kasiNote,
             keputusanPenyelia: penyeliaDecisionNote,
-            keputusan_penyelia: penyeliaDecisionNote,
             keputusanRevisiPenyelia: penyeliaDecisionNote,
-            keputusan_revisi_penyelia: penyeliaDecisionNote,
             catatanResponPenyelia: penyeliaResponseNote,
-            catatan_respon_penyelia: penyeliaResponseNote,
             catatanTinjauanPenyelia: penyeliaResponseNote,
-            catatan_tinjauan_penyelia: penyeliaResponseNote,
             revisionResponsePenyelia: penyeliaResponseNote,
-            revision_response_penyelia: penyeliaResponseNote,
             revisiPenyeliaBy: penyeliaBy,
-            revisi_penyelia_by: penyeliaBy,
             revisiPenyeliaAt: penyeliaAt,
-            revisi_penyelia_at: penyeliaAt,
             revisiKasiPengujianBy: kasiBy,
-            revisi_kasi_pengujian_by: kasiBy,
             revisiKasiPengujianAt: kasiAt,
-            revisi_kasi_pengujian_at: kasiAt,
             catatanRevisiHasil: combinedNote,
-            catatan_revisi_hasil: combinedNote,
             catatanRevisi: combinedNote,
-            catatan_revisi: combinedNote,
             direvisiOleh: combinedBy,
-            direvisi_oleh: combinedBy,
             direvisiPada: combinedAt,
-            direvisi_pada: combinedAt,
             hasilSebelumRevisi,
             hasil_sebelum_revisi: hasilSebelumRevisi,
             hasilSetelahRevisi,
@@ -278,39 +261,22 @@ pickArray = (source, keys = []) => {
         const combinedNote = allNotes.join('\n\n') || null;
         return {
             catatanRevisiHasilPenyelia: penyeliaNote,
-            catatan_revisi_hasil_penyelia: penyeliaNote,
             catatanRevisiPenyelia: penyeliaNote,
-            catatan_revisi_penyelia: penyeliaNote,
             catatanRevisiItemPenyelia: penyeliaNote,
-            catatan_revisi_item_penyelia: penyeliaNote,
             revisionNotePenyelia: penyeliaNote,
-            revision_note_penyelia: penyeliaNote,
             catatanRevisiHasilKasiPengujian: kasiNote,
-            catatan_revisi_hasil_kasi_pengujian: kasiNote,
             catatanRevisiKasiPengujian: kasiNote,
-            catatan_revisi_kasi_pengujian: kasiNote,
             catatanRevisiItemKasiPengujian: kasiNote,
-            catatan_revisi_item_kasi_pengujian: kasiNote,
             revisionNoteKasiPengujian: kasiNote,
-            revision_note_kasi_pengujian: kasiNote,
             keputusanPenyelia: penyeliaDecisionNote,
-            keputusan_penyelia: penyeliaDecisionNote,
             keputusanRevisiPenyelia: penyeliaDecisionNote,
-            keputusan_revisi_penyelia: penyeliaDecisionNote,
             catatanResponPenyelia: penyeliaResponseNote,
-            catatan_respon_penyelia: penyeliaResponseNote,
             catatanTinjauanPenyelia: penyeliaResponseNote,
-            catatan_tinjauan_penyelia: penyeliaResponseNote,
             revisionResponsePenyelia: penyeliaResponseNote,
-            revision_response_penyelia: penyeliaResponseNote,
             catatanRevisiHasil: combinedNote,
-            catatan_revisi_hasil: combinedNote,
             catatanRevisi: combinedNote,
-            catatan_revisi: combinedNote,
             catatanRevisiKolom: combinedNote,
-            catatan_revisi_kolom: combinedNote,
             revisionNote: combinedNote,
-            revision_note: combinedNote,
         };
     };
     collectGlobalRevisionNotesForLka = (revisionRows = [], options = {}) => {
@@ -331,17 +297,13 @@ pickArray = (source, keys = []) => {
         const response = this.buildRevisionNoteResponseFromBuckets(buckets);
         return {
             catatanRevisiGlobalPenyelia: response.catatanRevisiHasilPenyelia,
-            catatan_revisi_global_penyelia: response.catatan_revisi_hasil_penyelia,
             catatanRevisiGlobalKasiPengujian: response.catatanRevisiHasilKasiPengujian,
-            catatan_revisi_global_kasi_pengujian: response.catatan_revisi_hasil_kasi_pengujian,
             catatanRevisiGlobal: response.catatanRevisiHasil,
-            catatan_revisi_global: response.catatan_revisi_hasil,
             catatanRevisiLka: response.catatanRevisiHasil,
-            catatan_revisi_lka: response.catatan_revisi_hasil,
         };
     };
     buildWorksheetRevisionResponse = (lka = {}, revisionRows = [], options = {}) => {
-        const globalPayload = this.collectGlobalRevisionNotesForLka(revisionRows, options);
+        const globalRequestData = this.collectGlobalRevisionNotesForLka(revisionRows, options);
         const legacyNote = this.firstNonEmpty([
             lka.catatanRevisiGlobal,
             lka.catatan_revisi_global,
@@ -351,35 +313,29 @@ pickArray = (source, keys = []) => {
             lka.catatan_revisi,
         ]);
         const globalNote = this.firstNonEmpty([
-            globalPayload.catatanRevisiLka,
-            globalPayload.catatan_revisi_lka,
-            globalPayload.catatanRevisiGlobal,
-            globalPayload.catatan_revisi_global,
+            globalRequestData.catatanRevisiLka,
+            globalRequestData.catatan_revisi_lka,
+            globalRequestData.catatanRevisiGlobal,
+            globalRequestData.catatan_revisi_global,
             legacyNote,
         ]);
         const penyeliaNote = this.firstNonEmpty([
-            globalPayload.catatanRevisiGlobalPenyelia,
-            globalPayload.catatan_revisi_global_penyelia,
+            globalRequestData.catatanRevisiGlobalPenyelia,
+            globalRequestData.catatan_revisi_global_penyelia,
             legacyNote,
         ]);
         const kasiNote = this.firstNonEmpty([
-            globalPayload.catatanRevisiGlobalKasiPengujian,
-            globalPayload.catatan_revisi_global_kasi_pengujian,
+            globalRequestData.catatanRevisiGlobalKasiPengujian,
+            globalRequestData.catatan_revisi_global_kasi_pengujian,
         ]);
         return {
-            ...globalPayload,
+            ...globalRequestData,
             catatanRevisiGlobalPenyelia: penyeliaNote,
-            catatan_revisi_global_penyelia: penyeliaNote,
             catatanRevisiGlobalKasiPengujian: kasiNote,
-            catatan_revisi_global_kasi_pengujian: kasiNote,
             catatanRevisiGlobal: globalNote,
-            catatan_revisi_global: globalNote,
             catatanRevisiLka: globalNote,
-            catatan_revisi_lka: globalNote,
             catatanRevisi: globalNote,
-            catatan_revisi: globalNote,
             lkaRevisionNote: globalNote,
-            lka_revision_note: globalNote,
         };
     };
     collectRevisionNotesForSample = (revisionRows = [], noSampel, kodeLka = null, options = {}) => {
@@ -446,9 +402,7 @@ pickArray = (source, keys = []) => {
         const catatanHasilSetelahRevisi = this.firstNonEmpty([latest.catatanHasilSetelahRevisi, latest.catatan_hasil_setelah_revisi]);
         const revisionComparison = {
             idRevisiLka: latest.id_revisi_lka || latest.idRevisiLka || null,
-            id_revisi_lka: latest.id_revisi_lka || latest.idRevisiLka || null,
             idRevisiSebelumnya: latest.id_revisi_sebelumnya || latest.idRevisiSebelumnya || null,
-            id_revisi_sebelumnya: latest.id_revisi_sebelumnya || latest.idRevisiSebelumnya || null,
             hasilSebelumRevisi,
             hasil_sebelum_revisi: hasilSebelumRevisi,
             hasilSetelahRevisi,
@@ -458,9 +412,7 @@ pickArray = (source, keys = []) => {
             catatanHasilSetelahRevisi,
             catatan_hasil_setelah_revisi: catatanHasilSetelahRevisi,
             diajukanPada: latest.diajukan_pada || latest.diajukanPada || null,
-            diajukan_pada: latest.diajukan_pada || latest.diajukanPada || null,
             sumberRevisi: latest.sumber_revisi || latest.sumberRevisi || null,
-            sumber_revisi: latest.sumber_revisi || latest.sumberRevisi || null,
         };
         return {
             hasilSebelumRevisi,
@@ -537,9 +489,9 @@ pickArray = (source, keys = []) => {
             catatanRevisi: String(item.catatanRevisi || item.catatan_revisi || item.catatan || item.note || '').trim(),
         };
     };
-    normalizeKasiRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPayload = null, fallbackKodeLka = null) => {
-        const source = Array.isArray(revisionsPayload) && revisionsPayload.length > 0
-            ? revisionsPayload
+    normalizeKasiRevisionItems = (catatanRevisi, hasilTargets = [], revisionsRequestData = null, fallbackKodeLka = null) => {
+        const source = Array.isArray(revisionsRequestData) && revisionsRequestData.length > 0
+            ? revisionsRequestData
             : Array.isArray(hasilTargets)
                 ? hasilTargets
                 : [];

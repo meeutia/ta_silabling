@@ -57,9 +57,8 @@ deriveSampleStatus = (row) => {
             const sampel = pickObject(item, ['sampel', 'Sampel']) || {};
             const noSampel = item.no_sampel || sampel.no_sampel;
             const hasilRow = lkaHasilRows.find((hasil) => hasil.no_sampel === noSampel) || {};
-            const revisionNotePayload = collectRevisionNotesForSample(lkaRevisionRows, noSampel, lka?.kode_lka || hasilRow.kode_lka || null, { audience: 'penyelia' });
+            const revisionNoteRequestData = collectRevisionNotesForSample(lkaRevisionRows, noSampel, lka?.kode_lka || hasilRow.kode_lka || null, { audience: 'penyelia' });
             return {
-                kode_lka: lka?.kode_lka || hasilRow.kode_lka || null,
                 kodeLka: lka?.kode_lka || hasilRow.kode_lka || null,
                 no_sampel: noSampel,
                 noSampel,
@@ -69,14 +68,10 @@ deriveSampleStatus = (row) => {
                 tanggal_penerimaan: sampel.diterima_pada || null,
                 jam_penerimaan: (sampel.diterima_pada ? new Date(sampel.diterima_pada).toTimeString().slice(0, 8) : null) || null,
                 hasil: hasilRow.hasil || '',
-                catatan_hasil: hasilRow.catatan_hasil || '',
                 catatanHasil: hasilRow.catatan_hasil || '',
-                status_review_hasil: hasilRow.statusReviewHasil || null,
                 statusReviewHasil: hasilRow.statusReviewHasil || null,
-                catatan_revisi: revisionNotePayload.text || '-',
-                catatanRevisi: revisionNotePayload.text || '-',
-                catatan_revisi_items: revisionNotePayload.items || [],
-                catatanRevisiItems: revisionNotePayload.items || [],
+                catatanRevisi: revisionNoteRequestData.text || '-',
+                catatanRevisiItems: revisionNoteRequestData.items || [],
             };
         })
             .filter((row) => row.no_sampel);

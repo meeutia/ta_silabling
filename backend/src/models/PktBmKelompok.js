@@ -1,7 +1,27 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const PktBmKelompok = sequelize.define('pkt_bm_kelompok', {
+class PktBmKelompok extends Model {
+  static associate(models) {
+    PktBmKelompok.belongsTo(models.RegBm, { foreignKey: 'id_reg_bm' });
+    PktBmKelompok.belongsTo(models.JenisSampel, { foreignKey: 'id_jenis_sampel' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isActive() {
+    return this.is_active === true || this.is_active === 1;
+  }
+}
+
+PktBmKelompok.init({
   id_reg_bm: {
     type: DataTypes.STRING(6),
     primaryKey: true,
@@ -18,7 +38,9 @@ const PktBmKelompok = sequelize.define('pkt_bm_kelompok', {
     defaultValue: 1,
   },
 }, {
-  tableName: 'pkt_bm_kelompok',
+  sequelize,
+  modelName: 'pkt_bm_kelompok',
+tableName: 'pkt_bm_kelompok',
   timestamps: false,
 });
 

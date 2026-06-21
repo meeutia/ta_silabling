@@ -1,6 +1,7 @@
 const { sequelize, KategoriParameter, Parameter, Metode, ParameterMetode, RegBm, PktBm, Klasifikasi, PktBmKelompok, PktBmParam, Satuan, PktBmNilai, JenisSampel, TarifPengambilan } = require('../models/Associations');
 const { withPaketBmDisplayFields } = require('../utils/bm-format.util');
-const { Op } = require('sequelize');
+const { toCamelCaseDeep } = require('../utils/case-transform.util');
+const { Op, literal } = require('sequelize');
 const { assertUnusedForMasterChange, getParameterMetodeUsage, getRegBmUsage, getPktBmUsage, getPktBmParamUsage, getTarifPengambilanUsage, getTotalUsage, } = require('./protected-master-guard.service');
 class AdminParameterService {
 generateNextCode = async ({ model, column, prefix, padLength, transaction, }) => {
@@ -48,6 +49,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             return row.toJSON();
         return { ...row };
     };
+    toApiData = (data) => toCamelCaseDeep(data);
     withSyncedKategori = (parameterRow) => {
         const parameter = this.toPlainObject(parameterRow);
         if (!parameter)
@@ -151,13 +153,13 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
     };
     getAllKlasifikasi = async () => {
         const rows = await Klasifikasi.findAll({ order: [['klasifikasi', 'ASC'], ['id_klasifikasi', 'ASC']] });
-        return rows.map((row) => this.toPlainObject(row));
+        return rows.map((row) => this.toApiData(this.toPlainObject(row)));
     };
     getAllSatuan = async () => {
         const rows = await Satuan.findAll({ order: [['satuan', 'ASC'], ['id_satuan', 'ASC']] });
-        return rows.map((row) => this.toPlainObject(row));
+        return rows.map((row) => this.toApiData(this.toPlainObject(row)));
     };
-    mapPaketParameterRow = (row) => this.toPlainObject(row) || {};
+    mapPaketParameterRow = (row) => this.toApiData(this.toPlainObject(row) || {});
     hasOwn = (data, key) => {
         return Object.prototype.hasOwnProperty.call(data || {}, key);
     };
@@ -185,22 +187,22 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         }
         return value;
     };
-    buildPaketParameterPayload = (data = {}, current = {}) => {
-        const payload = {};
+    buildPaketParameterData = (inputData = {}, current = {}) => {
+        const nextData = {};
         const currentData = this.toPlainObject(current) || {};
-        if (this.hasOwn(data, 'nilai_bm'))
-            payload.nilai_bm = this.assertMaxLength(this.normalizeNullableText(data.nilai_bm), 30, 'Nilai baku mutu');
+        if (this.hasOwn(inputData, 'nilai_bm'))
+            nextData.nilai_bm = this.assertMaxLength(this.normalizeNullableText(inputData.nilai_bm), 30, 'Nilai baku mutu');
         else if (this.hasOwn(currentData, 'nilai_bm'))
-            payload.nilai_bm = currentData.nilai_bm;
-        if (this.hasOwn(data, 'id_satuan'))
-            payload.id_satuan = this.assertMaxLength(this.normalizeNullableText(data.id_satuan), 10, 'ID satuan baku mutu');
+            nextData.nilai_bm = currentData.nilai_bm;
+        if (this.hasOwn(inputData, 'id_satuan'))
+            nextData.id_satuan = this.assertMaxLength(this.normalizeNullableText(inputData.id_satuan), 10, 'ID satuan baku mutu');
         else if (this.hasOwn(currentData, 'id_satuan'))
-            payload.id_satuan = currentData.id_satuan;
-        if (this.hasOwn(data, 'ket_bm'))
-            payload.ket_bm = this.assertMaxLength(this.normalizeNullableText(data.ket_bm), 100, 'Keterangan baku mutu');
+            nextData.id_satuan = currentData.id_satuan;
+        if (this.hasOwn(inputData, 'ket_bm'))
+            nextData.ket_bm = this.assertMaxLength(this.normalizeNullableText(inputData.ket_bm), 100, 'Keterangan baku mutu');
         else if (this.hasOwn(currentData, 'ket_bm'))
-            payload.ket_bm = currentData.ket_bm;
-        return payload;
+            nextData.ket_bm = currentData.ket_bm;
+        return nextData;
     };
     hasChanged = (current, next) => {
         if (next === undefined)
@@ -242,7 +244,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         const isLocked = options.lockedByLhu ? lhuUsage > 0 : (isSystemReference || historicalUsage > 0);
         const canEditMaster = options.lockedByLhu ? lhuUsage === 0 : (!isSystemReference && historicalUsage === 0);
 
-        return {
+        return this.toApiData({
             ...data,
             usage,
             usage_total: totalUsage,
@@ -252,12 +254,12 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             can_edit_master: canEditMaster,
             can_toggle_active: true,
             can_delete: totalUsage === 0,
-        };
+        });
     };
     withParameterMetodeUsage = async (row) => {
         const usage = await getParameterMetodeUsage(row.id_metode_parameter);
         const totalUsage = getTotalUsage(usage);
-        return {
+        return this.toApiData({
             ...this.withSyncedKategoriOnParameterMetode(row),
             usage,
             usage_total: totalUsage,
@@ -266,7 +268,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             can_edit_master: totalUsage === 0,
             can_delete: totalUsage === 0,
             can_toggle_active: true,
-        };
+        });
     };
     protectedMasterError = (message, usages) => {
         const error = new Error(message);
@@ -305,26 +307,29 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         return Promise.all(rows.map((row) => this.withParameterMetodeUsage(row)));
     };
     getKategoriParameters = async () => {
-        return await KategoriParameter.findAll({
+        const rows = await KategoriParameter.findAll({
             order: [['nama_kategori', 'ASC']]
         });
+        return rows.map((row) => this.toApiData(this.toPlainObject(row)));
     };
     getParameters = async () => {
         const rows = await Parameter.findAll({
             include: [{ model: KategoriParameter, as: 'kategori', attributes: ['id_kategori_parameter', 'nama_kategori'], required: false }],
             order: [['nama_parameter', 'ASC']]
         });
-        return rows.map(this.withSyncedKategori);
+        return rows.map((row) => this.toApiData(this.withSyncedKategori(row)));
     };
     getMethods = async () => {
-        return await Metode.findAll({
+        const rows = await Metode.findAll({
             order: [['nama_metode', 'ASC']]
         });
+        return rows.map((row) => this.toApiData(this.toPlainObject(row)));
     };
     getJenisSampel = async () => {
-        return await JenisSampel.findAll({
+        const rows = await JenisSampel.findAll({
             order: [['jenis_sampel', 'ASC']]
         });
+        return rows.map((row) => this.toApiData(this.toPlainObject(row)));
     };
     createParameterMetode = async (data) => {
         const transaction = await sequelize.transaction();
@@ -392,7 +397,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
                 padLength: 4,
                 transaction,
             });
-            const payload = {
+            const data = {
                 id_metode_parameter: pmId,
                 id_parameter: parameterId,
                 id_metode: metodeId,
@@ -402,9 +407,9 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
                 is_subkontrak: data.is_subkontrak ? 1 : 0,
                 is_active: data.is_active === undefined ? 1 : this.normalizeActiveFlag(data.is_active, 1),
             };
-            const pm = await ParameterMetode.create(payload, { transaction });
+            const pm = await ParameterMetode.create(data, { transaction });
             await transaction.commit();
-            return await ParameterMetode.findByPk(pm.id_metode_parameter, {
+            const createdParameterMetode = await ParameterMetode.findByPk(pm.id_metode_parameter, {
                 include: [
                     {
                         model: Parameter,
@@ -417,20 +422,21 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
                     },
                 ],
             });
+            return this.toApiData(this.toPlainObject(createdParameterMetode));
         }
         catch (error) {
             await transaction.rollback();
             throw error;
         }
     };
-    updateParameterMetode = async (id, data) => {
+    updateParameterMetode = async (id, inputData) => {
         const pm = await ParameterMetode.findByPk(id);
         if (!pm) {
             throw new Error('Data Parameter Metode tidak ditemukan');
         }
-        const hasMasterValueChange = data.acuan_metode !== undefined ||
-            data.is_terakreditasi !== undefined ||
-            data.is_subkontrak !== undefined;
+        const hasMasterValueChange = inputData.acuan_metode !== undefined ||
+            inputData.is_terakreditasi !== undefined ||
+            inputData.is_subkontrak !== undefined;
         if (hasMasterValueChange) {
             await assertUnusedForMasterChange({
                 label: 'Parameter metode',
@@ -439,19 +445,19 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
                 operation: 'diubah',
             });
         }
-        const payload = {};
-        if (data.acuan_metode !== undefined)
-            payload.acuan_metode = data.acuan_metode || null;
-        if (data.tarif !== undefined)
-            payload.tarif = data.tarif || 0;
-        if (data.is_terakreditasi !== undefined)
-            payload.is_terakreditasi = data.is_terakreditasi ? 1 : 0;
-        if (data.is_subkontrak !== undefined)
-            payload.is_subkontrak = data.is_subkontrak ? 1 : 0;
-        if (data.is_active !== undefined)
-            payload.is_active = this.normalizeActiveFlag(data.is_active, pm.is_active);
-        await pm.update(payload);
-        return pm;
+        const updateData = {};
+        if (inputData.acuan_metode !== undefined)
+            updateData.acuan_metode = inputData.acuan_metode || null;
+        if (inputData.tarif !== undefined)
+            updateData.tarif = inputData.tarif || 0;
+        if (inputData.is_terakreditasi !== undefined)
+            updateData.is_terakreditasi = inputData.is_terakreditasi ? 1 : 0;
+        if (inputData.is_subkontrak !== undefined)
+            updateData.is_subkontrak = inputData.is_subkontrak ? 1 : 0;
+        if (inputData.is_active !== undefined)
+            updateData.is_active = this.normalizeActiveFlag(inputData.is_active, pm.is_active);
+        await pm.update(updateData);
+        return this.toApiData(this.toPlainObject(pm));
     };
     deleteParameterMetode = async (id) => {
         const pm = await ParameterMetode.findByPk(id);
@@ -483,34 +489,35 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             prefix: 'RBM',
             padLength: 3,
         });
-        return await RegBm.create({
+        const createdRegulasi = await RegBm.create({
             id_reg_bm: id,
             instansi: String(data.instansi || '').trim(),
             ref_reg: String(data.ref_reg || '').trim(),
             is_active: this.normalizeActiveFlag(data.is_active, 1),
         });
+        return this.toApiData(this.toPlainObject(createdRegulasi));
     };
-    updateRegulasi = async (id, data) => {
+    updateRegulasi = async (id, inputData) => {
         const reg = await RegBm.findByPk(id);
         if (!reg)
             throw new Error('Regulasi tidak ditemukan');
         const usage = await getRegBmUsage(id);
         const lhuUsage = Number(usage?.lhu || usage?.lhu_dengan_regulasi_ini || 0);
-        const nextInstansi = this.hasOwn(data, 'instansi') ? String(data.instansi || '').trim() : undefined;
-        const nextRefReg = this.hasOwn(data, 'ref_reg') ? String(data.ref_reg || '').trim() : undefined;
+        const nextInstansi = this.hasOwn(inputData, 'instansi') ? String(inputData.instansi || '').trim() : undefined;
+        const nextRefReg = this.hasOwn(inputData, 'ref_reg') ? String(inputData.ref_reg || '').trim() : undefined;
         const hasMasterChange = this.hasChanged(reg.instansi, nextInstansi) ||
             this.hasChanged(reg.ref_reg, nextRefReg);
         if (hasMasterChange && lhuUsage > 0) {
             throw this.protectedMasterError('Regulasi baku mutu tidak dapat mengubah instansi/referensi karena sudah digunakan pada LHU. Nonaktifkan regulasi lama lalu buat regulasi baru jika ada revisi acuan.', usage);
         }
-        const payload = {};
+        const updateData = {};
         if (nextInstansi !== undefined)
-            payload.instansi = nextInstansi;
+            updateData.instansi = nextInstansi;
         if (nextRefReg !== undefined)
-            payload.ref_reg = nextRefReg;
-        if (this.hasOwn(data, 'is_active'))
-            payload.is_active = this.normalizeActiveFlag(data.is_active, reg.is_active);
-        await reg.update(payload);
+            updateData.ref_reg = nextRefReg;
+        if (this.hasOwn(inputData, 'is_active'))
+            updateData.is_active = this.normalizeActiveFlag(inputData.is_active, reg.is_active);
+        await reg.update(updateData);
         const updated = await RegBm.findByPk(id);
         return this.withMasterUsage(updated, usage, { lockedByLhu: true });
     };
@@ -522,22 +529,22 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         const totalUsage = getTotalUsage(usage);
         if (totalUsage > 0) {
             await reg.update({ is_active: 0 });
-            return { deactivated: true, usages: usage };
+            return this.toApiData({ deactivated: true, usages: usage });
         }
         await reg.destroy();
-        return { deleted: true, usages: usage };
+        return this.toApiData({ deleted: true, usages: usage });
     };
     withPaketDisplay = (row, kelompok = null) => {
         const data = withPaketBmDisplayFields(this.toPlainObject(row) || {});
         const kelompokData = this.toPlainObject(kelompok) || null;
         const kelompokIsActive = kelompokData ? this.normalizeActiveFlag(kelompokData.is_active, 1) : 1;
-        return {
+        return this.toApiData({
             ...data,
             paket_is_active: this.normalizeActiveFlag(data.is_active, 1),
             group_is_active: kelompokIsActive,
             is_active: kelompokIsActive,
             bm_kelompok: kelompokData,
-        };
+        });
     };
     getPaketInclude = () => ([
         { model: RegBm, attributes: ['id_reg_bm', 'ref_reg', 'instansi', 'is_active'] },
@@ -583,35 +590,35 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             return existing;
         return await PktBmKelompok.create({ id_reg_bm: idRegBm, id_jenis_sampel: idJenisSampel, is_active: 1 }, options);
     };
-    buildPaketParameterMetaPayload = async (data = {}, current = {}, transaction = null) => {
-        const payload = {};
+    buildPaketParameterMetaData = async (inputData = {}, current = {}, transaction = null) => {
+        const nextData = {};
         const currentData = this.toPlainObject(current) || {};
-        const hasSatuanInput = this.hasOwn(data, 'id_satuan') || this.hasOwn(data, 'satuan') || this.hasOwn(data, 'satuan_bm');
+        const hasSatuanInput = this.hasOwn(inputData, 'id_satuan') || this.hasOwn(inputData, 'satuan') || this.hasOwn(inputData, 'satuan_bm');
 
         if (hasSatuanInput) {
             const satuanRow = await this.resolveSatuan({
-                idSatuan: data.id_satuan,
-                satuan: data.satuan ?? data.satuan_bm,
+                idSatuan: inputData.id_satuan,
+                satuan: inputData.satuan ?? inputData.satuan_bm,
                 transaction,
             });
-            payload.id_satuan = this.assertMaxLength(satuanRow.id_satuan, 10, 'ID satuan baku mutu');
+            nextData.id_satuan = this.assertMaxLength(satuanRow.id_satuan, 10, 'ID satuan baku mutu');
         }
         else if (this.hasOwn(currentData, 'id_satuan'))
-            payload.id_satuan = currentData.id_satuan;
-        if (this.hasOwn(data, 'ket_bm'))
-            payload.ket_bm = this.assertMaxLength(this.normalizeNullableText(data.ket_bm), 100, 'Keterangan baku mutu');
+            nextData.id_satuan = currentData.id_satuan;
+        if (this.hasOwn(inputData, 'ket_bm'))
+            nextData.ket_bm = this.assertMaxLength(this.normalizeNullableText(inputData.ket_bm), 100, 'Keterangan baku mutu');
         else if (this.hasOwn(currentData, 'ket_bm'))
-            payload.ket_bm = currentData.ket_bm;
-        return payload;
+            nextData.ket_bm = currentData.ket_bm;
+        return nextData;
     };
-    buildPaketNilaiPayload = (data = {}, current = {}) => {
-        const payload = {};
+    buildPaketNilaiData = (inputData = {}, current = {}) => {
+        const nextData = {};
         const currentData = this.toPlainObject(current) || {};
-        if (this.hasOwn(data, 'nilai_bm'))
-            payload.nilai_bm = this.assertMaxLength(this.normalizeNullableText(data.nilai_bm), 30, 'Nilai baku mutu');
+        if (this.hasOwn(inputData, 'nilai_bm'))
+            nextData.nilai_bm = this.assertMaxLength(this.normalizeNullableText(inputData.nilai_bm), 30, 'Nilai baku mutu');
         else if (this.hasOwn(currentData, 'nilai_bm'))
-            payload.nilai_bm = currentData.nilai_bm;
-        return payload;
+            nextData.nilai_bm = currentData.nilai_bm;
+        return nextData;
     };
     mapPaketParameterData = (metaRow = {}, nilaiRow = {}, paket = {}) => {
         const meta = this.toPlainObject(metaRow) || {};
@@ -619,7 +626,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         const parameter = meta.parameter || meta.Parameter || nilai.parameter || nilai.Parameter || {};
         const satuanRow = meta.satuan || meta.Satuan || {};
         const satuanLabel = satuanRow.satuan || meta.satuan || meta.satuan_bm || null;
-        return {
+        return this.toApiData({
             id_pkt_bm: paket.id_pkt_bm || nilai.id_pkt_bm || null,
             id_reg_bm: meta.id_reg_bm || paket.id_reg_bm || null,
             id_jenis_sampel: meta.id_jenis_sampel || paket.id_jenis_sampel || null,
@@ -632,7 +639,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             satuan: satuanLabel,
             satuan_bm: satuanLabel,
             ket_bm: meta.ket_bm ?? null,
-        };
+        });
     };
     getAllPaket = async () => {
         const rows = await PktBm.findAll({
@@ -673,8 +680,8 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
     createPaket = async (data) => {
         const transaction = await sequelize.transaction();
         try {
-            const idRegBm = String(data.id_reg_bm || '').trim();
-            const idJenisSampel = String(data.id_jenis_sampel || '').trim();
+            const idRegBm = String(inputData.id_reg_bm || '').trim();
+            const idJenisSampel = String(inputData.id_jenis_sampel || '').trim();
             const rawKlasifikasiList = Array.isArray(data.klasifikasi_list)
                 ? data.klasifikasi_list
                 : (Array.isArray(data.klasifikasi) ? data.klasifikasi : [data.klasifikasi]);
@@ -732,7 +739,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         }
     };
 
-    updatePaket = async (id, data) => {
+    updatePaket = async (id, inputData) => {
         const transaction = await sequelize.transaction();
         try {
             const pkt = await PktBm.findByPk(id, { transaction });
@@ -741,10 +748,10 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             const usage = await getPktBmUsage(id, { transaction });
             const lhuUsage = Number(usage.lhu || 0);
             const nilaiUsage = Number(usage.pkt_bm_nilai || 0);
-            const nextIdRegBm = this.hasOwn(data, 'id_reg_bm') ? String(data.id_reg_bm || '').trim() : undefined;
-            const nextJenisSampel = this.hasOwn(data, 'id_jenis_sampel') ? String(data.id_jenis_sampel || '').trim() : undefined;
-            const nextKlasifikasiRow = (this.hasOwn(data, 'id_klasifikasi') || this.hasOwn(data, 'klasifikasi'))
-                ? await this.resolveKlasifikasi({ idKlasifikasi: data.id_klasifikasi, klasifikasi: data.klasifikasi, transaction })
+            const nextIdRegBm = this.hasOwn(inputData, 'id_reg_bm') ? String(inputData.id_reg_bm || '').trim() : undefined;
+            const nextJenisSampel = this.hasOwn(inputData, 'id_jenis_sampel') ? String(inputData.id_jenis_sampel || '').trim() : undefined;
+            const nextKlasifikasiRow = (this.hasOwn(inputData, 'id_klasifikasi') || this.hasOwn(inputData, 'klasifikasi'))
+                ? await this.resolveKlasifikasi({ idKlasifikasi: inputData.id_klasifikasi, klasifikasi: inputData.klasifikasi, transaction })
                 : null;
             const nextIdKlasifikasi = nextKlasifikasiRow ? nextKlasifikasiRow.id_klasifikasi : undefined;
             const hasIdentityChange = this.hasChanged(pkt.id_reg_bm, nextIdRegBm) ||
@@ -756,22 +763,22 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             if (hasIdentityChange && nilaiUsage > 0) {
                 throw this.protectedMasterError('Paket baku mutu tidak dapat mengubah regulasi atau jenis sampel karena sudah memiliki nilai baku mutu. Hapus parameter paket dulu atau buat paket baru.', usage);
             }
-            const payload = {};
+            const data = {};
             if (nextIdRegBm !== undefined)
-                payload.id_reg_bm = nextIdRegBm;
+                inputData.id_reg_bm = nextIdRegBm;
             if (nextJenisSampel !== undefined)
-                payload.id_jenis_sampel = nextJenisSampel;
+                inputData.id_jenis_sampel = nextJenisSampel;
             if (nextIdKlasifikasi !== undefined)
-                payload.id_klasifikasi = nextIdKlasifikasi;
-            if (payload.id_reg_bm || payload.id_jenis_sampel) {
-                await this.ensurePaketKelompok(payload.id_reg_bm || pkt.id_reg_bm, payload.id_jenis_sampel || pkt.id_jenis_sampel, { transaction });
+                data.id_klasifikasi = nextIdKlasifikasi;
+            if (inputData.id_reg_bm || inputData.id_jenis_sampel) {
+                await this.ensurePaketKelompok(inputData.id_reg_bm || pkt.id_reg_bm, inputData.id_jenis_sampel || pkt.id_jenis_sampel, { transaction });
             }
-            if (payload.id_reg_bm || payload.id_jenis_sampel || payload.id_klasifikasi) {
+            if (inputData.id_reg_bm || inputData.id_jenis_sampel || data.id_klasifikasi) {
                 const check = await PktBm.findOne({
                     where: {
-                        id_reg_bm: payload.id_reg_bm || pkt.id_reg_bm,
-                        id_jenis_sampel: payload.id_jenis_sampel || pkt.id_jenis_sampel,
-                        id_klasifikasi: payload.id_klasifikasi !== undefined ? payload.id_klasifikasi : pkt.id_klasifikasi,
+                        id_reg_bm: inputData.id_reg_bm || pkt.id_reg_bm,
+                        id_jenis_sampel: inputData.id_jenis_sampel || pkt.id_jenis_sampel,
+                        id_klasifikasi: data.id_klasifikasi !== undefined ? data.id_klasifikasi : pkt.id_klasifikasi,
                         id_pkt_bm: { [Op.ne]: id },
                     },
                     transaction,
@@ -779,7 +786,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
                 if (check)
                     throw new Error('Paket baku mutu dengan regulasi, jenis sampel, dan klasifikasi yang sama sudah ada.');
             }
-            await pkt.update(payload, { transaction });
+            await pkt.update(updateData, { transaction });
             await transaction.commit();
             return await this.getPaketById(id);
         }
@@ -799,7 +806,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         }
         await PktBmNilai.destroy({ where: { id_pkt_bm: id } });
         await pkt.destroy();
-        return { deleted: true, usages: usage };
+        return this.toApiData({ deleted: true, usages: usage });
     };
     getPaketParameters = async (id_pkt_bm) => {
         const paket = await PktBm.findByPk(id_pkt_bm);
@@ -863,7 +870,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
                 id_reg_bm: paket.id_reg_bm,
                 id_jenis_sampel: paket.id_jenis_sampel,
                 id_parameter: idParameter,
-                ...await this.buildPaketParameterMetaPayload(data, {}, transaction),
+                ...await this.buildPaketParameterMetaData(data, {}, transaction),
             }, { transaction });
             const existingNilai = await PktBmNilai.findOne({ where: { id_pkt_bm, id_parameter: idParameter }, transaction });
             if (existingNilai)
@@ -871,7 +878,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             const nilai = await PktBmNilai.create({
                 id_pkt_bm,
                 id_parameter: idParameter,
-                ...this.buildPaketNilaiPayload(data),
+                ...this.buildPaketNilaiData(data),
             }, { transaction });
             await transaction.commit();
             return this.mapPaketParameterData(meta, nilai, paket);
@@ -893,27 +900,27 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
                 throw new Error('Detail Parameter Paket tidak ditemukan');
             const usage = await getPktBmParamUsage({ id_pkt_bm, id_parameter, id_reg_bm: paket.id_reg_bm, id_jenis_sampel: paket.id_jenis_sampel }, { transaction });
             let nilai = await PktBmNilai.findOne({ where: { id_pkt_bm, id_parameter }, transaction });
-            const metaPayload = await this.buildPaketParameterMetaPayload(data, meta, transaction);
-            const nilaiPayload = this.buildPaketNilaiPayload(data, nilai || {});
-            const hasMetaChange = this.hasChanged(meta.id_satuan, metaPayload.id_satuan) ||
-                this.hasChanged(meta.ket_bm, metaPayload.ket_bm);
-            const hasNilaiChange = !nilai || this.hasChanged(nilai.nilai_bm, nilaiPayload.nilai_bm);
+            const metaData = await this.buildPaketParameterMetaData(data, meta, transaction);
+            const nilaiData = this.buildPaketNilaiData(data, nilai || {});
+            const hasMetaChange = this.hasChanged(meta.id_satuan, metaData.id_satuan) ||
+                this.hasChanged(meta.ket_bm, metaData.ket_bm);
+            const hasNilaiChange = !nilai || this.hasChanged(nilai.nilai_bm, nilaiData.nilai_bm);
             if (hasNilaiChange && Number(usage.lhu_dengan_paket_ini || 0) > 0) {
                 throw this.protectedMasterError('Nilai baku mutu tidak dapat diubah karena paket sudah dipakai pada LHU. Nonaktifkan paket lama lalu buat paket/versi baru.', usage);
             }
             if (hasMetaChange && Number(usage.lhu_dengan_parameter_kelompok || 0) > 0) {
                 throw this.protectedMasterError('Satuan atau keterangan baku mutu tidak dapat diubah karena parameter ini sudah dipakai pada LHU di salah satu klasifikasi dalam kelompok yang sama. Nonaktifkan paket lama lalu buat paket/versi baru.', usage);
             }
-            await meta.update(metaPayload, { transaction });
+            await meta.update(metaData, { transaction });
             if (!nilai) {
                 nilai = await PktBmNilai.create({
                     id_pkt_bm,
                     id_parameter,
-                    ...nilaiPayload,
+                    ...nilaiData,
                 }, { transaction });
             }
             else {
-                await nilai.update(nilaiPayload, { transaction });
+                await nilai.update(nilaiData, { transaction });
             }
             await transaction.commit();
             return this.mapPaketParameterData(meta, nilai, paket);
@@ -952,18 +959,20 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         }
     };
     getAllTarifPengambilan = async () => {
-        return await TarifPengambilan.findAll({
+        const rows = await TarifPengambilan.findAll({
             order: [['tarif', 'ASC']]
         });
+        return rows.map((row) => this.toApiData(this.toPlainObject(row)));
     };
     createTarifPengambilan = async (data) => {
         const count = await TarifPengambilan.count();
         const id = `TP${String(count + 1).padStart(3, '0')}`;
-        return await TarifPengambilan.create({
+        const createdTarif = await TarifPengambilan.create({
             id_tarif_pengambilan: id,
             keterangan_jarak: data.keterangan_jarak,
             tarif: data.tarif || 0
         });
+        return this.toApiData(this.toPlainObject(createdTarif));
     };
     updateTarifPengambilan = async (id, data) => {
         const tp = await TarifPengambilan.findByPk(id);
@@ -979,7 +988,7 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
             keterangan_jarak: data.keterangan_jarak || tp.keterangan_jarak,
             tarif: data.tarif !== undefined ? data.tarif : tp.tarif
         });
-        return tp;
+        return this.toApiData(this.toPlainObject(tp));
     };
     deleteTarifPengambilan = async (id) => {
         const tp = await TarifPengambilan.findByPk(id);
@@ -993,6 +1002,371 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         });
         await tp.destroy();
         return true;
+    };
+    publicPlain = (row) => {
+        return row?.toJSON ? row.toJSON() : row;
+    };
+
+    mapPublicSampleType = (row) => {
+        const data = this.publicPlain(row) || {};
+        const name = data.jenis_sampel || data.nama_jenis_sampel || data.nama || '';
+        return {
+            ...toCamelCaseDeep(data),
+            idJenisSampel: data.id_jenis_sampel,
+            jenisSampel: name,
+            namaJenisSampel: name,
+            nama: name,
+            name,
+            label: name,
+            value: data.id_jenis_sampel,
+        };
+    };
+
+    mapPublicRegBm = (row) => {
+        const data = this.publicPlain(row) || {};
+        const title = [data.instansi, data.ref_reg].filter(Boolean).join(' - ');
+        return {
+            ...toCamelCaseDeep(data),
+            namaRegulasi: data.ref_reg,
+            title: title || data.id_reg_bm,
+            label: title || data.ref_reg || data.id_reg_bm,
+            value: data.id_reg_bm,
+        };
+    };
+
+    mapPublicPaketBm = (row) => {
+        const data = withPaketBmDisplayFields(this.publicPlain(row) || {});
+        const reg = data.reg_bm || data.RegBm || {};
+        const jenis = data.jenis_sampel || data.JenisSampel || {};
+        return {
+            ...toCamelCaseDeep(data),
+            regBm: toCamelCaseDeep(reg),
+            jenisSampelRow: toCamelCaseDeep(jenis),
+            namaRegulasi: reg.ref_reg || null,
+            instansi: reg.instansi || data.instansi || null,
+            jenisSampel: jenis.jenis_sampel || data.jenis_sampel || null,
+            label: data.nama_pkt || data.id_pkt_bm,
+            value: data.id_pkt_bm,
+        };
+    };
+
+    mapPublicPickupTariff = (row) => {
+        const data = this.publicPlain(row) || {};
+        return {
+            ...toCamelCaseDeep(data),
+            label: data.keterangan_jarak,
+            keterangan: data.keterangan_jarak,
+            harga: data.tarif,
+            price: data.tarif,
+            value: data.id_tarif_pengambilan,
+        };
+    };
+
+    getPublicParameterRequestData = (rowJson = {}) => {
+        const parameter = rowJson.parameter || rowJson.Parameter || {};
+        const kategori = parameter.kategori || parameter.KategoriParameter || rowJson.kategori || rowJson.KategoriParameter || {};
+        const kategoriParameter = parameter.kategori_parameter || kategori.nama_kategori || rowJson.kategori_parameter || rowJson.nama_kategori || null;
+        return {
+            idParameter: rowJson.id_parameter || parameter.id_parameter || null,
+            namaParameter: parameter.nama_parameter || rowJson.nama_parameter || null,
+            kategoriParameter,
+            parameter: {
+                ...toCamelCaseDeep(parameter),
+                kategoriParameter,
+                namaKategori: parameter.nama_kategori || kategori.nama_kategori || null,
+            },
+        };
+    };
+
+    mapPublicPaketParameterRow = (rowJson = {}) => {
+        const parameterData = this.getPublicParameterRequestData(rowJson);
+        const satuanLabel = rowJson.satuan?.satuan || rowJson.Satuan?.satuan || rowJson.satuan || rowJson.satuan_bm || null;
+        return {
+            idPktBm: rowJson.id_pkt_bm || rowJson.pkt_bm?.id_pkt_bm || rowJson.PktBm?.id_pkt_bm || null,
+            idParameter: parameterData.idParameter,
+            namaParameter: parameterData.namaParameter,
+            kategoriParameter: parameterData.kategoriParameter,
+            parameter: parameterData.parameter,
+            nilaiBm: rowJson.nilai_bm,
+            idSatuan: rowJson.id_satuan || rowJson.satuan?.id_satuan || rowJson.Satuan?.id_satuan || null,
+            satuan: satuanLabel,
+            satuanBm: satuanLabel,
+            ketBm: rowJson.ket_bm,
+        };
+    };
+
+    getActiveBmGroup = async (id_reg_bm, id_jenis_sampel) => {
+        if (!id_reg_bm || !id_jenis_sampel)
+            return null;
+        return await PktBmKelompok.findOne({
+            where: { id_reg_bm, id_jenis_sampel, is_active: 1 },
+        });
+    };
+
+    getActiveGroupRegIdsByJenisSampel = async (id_jenis_sampel) => {
+        const kelompokRows = await PktBmKelompok.findAll({
+            where: { id_jenis_sampel, is_active: 1 },
+            attributes: ['id_reg_bm'],
+        });
+        return [...new Set(kelompokRows.map((row) => row.id_reg_bm).filter(Boolean))];
+    };
+
+    getPublicJenisSampel = async () => {
+        const rows = await JenisSampel.findAll({
+            order: [['jenis_sampel', 'ASC']],
+        });
+        return rows.map(this.mapPublicSampleType);
+    };
+
+    getPublicPaketBmByJenisSampel = async (id_jenis_sampel) => {
+        const idRegBmList = await this.getActiveGroupRegIdsByJenisSampel(id_jenis_sampel);
+        if (idRegBmList.length === 0)
+            return [];
+        const rows = await PktBm.findAll({
+            where: {
+                id_jenis_sampel,
+                id_reg_bm: { [Op.in]: idRegBmList },
+            },
+            attributes: ['id_pkt_bm', 'id_jenis_sampel', 'id_reg_bm', 'id_klasifikasi'],
+            include: [
+                { model: RegBm, attributes: ['id_reg_bm', 'instansi', 'ref_reg'], where: { is_active: 1 }, required: true },
+                { model: JenisSampel, attributes: ['id_jenis_sampel', 'jenis_sampel'], required: false },
+                { model: Klasifikasi, attributes: ['id_klasifikasi', 'klasifikasi'], required: false },
+            ],
+            order: [[literal('`klasifikasi`.`klasifikasi`'), 'ASC'], ['id_pkt_bm', 'ASC']],
+        });
+        return rows.map(this.mapPublicPaketBm);
+    };
+
+    getPublicBmStandards = async (id_jenis_sampel = null) => {
+        let idRegBmList = [];
+        if (id_jenis_sampel) {
+            idRegBmList = await this.getActiveGroupRegIdsByJenisSampel(id_jenis_sampel);
+        }
+        else {
+            const kelompokRows = await PktBmKelompok.findAll({
+                where: { is_active: 1 },
+                attributes: ['id_reg_bm'],
+            });
+            idRegBmList = [...new Set(kelompokRows.map((row) => row.id_reg_bm).filter(Boolean))];
+        }
+        if (idRegBmList.length === 0)
+            return [];
+        const rows = await RegBm.findAll({
+            where: { id_reg_bm: { [Op.in]: idRegBmList }, is_active: 1 },
+            attributes: ['id_reg_bm', 'instansi', 'ref_reg'],
+            order: [['instansi', 'ASC'], ['id_reg_bm', 'ASC']],
+        });
+        return rows.map(this.mapPublicRegBm);
+    };
+
+    getPublicTarifPengambilan = async () => {
+        const rows = await TarifPengambilan.findAll({
+            order: [['id_tarif_pengambilan', 'ASC']],
+        });
+        return rows.map(this.mapPublicPickupTariff);
+    };
+
+    getParameterIdsWithActiveMethods = async (parameterIds = []) => {
+        const uniqueIds = [
+            ...new Set(parameterIds
+                .map((id) => String(id || '').trim())
+                .filter(Boolean)),
+        ];
+        if (uniqueIds.length === 0) {
+            return new Set();
+        }
+        const rows = await ParameterMetode.findAll({
+            where: {
+                id_parameter: {
+                    [Op.in]: uniqueIds,
+                },
+                is_active: 1,
+            },
+            attributes: ['id_parameter'],
+            group: ['id_parameter'],
+            raw: true,
+        });
+        return new Set(rows.map((row) => row.id_parameter));
+    };
+
+    getPublicParameterByPaketBm = async (id_pkt_bm) => {
+        if (!id_pkt_bm) {
+            throw new Error('id_pkt_bm wajib diisi.');
+        }
+        const paket = await PktBm.findOne({
+            where: { id_pkt_bm },
+            include: [{ model: RegBm, where: { is_active: 1 }, required: true }],
+        });
+        if (!paket)
+            return [];
+        const kelompok = await this.getActiveBmGroup(paket.id_reg_bm, paket.id_jenis_sampel);
+        if (!kelompok)
+            return [];
+        const nilaiRows = await PktBmNilai.findAll({
+            where: { id_pkt_bm },
+            include: [{
+                model: Parameter,
+                attributes: ['id_parameter', 'id_kategori_parameter', 'nama_parameter'],
+                include: [{ model: KategoriParameter, as: 'kategori', attributes: ['id_kategori_parameter', 'nama_kategori'], required: false }],
+            }],
+            order: [[Parameter, 'nama_parameter', 'ASC']],
+        });
+        if (nilaiRows.length === 0)
+            return [];
+        const parameterIds = nilaiRows.map((row) => row.id_parameter).filter(Boolean);
+        const activeMethodParameterIds = await this.getParameterIdsWithActiveMethods(parameterIds);
+        if (activeMethodParameterIds.size === 0)
+            return [];
+        const visibleParameterIds = parameterIds.filter((id) => activeMethodParameterIds.has(String(id)) || activeMethodParameterIds.has(id));
+        if (visibleParameterIds.length === 0)
+            return [];
+        const metaRows = await PktBmParam.findAll({
+            where: {
+                id_reg_bm: paket.id_reg_bm,
+                id_jenis_sampel: paket.id_jenis_sampel,
+                id_parameter: { [Op.in]: visibleParameterIds },
+            },
+            include: [{ model: Satuan, attributes: ['id_satuan', 'satuan'], required: false }],
+        });
+        const metaMap = new Map(metaRows.map((row) => [String(row.id_parameter), row.toJSON ? row.toJSON() : row]));
+        return nilaiRows
+            .filter((row) => activeMethodParameterIds.has(String(row.id_parameter)) || activeMethodParameterIds.has(row.id_parameter))
+            .map((row) => {
+                const nilai = row.toJSON ? row.toJSON() : row;
+                const meta = metaMap.get(String(nilai.id_parameter)) || {};
+                const parameter = nilai.parameter || nilai.Parameter || meta.parameter || meta.Parameter || {};
+                return this.mapPublicPaketParameterRow({
+                    ...meta,
+                    id_pkt_bm,
+                    id_reg_bm: paket.id_reg_bm,
+                    id_jenis_sampel: paket.id_jenis_sampel,
+                    id_parameter: nilai.id_parameter,
+                    parameter,
+                    nilai_bm: nilai.nilai_bm ?? null,
+                });
+            });
+    };
+
+    getPublicPaketBm = async () => {
+        const kelompokRows = await PktBmKelompok.findAll({
+            where: { is_active: 1 },
+            attributes: ['id_reg_bm', 'id_jenis_sampel'],
+        });
+        if (kelompokRows.length === 0)
+            return [];
+        const rows = await PktBm.findAll({
+            where: {
+                [Op.or]: kelompokRows.map((row) => ({
+                    id_reg_bm: row.id_reg_bm,
+                    id_jenis_sampel: row.id_jenis_sampel,
+                })),
+            },
+            attributes: ['id_pkt_bm', 'id_jenis_sampel', 'id_reg_bm', 'id_klasifikasi'],
+            include: [
+                { model: RegBm, attributes: ['id_reg_bm', 'instansi', 'ref_reg'], where: { is_active: 1 }, required: true },
+                { model: JenisSampel, attributes: ['id_jenis_sampel', 'jenis_sampel'], required: false },
+                { model: Klasifikasi, attributes: ['id_klasifikasi', 'klasifikasi'], required: false },
+            ],
+            order: [['id_jenis_sampel', 'ASC'], [Klasifikasi, 'klasifikasi', 'ASC'], ['id_pkt_bm', 'ASC']],
+        });
+        return rows.map(this.mapPublicPaketBm);
+    };
+
+    getPublicParameterByJenisSampel = async (id_jenis_sampel, id_pkt_bm, id_reg_bm) => {
+        if (!id_jenis_sampel) {
+            throw new Error('id_jenis_sampel wajib diisi.');
+        }
+        if (id_pkt_bm) {
+            const paket = await PktBm.findOne({
+                where: { id_pkt_bm, id_jenis_sampel },
+                include: [{ model: RegBm, where: { is_active: 1 }, required: true }],
+            });
+            if (!paket) {
+                throw new Error('Paket baku mutu tidak valid untuk jenis sampel yang dipilih.');
+            }
+            const kelompok = await this.getActiveBmGroup(paket.id_reg_bm, paket.id_jenis_sampel);
+            if (!kelompok) {
+                throw new Error('Kelompok baku mutu tidak aktif untuk jenis sampel yang dipilih.');
+            }
+            return this.getPublicParameterByPaketBm(id_pkt_bm);
+        }
+        if (!id_reg_bm)
+            return [];
+        const kelompok = await this.getActiveBmGroup(id_reg_bm, id_jenis_sampel);
+        if (!kelompok)
+            return [];
+        const rows = await PktBmParam.findAll({
+            where: { id_jenis_sampel, id_reg_bm },
+            include: [{
+                model: Parameter,
+                attributes: ['id_parameter', 'id_kategori_parameter', 'nama_parameter'],
+                include: [{ model: KategoriParameter, as: 'kategori', attributes: ['id_kategori_parameter', 'nama_kategori'], required: false }],
+            }, { model: Satuan, attributes: ['id_satuan', 'satuan'], required: false }],
+            order: [[Parameter, 'nama_parameter', 'ASC']],
+        });
+        if (rows.length === 0)
+            return [];
+        const parameterIds = rows.map((row) => row.id_parameter).filter(Boolean);
+        const activeMethodParameterIds = await this.getParameterIdsWithActiveMethods(parameterIds);
+        if (activeMethodParameterIds.size === 0)
+            return [];
+        return rows
+            .filter((row) => activeMethodParameterIds.has(String(row.id_parameter)) || activeMethodParameterIds.has(row.id_parameter))
+            .map((row) => this.mapPublicPaketParameterRow(row.toJSON ? row.toJSON() : row));
+    };
+
+    getPublicParameterTariffs = async () => {
+        const rows = await ParameterMetode.findAll({
+            where: { is_active: 1 },
+            attributes: [
+                'id_metode_parameter',
+                'id_parameter',
+                'id_metode',
+                'tarif',
+                'acuan_metode',
+                'is_terakreditasi',
+                'is_subkontrak',
+                'is_active',
+            ],
+            include: [
+                {
+                    model: Parameter,
+                    attributes: ['id_parameter', 'id_kategori_parameter', 'nama_parameter'],
+                    include: [{ model: KategoriParameter, as: 'kategori', attributes: ['id_kategori_parameter', 'nama_kategori'], required: false }],
+                },
+                {
+                    model: Metode,
+                    attributes: ['id_metode', 'nama_metode'],
+                },
+            ],
+            order: [
+                [{ model: Parameter }, 'nama_parameter', 'ASC'],
+                [{ model: Metode }, 'nama_metode', 'ASC'],
+            ],
+        });
+        return rows.map((row) => {
+            const json = row.toJSON();
+            const parameter = json.parameter || json.Parameter || {};
+            const metode = json.metode || json.Metode || {};
+            return toCamelCaseDeep({
+                id_metode_parameter: json.id_metode_parameter,
+                id_parameter: json.id_parameter,
+                id_metode: json.id_metode,
+                nama_parameter: parameter.nama_parameter || null,
+                kategori_parameter: parameter.kategori_parameter || null,
+                nama_metode: metode.nama_metode || null,
+                metode,
+                parameter,
+                tarif: json.tarif,
+                harga: json.tarif,
+                price: json.tarif,
+                acuan_metode: json.acuan_metode,
+                is_terakreditasi: json.is_terakreditasi,
+                is_subkontrak: json.is_subkontrak,
+                is_active: json.is_active,
+            });
+        });
     };
 }
 module.exports = new AdminParameterService();

@@ -3,6 +3,7 @@ const sequelize = require('../../config/database');
 const { NotifikasiEmail, Penugasan, PenugasanDetail, PenugasanItem, Fppl, FpplSampel, Sampel, SampelParameter, FpplParameterMetode, ParameterMetode, Parameter, Metode, Lka, LkaHasil, User, Pegawai, } = require('../../models/Associations');
 const { NOTIFICATION_TYPE, STATUS_PENGIRIMAN_EMAIL, NOTIFICATION_REFERENCE_TYPE, } = require('../../constants/notification.constant');
 const { buildKasiReviewLink, buildPenyeliaReviewLink, safeString, } = require('./notification-format.util');
+const { toCamelCaseDeep } = require('../../utils/case-transform.util');
 const { addDays, buildEmailLogWhere, createEmailLog, findNotificationTypeById, findOrCreateNotificationTypeById, getPlain, markEmailFailed, markEmailSent, resolveRecipientEmail, sendNotificationEmail, startOfToday, startOfTomorrow, toDateOnly, } = require('./notification-core.service');
 const { buildDeadlineAnalisDekatEmail, } = require('../../templates/email/deadline-analis-dekat.template');
 const { buildAnalystAssignmentCreatedEmail, } = require('../../templates/email/analyst-assignment-created.template');
@@ -367,11 +368,9 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
         return rows
             .map((row) => ({
             noSampel: safeString(row.no_sampel).trim(),
-            no_sampel: safeString(row.no_sampel).trim(),
             idRegistrasi: safeString(row.id_registrasi).trim(),
-            id_registrasi: safeString(row.id_registrasi).trim(),
         }))
-            .filter((row) => row.no_sampel);
+            .filter((row) => row.noSampel);
     };
     getKasiReadinessBySampleNos = async (sampleNos = []) => {
         const nos = Array.from(new Set((Array.isArray(sampleNos) ? sampleNos : [sampleNos])
@@ -427,19 +426,12 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
         for (const noSampel of nos) {
             grouped.set(noSampel, {
                 noSampel,
-                no_sampel: noSampel,
                 idRegistrasi: null,
-                id_registrasi: null,
                 sampleNos: [noSampel],
-                sample_nos: [noSampel],
                 totalSample: 1,
-                total_sample: 1,
                 totalParameter: 0,
-                total_parameter: 0,
                 totalReady: 0,
-                total_ready: 0,
                 isReady: false,
-                is_ready: false,
             });
         }
         for (const row of rows) {
@@ -449,34 +441,23 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
             if (!grouped.has(noSampel)) {
                 grouped.set(noSampel, {
                     noSampel,
-                    no_sampel: noSampel,
                     idRegistrasi: null,
-                    id_registrasi: null,
                     sampleNos: [noSampel],
-                    sample_nos: [noSampel],
                     totalSample: 1,
-                    total_sample: 1,
                     totalParameter: 0,
-                    total_parameter: 0,
                     totalReady: 0,
-                    total_ready: 0,
                     isReady: false,
-                    is_ready: false,
                 });
             }
             const item = grouped.get(noSampel);
             item.idRegistrasi = item.idRegistrasi || safeString(row.id_registrasi).trim() || null;
-            item.id_registrasi = item.id_registrasi || safeString(row.id_registrasi).trim() || null;
             item.totalParameter += 1;
-            item.total_parameter = item.totalParameter;
             if (Number(row.is_ready_for_kasi) === 1) {
                 item.totalReady += 1;
-                item.total_ready = item.totalReady;
             }
         }
         for (const item of grouped.values()) {
             item.isReady = item.totalParameter > 0 && item.totalReady === item.totalParameter;
-            item.is_ready = item.isReady;
         }
         return Array.from(grouped.values());
     };
@@ -497,6 +478,7 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
           lr.kode_lka,
           lr.no_sampel,
           lr.catatan_revisi,
+          lr.ditinjau_pada,
           pd.id_penugasan,
           pd.id_penugasan_detail,
           par.nama_parameter,
@@ -523,30 +505,20 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
         });
         const items = rows.map((row) => ({
             idRevisiLka: row.id_revisi_lka || null,
-            id_revisi_lka: row.id_revisi_lka || null,
             kodeLka: row.kode_lka || null,
-            kode_lka: row.kode_lka || null,
             noSampel: row.no_sampel || null,
-            no_sampel: row.no_sampel || null,
             idPenugasan: row.id_penugasan || null,
-            id_penugasan: row.id_penugasan || null,
             idPenugasanDetail: row.id_penugasan_detail || null,
-            id_penugasan_detail: row.id_penugasan_detail || null,
             namaParameter: row.nama_parameter || '-',
-            nama_parameter: row.nama_parameter || '-',
             namaMetode: row.nama_metode || '-',
-            nama_metode: row.nama_metode || '-',
             acuanMetode: row.acuan_metode || row.nama_metode || '-',
-            acuan_metode: row.acuan_metode || row.nama_metode || '-',
             catatanRevisi: row.catatan_revisi || null,
-            catatan_revisi: row.catatan_revisi || null,
         }));
         return {
             isRevisionReturn: items.length > 0,
             sampleNos: items.length ? [sampleNo] : [],
             items,
-            idPenugasan: items[0]?.id_penugasan || null,
-            id_penugasan: items[0]?.id_penugasan || null,
+            idPenugasan: items[0]?.idPenugasan || null,
         };
     };
     getFpplNotificationInfo = async (idRegistrasi) => {
@@ -554,7 +526,7 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
             where: { id_registrasi: idRegistrasi },
             attributes: ['id_registrasi', 'nomor_fppl'],
         });
-        return getPlain(fppl) || { id_registrasi: idRegistrasi, nomor_fppl: null };
+        return toCamelCaseDeep(getPlain(fppl) || { idRegistrasi, nomorFppl: null });
     };
     getKasiRevisionReadyForKasiContext = async (idRegistrasi) => {
         const registrationId = safeString(idRegistrasi).trim();
@@ -604,31 +576,21 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
         });
         const items = rows.map((row) => ({
             idRevisiLka: row.id_revisi_lka || null,
-            id_revisi_lka: row.id_revisi_lka || null,
             kodeLka: row.kode_lka || null,
-            kode_lka: row.kode_lka || null,
             noSampel: row.no_sampel || null,
-            no_sampel: row.no_sampel || null,
             idPenugasan: row.id_penugasan || null,
-            id_penugasan: row.id_penugasan || null,
             idPenugasanDetail: row.id_penugasan_detail || null,
-            id_penugasan_detail: row.id_penugasan_detail || null,
             namaParameter: row.nama_parameter || '-',
-            nama_parameter: row.nama_parameter || '-',
             namaMetode: row.nama_metode || '-',
-            nama_metode: row.nama_metode || '-',
             acuanMetode: row.acuan_metode || row.nama_metode || '-',
-            acuan_metode: row.acuan_metode || row.nama_metode || '-',
             catatanRevisi: row.catatan_revisi || null,
-            catatan_revisi: row.catatan_revisi || null,
         }));
-        const sampleNos = Array.from(new Set(items.map((item) => safeString(item.no_sampel).trim()).filter(Boolean))).sort();
+        const sampleNos = Array.from(new Set(items.map((item) => safeString(item.noSampel).trim()).filter(Boolean))).sort();
         return {
             isRevisionReturn: items.length > 0,
             sampleNos,
             items,
-            idPenugasan: items[0]?.id_penugasan || null,
-            id_penugasan: items[0]?.id_penugasan || null,
+            idPenugasan: items[0]?.idPenugasan || null,
         };
     };
     notifyPenyeliaApproveKeKasi = async (idPenugasanDetail) => {
@@ -641,7 +603,7 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
         const impactedSamples = await this.getSamplesForPenugasanDetail(detailId);
         if (!impactedSamples.length) {
             return [{
-                    id_penugasan_detail: detailId,
+                    idPenugasanDetail: detailId,
                     skipped: true,
                     reason: 'Sampel pada detail penugasan tidak ditemukan.',
                 }];
@@ -659,14 +621,14 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
             ],
         });
         const results = [];
-        const readinessRows = await this.getKasiReadinessBySampleNos(impactedSamples.map((sample) => sample.no_sampel));
+        const readinessRows = await this.getKasiReadinessBySampleNos(impactedSamples.map((sample) => sample.noSampel));
         const fpplCache = new Map();
         for (const readiness of readinessRows) {
-            const noSampel = safeString(readiness.no_sampel || readiness.noSampel).trim();
-            const idRegistrasi = safeString(readiness.id_registrasi || readiness.idRegistrasi).trim();
+            const noSampel = safeString(readiness.noSampel).trim();
+            const idRegistrasi = safeString(readiness.idRegistrasi).trim();
             if (!noSampel) {
                 results.push({
-                    id_penugasan_detail: detailId,
+                    idPenugasanDetail: detailId,
                     skipped: true,
                     reason: 'Nomor sampel tidak valid untuk pengecekan kesiapan review Kasi.',
                 });
@@ -674,19 +636,19 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
             }
             if (!readiness.isReady) {
                 results.push({
-                    no_sampel: noSampel,
-                    id_registrasi: idRegistrasi || null,
+                    noSampel,
+                    idRegistrasi: idRegistrasi || null,
                     skipped: true,
                     reason: `Belum semua parameter pada sampel ${noSampel} siap direview Kasi (${readiness.totalReady}/${readiness.totalParameter}).`,
-                    total_ready: readiness.totalReady,
-                    total_parameter: readiness.totalParameter,
+                    totalReady: readiness.totalReady,
+                    totalParameter: readiness.totalParameter,
                 });
                 continue;
             }
             if (!fpplCache.has(idRegistrasi)) {
                 fpplCache.set(idRegistrasi, await this.getFpplNotificationInfo(idRegistrasi));
             }
-            const fppl = fpplCache.get(idRegistrasi) || { id_registrasi: idRegistrasi, nomor_fppl: null };
+            const fppl = fpplCache.get(idRegistrasi) || { idRegistrasi, nomorFppl: null };
             const revisionContext = await this.getKasiRevisionReadyForKasiContextBySample(noSampel);
             const isRevisionReturn = revisionContext.isRevisionReturn;
             const tipe = await findOrCreateNotificationTypeById(isRevisionReturn
@@ -717,9 +679,9 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
                 });
                 if (existing) {
                     results.push({
-                        penerima_user_nik: penerimaNik,
-                        no_sampel: noSampel,
-                        id_registrasi: idRegistrasi || null,
+                        penerimaUserNik: penerimaNik,
+                        noSampel,
+                        idRegistrasi: idRegistrasi || null,
                         skipped: true,
                         reason: isRevisionReturn
                             ? 'Notifikasi revisi sampel siap review ulang Kasi sudah pernah dikirim.'
@@ -739,16 +701,16 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
                         penerimaUserNik: penerimaNik,
                         penerimaPelangganId: null,
                     });
-                    const penerimaEmail = {
+                    const penerimaEmail = toCamelCaseDeep({
                         ...penerima,
-                        nama_pegawai: pegawai.nama_pegawai || null,
-                    };
-                    const emailPayload = isRevisionReturn
+                        namaPegawai: pegawai.nama_pegawai || pegawai.namaPegawai || null,
+                    });
+                    const emailRequestData = isRevisionReturn
                         ? buildSupervisorApprovedKasiRevisionToKasiEmail({
                             penerima: penerimaEmail,
                             fppl,
                             idRegistrasi,
-                            nomorFppl: fppl.nomor_fppl || null,
+                            nomorFppl: fppl.nomorFppl || null,
                             sampleNos: [noSampel],
                             items: revisionContext.items,
                             reviewLink: buildKasiReviewLink(noSampel),
@@ -757,7 +719,7 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
                             penerima: penerimaEmail,
                             fppl,
                             idRegistrasi,
-                            nomorFppl: fppl.nomor_fppl || null,
+                            nomorFppl: fppl.nomorFppl || null,
                             sampleNos: [noSampel],
                             totalSample: 1,
                             totalParameter: readiness.totalParameter,
@@ -765,9 +727,9 @@ notifyDeadlineAnalisDekat = async ({ daysAhead = 2 } = {}) => {
                         });
                     await sendNotificationEmail({
                         to,
-                        subject: emailPayload.subject,
-                        body: emailPayload.body,
-                        html: emailPayload.html,
+                        subject: emailRequestData.subject,
+                        body: emailRequestData.body,
+                        html: emailRequestData.html,
                     });
                     results.push(await markEmailSent(log));
                 }

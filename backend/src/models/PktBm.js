@@ -1,7 +1,30 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const PktBm = sequelize.define('pkt_bm', {
+class PktBm extends Model {
+  static associate(models) {
+    PktBm.belongsTo(models.RegBm, { foreignKey: 'id_reg_bm' });
+    PktBm.belongsTo(models.JenisSampel, { foreignKey: 'id_jenis_sampel' });
+    PktBm.belongsTo(models.Klasifikasi, { foreignKey: 'id_klasifikasi' });
+    PktBm.hasMany(models.PktBmNilai, { foreignKey: 'id_pkt_bm' });
+    PktBm.hasMany(models.Lhu, { foreignKey: 'id_pkt_bm' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isActive() {
+    return this.is_active === true || this.is_active === 1;
+  }
+}
+
+PktBm.init({
     id_pkt_bm: {
         type: DataTypes.STRING(8),
         primaryKey: true
@@ -24,7 +47,9 @@ const PktBm = sequelize.define('pkt_bm', {
         defaultValue: 1
     }
 }, {
-    tableName: 'pkt_bm',
+  sequelize,
+  modelName: 'pkt_bm',
+tableName: 'pkt_bm',
     timestamps: false,
 });
 

@@ -1,7 +1,31 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Pegawai = sequelize.define('pegawai', {
+class Pegawai extends Model {
+  static associate(models) {
+    Pegawai.belongsTo(models.User, { foreignKey: 'nik' });
+    Pegawai.hasMany(models.JadwalSampel, { foreignKey: 'id_pegawai_pcc', as: 'jadwal_pcc' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  hasUserAccount() {
+    return Boolean(this.nik);
+  }
+
+  getDisplayName() {
+    return this.nama_pegawai;
+  }
+}
+
+Pegawai.init({
   id_pegawai: {
     type: DataTypes.STRING(10),
     primaryKey: true,
@@ -30,7 +54,9 @@ const Pegawai = sequelize.define('pegawai', {
     defaultValue: false,
   },
 }, {
-  tableName: 'pegawai',
+  sequelize,
+  modelName: 'pegawai',
+tableName: 'pegawai',
   timestamps: false,
 });
 

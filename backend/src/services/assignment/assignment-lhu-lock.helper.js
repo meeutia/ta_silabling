@@ -121,24 +121,17 @@ getPlain = (instance) => {
         await this.assertSamplesEditableBeforeLhu(sampleNos, transaction);
         return sampleNos;
     };
-    toLhuLockPayload = (lockedRows = []) => {
+    toLhuLockRequestData = (lockedRows = []) => {
         const rows = (lockedRows || []).map((row) => ({
             nomorLhu: row.nomor_lhu || row.nomorLhu || null,
-            nomor_lhu: row.nomor_lhu || row.nomorLhu || null,
             noSampel: row.no_sampel || row.noSampel || null,
-            no_sampel: row.no_sampel || row.noSampel || null,
             statusLhu: row.status_lhu || row.statusLhu || null,
-            status_lhu: row.status_lhu || row.statusLhu || null,
         }));
         return {
             isLhuGenerated: rows.length > 0,
-            is_lhu_generated: rows.length > 0,
             isLhuLocked: rows.length > 0,
-            is_lhu_locked: rows.length > 0,
             canEdit: rows.length === 0,
-            can_edit: rows.length === 0,
             lockedLhus: rows,
-            locked_lhus: rows,
         };
     };
 }

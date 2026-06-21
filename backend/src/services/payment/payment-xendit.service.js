@@ -20,7 +20,7 @@ getXenditAuthHeader = () => {
             return { raw: text };
         }
     };
-    requestXendit = async (path, payload) => {
+    requestXendit = async (path, requestData) => {
         const response = await fetch(`${XENDIT_API_BASE}${path}`, {
             method: 'POST',
             headers: {
@@ -28,20 +28,20 @@ getXenditAuthHeader = () => {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(requestData),
         });
-        const data = await this.parseXenditResponse(response);
+        const responseData = await this.parseXenditResponse(response);
         if (!response.ok) {
-            const message = data?.message ||
-                data?.error_code ||
-                data?.errors?.[0]?.message ||
+            const message = responseData?.message ||
+                responseData?.error_code ||
+                responseData?.errors?.[0]?.message ||
                 'Gagal membuat sesi pembayaran Xendit.';
             const error = new Error(message);
             error.statusCode = response.status;
-            error.payload = data;
+            error.data = responseData;
             throw error;
         }
-        return data;
+        return responseData;
     };
     getXendit = async (path) => {
         const response = await fetch(`${XENDIT_API_BASE}${path}`, {
@@ -51,18 +51,18 @@ getXenditAuthHeader = () => {
                 Accept: 'application/json',
             },
         });
-        const data = await this.parseXenditResponse(response);
+        const responseData = await this.parseXenditResponse(response);
         if (!response.ok) {
-            const message = data?.message ||
-                data?.error_code ||
-                data?.errors?.[0]?.message ||
+            const message = responseData?.message ||
+                responseData?.error_code ||
+                responseData?.errors?.[0]?.message ||
                 'Gagal mengambil status sesi pembayaran Xendit.';
             const error = new Error(message);
             error.statusCode = response.status;
-            error.payload = data;
+            error.data = responseData;
             throw error;
         }
-        return data;
+        return responseData;
     };
     getAllowedXenditPaymentChannels = () => {
         return String(process.env.XENDIT_ALLOWED_PAYMENT_CHANNELS || '')
@@ -70,25 +70,25 @@ getXenditAuthHeader = () => {
             .map((channel) => channel.trim().toUpperCase())
             .filter(Boolean);
     };
-    createXenditPaymentSession = async (payload) => {
+    createXenditPaymentSession = async (data) => {
         const envAllowed = this.getAllowedXenditPaymentChannels();
-        const finalPayload = {
-            ...payload,
-            ...(payload?.allowed_payment_channels?.length > 0
-                ? { allowed_payment_channels: payload.allowed_payment_channels }
+        const finalData = {
+            ...data,
+            ...(data?.allowed_payment_channels?.length > 0
+                ? { allowed_payment_channels: data.allowed_payment_channels }
                 : envAllowed.length > 0
                     ? { allowed_payment_channels: envAllowed }
                     : {}),
         };
-        return this.requestXendit('/sessions', finalPayload);
+        return this.requestXendit('/sessions', finalData);
     };
-    getWebhookData = (payload = {}) => {
-        return payload.data && typeof payload.data === 'object' ? payload.data : payload;
+    getWebhookData = (data = {}) => {
+        return data.data && typeof data.data === 'object' ? data.data : data;
     };
-    normalizeSessionStatus = (payload = {}) => {
-        const event = String(payload.event || '').toLowerCase();
-        const data = this.getWebhookData(payload);
-        const status = String(data.status || '').toUpperCase();
+    normalizeSessionStatus = (rawData = {}) => {
+        const event = String(rawData.event || '').toLowerCase();
+        const webhookData = this.getWebhookData(rawData);
+        const status = String(webhookData.status || '').toUpperCase();
         if (event === 'payment_session.completed')
             return 'COMPLETED';
         if (event === 'payment_session.expired')

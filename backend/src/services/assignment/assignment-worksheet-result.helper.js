@@ -197,8 +197,6 @@ isValidResultExpression = (value) => {
                 updated_at: new Date(),
             }, {
                 where: {
-                    kode_lka: kode,
-                    no_sampel: { [Op.in]: sampleNos },
                     status_revisi: { [Op.in]: activeAnalystRevisionStatuses },
                 },
                 transaction,

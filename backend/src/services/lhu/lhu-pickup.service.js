@@ -6,12 +6,11 @@ const { LHU_STATUS } = require('../../constants/lhu-status.constant');
 const RequestStatus = require('../../constants/request-status');
 const notificationService = require('../notification/notification.service');
 const WorkflowLogService = require('../workflow/workflow-log.service');
-const ReferenceService = require('../reference.service');
+const { getHariLibur } = require('../../utils/holiday-calendar.util');
 const { assertBusinessDateOrThrow: assertScheduleBusinessDateOrThrow, normalizeDateOnly, normalizeTimeForDb: normalizeScheduleTimeForDb, } = require('../../utils/schedule-policy.util');
 class LhuPickupService {
-    constructor({ notificationService: injectedNotificationService = notificationService, referenceService = ReferenceService } = {}) {
+    constructor({ notificationService: injectedNotificationService = notificationService } = {}) {
         this.notificationService = injectedNotificationService;
-        this.referenceService = referenceService;
     }
     getPlain = (instance) => {
         if (!instance)
@@ -20,6 +19,22 @@ class LhuPickupService {
             return instance.get({ plain: true });
         return instance;
     };
+    mapPickupSchedule = (row = {}) => {
+        const schedule = this.getPlain(row) || {};
+        return {
+            idJadwalLhu: schedule.id_jadwal_lhu || null,
+            idRegistrasi: schedule.id_registrasi || null,
+            tanggalPengambilan: schedule.tanggal_pengambilan || null,
+            jamPengambilan: schedule.jam_pengambilan || null,
+            statusPengambilan: schedule.status_pengambilan || null,
+            catatan: schedule.catatan || null,
+            dijadwalkanOleh: schedule.dijadwalkan_oleh || null,
+            dijadwalkanPada: schedule.dijadwalkan_pada || null,
+            namaPengambil: schedule.nama_pengambil || null,
+            diambilPada: schedule.diambil_pada || null,
+        };
+    };
+
     pickObject = (obj, keys = []) => {
         if (!obj || typeof obj !== 'object')
             return null;
@@ -176,7 +191,7 @@ class LhuPickupService {
     };
     loadHolidaysForScheduleValidation = async () => {
         try {
-            return await this.referenceService.getHariLibur();
+            return await getHariLibur();
         }
         catch (error) {
             const err = new Error(`Gagal memvalidasi tanggal merah: ${error.message || 'referensi hari libur tidak tersedia'}.`);
@@ -307,14 +322,14 @@ class LhuPickupService {
                 continue;
             }
             rows.push({
-                id_registrasi: fppl.id_registrasi,
-                nomor_fppl: fppl.nomor_fppl,
+                idRegistrasi: fppl.id_registrasi,
+                nomorFppl: fppl.nomor_fppl,
                 pelanggan: pelanggan.nama_instansi || pelanggan.pic || '-',
-                total_sampel: totalSampel,
-                total_lhu: coverage.finalLhuRows.length,
-                status_pengambilan: schedule?.status_pengambilan || 'Belum Dijadwalkan',
-                tanggal_pengambilan: schedule?.tanggal_pengambilan || null,
-                jam_pengambilan: schedule?.jam_pengambilan || null,
+                totalSampel,
+                totalLhu: coverage.finalLhuRows.length,
+                statusPengambilan: schedule?.status_pengambilan || 'Belum Dijadwalkan',
+                tanggalPengambilan: schedule?.tanggal_pengambilan || null,
+                jamPengambilan: schedule?.jam_pengambilan || null,
             });
         }
         return rows;
@@ -347,7 +362,7 @@ class LhuPickupService {
                 transaction,
                 lock: transaction.LOCK.UPDATE,
             });
-            const payload = {
+            const requestData = {
                 tanggal_pengambilan: tanggal,
                 jam_pengambilan: jam,
                 catatan: catatan ? String(catatan).trim() : null,
@@ -364,7 +379,7 @@ class LhuPickupService {
                     err.statusCode = 400;
                     throw err;
                 }
-                saved = await existing.update(payload, { transaction });
+                saved = await existing.update(requestData, { transaction });
             }
             else {
                 // Kolom jadwal_pengambilan_lhu.id_jadwal_lhu = varchar(10).
@@ -374,7 +389,7 @@ class LhuPickupService {
                 saved = await JadwalPengambilanLhu.create({
                     id_jadwal_lhu: newId,
                     id_registrasi: requestId,
-                    ...payload,
+                    ...requestData,
                 }, { transaction });
             }
             await this.moveRequestToWaitingLhuPickup({
@@ -382,23 +397,13 @@ class LhuPickupService {
                 actorNik: userNik,
                 transaction,
             });
-            const plain = this.getPlain(saved);
-            return {
-                id_jadwal_lhu: plain.id_jadwal_lhu,
-                id_registrasi: plain.id_registrasi,
-                tanggal_pengambilan: plain.tanggal_pengambilan,
-                jam_pengambilan: plain.jam_pengambilan,
-                status_pengambilan: plain.status_pengambilan,
-                catatan: plain.catatan,
-                dijadwalkan_oleh: plain.dijadwalkan_oleh,
-                dijadwalkan_pada: plain.dijadwalkan_pada,
-            };
+            return this.mapPickupSchedule(saved);
         });
         // Kirim email di background agar respons simpan jadwal tidak tertahan proses SMTP.
         // Jika email gagal, jadwal tetap tersimpan dan error cukup dicatat di log server.
         setImmediate(() => {
             notificationService
-                .notifyJadwalPengambilanLhu(result.id_jadwal_lhu)
+                .notifyJadwalPengambilanLhu(result.idJadwalLhu)
                 .catch((error) => {
                 console.error('Gagal kirim email jadwal pengambilan LHU:', error);
             });
@@ -500,13 +505,13 @@ class LhuPickupService {
                 actorNik: userNik,
                 transaction,
             });
-            const plain = this.getPlain(saved);
+            const pickupSchedule = this.mapPickupSchedule(saved);
             return {
-                id_registrasi: plain.id_registrasi,
-                status_fppl: fpplInstance.status_fppl,
-                status_pengambilan: plain.status_pengambilan,
-                nama_pengambil: plain.nama_pengambil,
-                diambil_pada: plain.diambil_pada,
+                idRegistrasi: pickupSchedule.idRegistrasi,
+                statusFppl: fpplInstance.status_fppl,
+                statusPengambilan: pickupSchedule.statusPengambilan,
+                namaPengambil: pickupSchedule.namaPengambil,
+                diambilPada: pickupSchedule.diambilPada,
             };
         });
     };

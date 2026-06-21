@@ -159,27 +159,27 @@ calculateAccreditationStats = (details = []) => {
     getDetailOrderDescriptor = (row = {}) => {
         return {
             key: this.getFallbackParameterKey(row),
-            detail_key: row.detail_key || row.detailKey || row.key || null,
-            id_fppl_parameter_metode: row.id_fppl_parameter_metode || row.idFpplParameterMetode || null,
-            id_metode_parameter: row.id_metode_parameter || row.idMetodeParameter || row.id_parameter_metode || row.idParameterMetode || null,
-            id_parameter: row.id_parameter || row.idParameter || null,
-            nama_parameter: row.nama_parameter_snapshot || row.namaParameterSnapshot || row.nama_parameter || row.namaParameter || null,
-            metode: row.metode_snapshot || row.metodeSnapshot || row.nama_metode || row.namaMetode || row.metode || null,
-            acuan_metode: row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode || null,
+            detailKey: row.detailKey || row.detail_key || row.key || null,
+            idFpplParameterMetode: row.idFpplParameterMetode || row.id_fppl_parameter_metode || null,
+            idMetodeParameter: row.idMetodeParameter || row.id_metode_parameter || row.idParameterMetode || row.id_parameter_metode || null,
+            idParameter: row.idParameter || row.id_parameter || null,
+            namaParameter: row.namaParameterSnapshot || row.nama_parameter_snapshot || row.namaParameter || row.nama_parameter || null,
+            metode: row.metodeSnapshot || row.metode_snapshot || row.namaMetode || row.nama_metode || row.metode || null,
+            acuanMetode: row.acuanMetodeSnapshot || row.acuan_metode_snapshot || row.acuanMetode || row.acuan_metode || null,
         };
     };
     getDetailOrderCandidateKeys = (row = {}) => {
         const descriptor = this.getDetailOrderDescriptor(row);
-        const textKey = [descriptor.nama_parameter, descriptor.metode, descriptor.acuan_metode]
+        const textKey = [descriptor.namaParameter, descriptor.metode, descriptor.acuanMetode]
             .map((value) => String(value || '').trim().toLowerCase())
             .filter(Boolean)
             .join('|');
         return [
-            descriptor.detail_key,
+            descriptor.detailKey,
             descriptor.key,
-            descriptor.id_fppl_parameter_metode,
-            descriptor.id_metode_parameter,
-            descriptor.id_parameter,
+            descriptor.idFpplParameterMetode,
+            descriptor.idMetodeParameter,
+            descriptor.idParameter,
             textKey,
         ]
             .map((value) => String(value || '').trim())
@@ -213,7 +213,6 @@ calculateAccreditationStats = (details = []) => {
                 ...row,
                 // Kolom urutan_lhu tidak lagi disimpan di tabel detail_lhu.
                 // Nilai ini hanya urutan virtual untuk tampilan dan generate PDF.
-                urutan_lhu: index + 1,
                 urutanLhu: index + 1,
             }));
     };
@@ -230,16 +229,15 @@ calculateAccreditationStats = (details = []) => {
             const matchedIndex = candidateKeys
                 .map((key) => orderIndexByKey.get(String(key).toLowerCase()))
                 .find((index) => Number.isInteger(index));
-            const payload = { ...row, __matchedOrderIndex: matchedIndex, __defaultIndex: defaultIndex };
+            const data = { ...row, __matchedOrderIndex: matchedIndex, __defaultIndex: defaultIndex };
             if (Number.isInteger(matchedIndex))
-                matched.push(payload);
+                matched.push(data);
             else
-                unmatched.push(payload);
+                unmatched.push(data);
         });
         return [...matched.sort((a, b) => a.__matchedOrderIndex - b.__matchedOrderIndex || a.__defaultIndex - b.__defaultIndex), ...unmatched]
             .map(({ __matchedOrderIndex, __defaultIndex, ...row }, index) => ({
                 ...row,
-                urutan_lhu: index + 1,
                 urutanLhu: index + 1,
             }));
     };

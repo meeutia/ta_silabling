@@ -1,6 +1,7 @@
-const { Lhu, Sampel, FpplSampel, JenisSampel, RegBm, Fppl, Pelanggan, PktBm, Klasifikasi, PktBmParam, Satuan, PktBmNilai, Parameter, ParameterMetode, Metode, Pegawai, JadwalSampel, Lka, LkaHasil, PenugasanDetail, } = require('../../models/Associations');
+const { Lhu, Sampel, FpplSampel, JenisSampel, RegBm, Fppl, Pelanggan, PktBm, Klasifikasi, PktBmParam, Satuan, PktBmNilai, Parameter, ParameterMetode, Metode, Pegawai, JadwalSampel, Lka, LkaHasil, PenugasanDetail, AktivitasSistemLog, } = require('../../models/Associations');
 const { formatSampleNoList, formatSampleFieldLines, getSampleOrderValue, sortRowsBySampleOrder, normalizeSampleTypeForLhu, normalizeSampleCollectorForLhu, } = require('./lhu-pdf-format.util');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
+const { toCamelCaseDeep } = require('../../utils/case-transform.util');
 class LhuPdfDataService {
 getPlain = (instance) => {
         return instance ? instance.get({ plain: true }) : null;
@@ -18,6 +19,53 @@ getPlain = (instance) => {
                 return source[key];
         }
         return [];
+    };
+    pickValue = (source = {}, keys = []) => {
+        for (const key of keys) {
+            const value = source?.[key];
+            if (value !== undefined && value !== null && String(value).trim() !== '')
+                return value;
+        }
+        return null;
+    };
+    normalizeDetailOrderInput = (detailOrder = []) => {
+        if (Array.isArray(detailOrder))
+            return detailOrder;
+        if (!detailOrder)
+            return [];
+        if (typeof detailOrder === 'string') {
+            try {
+                const parsed = JSON.parse(detailOrder);
+                return Array.isArray(parsed) ? parsed : [];
+            }
+            catch {
+                return detailOrder.split(/[\n,]+/).map((item) => item.trim()).filter(Boolean);
+            }
+        }
+        return [];
+    };
+    getStoredDetailOrderForLhu = async (nomorLhu, transaction = null) => {
+        const lhuNo = String(nomorLhu || '').trim();
+        if (!lhuNo)
+            return [];
+        const row = await AktivitasSistemLog.findOne({
+            where: {
+                entity_type: 'LHU',
+                entity_id: lhuNo,
+                aksi: 'MENYIMPAN_URUTAN_DETAIL_LHU',
+            },
+            order: [['dibuat_pada', 'DESC'], ['id_aktivitas_log', 'DESC']],
+            transaction,
+        });
+        if (!row?.catatan)
+            return [];
+        try {
+            const parsed = JSON.parse(row.catatan);
+            return this.normalizeDetailOrderInput(parsed?.detailOrder || parsed?.detail_order || parsed);
+        }
+        catch {
+            return [];
+        }
     };
     toTinyIntFlag = (value) => {
         if (value === true || value === 1)
@@ -164,7 +212,7 @@ getPlain = (instance) => {
         const pelanggan = this.pickObject(fppl, ['pelanggan', 'Pelanggan']) || {};
         const pktBm = withPaketBmDisplayFields(this.pickObject(row, ['pkt_bm', 'PktBm']) || {});
         const regBm = this.pickObject(pktBm, ['reg_bm', 'RegBm']) || {};
-        return {
+        const header = {
             ...row,
             nomor_fppl: fppl.nomor_fppl || null,
             tanggal_pendaftaran: fppl.tanggal_pendaftaran || null,
@@ -182,11 +230,37 @@ getPlain = (instance) => {
             reg_bm_instansi: regBm.instansi || null,
             ref_reg: regBm.ref_reg || null,
         };
+        return {
+            ...header,
+            nomorLhu: header.nomor_lhu || null,
+            idRegistrasi: header.id_registrasi || null,
+            idPktBm: header.id_pkt_bm || null,
+            statusLhu: header.status_lhu || null,
+            fileLhuPath: header.file_lhu_path || null,
+            qcBy: header.qc_by || null,
+            kalabBy: header.kalab_by || null,
+            nomorFppl: header.nomor_fppl || null,
+            tanggalPendaftaran: header.tanggal_pendaftaran || null,
+            maksudPengujian: header.maksud_pengujian || null,
+            lokasiPengambilanSampel: header.lokasi_pengambilan_sampel || null,
+            jenisPengambilanSampel: header.jenis_pengambilan_sampel || null,
+            namaPelanggan: header.nama_pelanggan || null,
+            alamatPelanggan: header.alamat_pelanggan || null,
+            picPelanggan: header.pic_pelanggan || null,
+            telpPelanggan: header.telp_pelanggan || null,
+            emailPelanggan: header.email_pelanggan || null,
+            namaPkt: header.nama_pkt || null,
+            regBmInstansi: header.reg_bm_instansi || null,
+            refReg: header.ref_reg || null,
+            teksLhu: header.teks_lhu || null,
+        };
     };
     getLhuSampleRowsForPdf = async (nomorLhu, transaction = null) => {
         const instances = await Sampel.findAll({
             where: { nomor_lhu: nomorLhu },
             include: [
+                { model: JenisSampel, as: 'jenis_sampel', required: false },
+                { model: RegBm, as: 'reg_bm', required: false },
                 {
                     model: FpplSampel,
                     as: 'fppl_sampel',
@@ -200,18 +274,29 @@ getPlain = (instance) => {
         const mappedRows = instances.map((instance, index) => {
             const sample = this.getPlain(instance) || {};
             const fpplSampel = this.pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
-            const jenisSampel = this.pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
+            const jenisSampel = this.pickObject(sample, ['jenis_sampel', 'JenisSampel']) || this.pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
+            const noSampel = sample.no_sampel || null;
+            const jenisSampelLabel = jenisSampel.jenis_sampel || null;
             return {
-                no_sampel: sample.no_sampel || null,
+                no_sampel: noSampel,
+                noSampel,
                 urutan_sampel: index + 1,
+                urutanSampel: index + 1,
                 tanggal_pengambilan_sampel: sample.tanggal_pengambilan_sampel || null,
+                tanggalPengambilanSampel: sample.tanggal_pengambilan_sampel || null,
                 diterima_pada: sample.diterima_pada || null,
+                diterimaPada: sample.diterima_pada || null,
                 kondisi_sampel: sample.kondisi_sampel || null,
+                kondisiSampel: sample.kondisi_sampel || null,
                 abnormalitas_sampel: sample.abnormalitas_sampel || null,
+                abnormalitasSampel: sample.abnormalitas_sampel || null,
                 lokasi_spesifik: sample.lokasi_spesifik || null,
+                lokasiSpesifik: sample.lokasi_spesifik || null,
                 koordinat: sample.koordinat || null,
                 acuan_pengambilan_sampel: sample.acuan_pengambilan_sampel || null,
-                jenis_sampel: jenisSampel.jenis_sampel || null,
+                acuanPengambilanSampel: sample.acuan_pengambilan_sampel || null,
+                jenis_sampel: jenisSampelLabel,
+                jenisSampel: jenisSampelLabel,
             };
         });
         return this.dedupeSampleRowsForPdf(mappedRows);
@@ -426,11 +511,11 @@ getPlain = (instance) => {
             const matchedIndex = this.getPdfDetailOrderCandidateKeys(row)
                 .map((key) => orderIndexByKey.get(String(key).toLowerCase()))
                 .find((index) => Number.isInteger(index));
-            const payload = { ...row, __matchedOrderIndex: matchedIndex, __defaultIndex: defaultIndex };
+            const requestData = { ...row, __matchedOrderIndex: matchedIndex, __defaultIndex: defaultIndex };
             if (Number.isInteger(matchedIndex))
-                matched.push(payload);
+                matched.push(requestData);
             else
-                unmatched.push(payload);
+                unmatched.push(requestData);
         });
         return [...matched.sort((a, b) => a.__matchedOrderIndex - b.__matchedOrderIndex || a.__defaultIndex - b.__defaultIndex), ...unmatched]
             .map(({ __matchedOrderIndex, __defaultIndex, ...row }) => row);
@@ -470,10 +555,12 @@ getPlain = (instance) => {
                         bm_snapshot: nilaiBm,
                         satuan_bm_snapshot: satuanBm,
                         ada_di_bm_snapshot: adaDiBm,
-                        resultsBySample: new Map(),
+                        // Gunakan plain object, bukan Map, agar toCamelCaseDeep tidak corrupt
+                        resultsBySample: {},
                     });
                 }
-                grouped.get(key).resultsBySample.set(sampleNo, result);
+                // Simpan ke plain object, bukan Map.set()
+                grouped.get(key).resultsBySample[sampleNo] = result;
             });
         }
         const sortedGroups = this.applyStoredDetailOrder(
@@ -486,26 +573,48 @@ getPlain = (instance) => {
                 const sampleNo = String(sample.no_sampel || '').trim();
                 if (!sampleNo)
                     return;
-                const result = group.resultsBySample.get(sampleNo) || {};
+                // resultsBySample sekarang plain object, bukan Map
+                const result = group.resultsBySample[sampleNo] || {};
+                const urutanSampel = sampleOrderMap.get(sampleNo) || getSampleOrderValue(sample, sampleIndex);
+                const urutanLhu = detailIndex + 1;
+                const hasilSnapshot = result.hasil || null;
                 rows.push({
                     nomor_lhu: nomorLhu,
+                    nomorLhu,
                     no_sampel: sampleNo,
-                    urutan_sampel: sampleOrderMap.get(sampleNo) || getSampleOrderValue(sample, sampleIndex),
-                    urutan_lhu: detailIndex + 1,
+                    noSampel: sampleNo,
+                    urutan_sampel: urutanSampel,
+                    urutanSampel,
+                    urutan_lhu: urutanLhu,
+                    urutanLhu,
                     id_fppl_parameter_metode: group.id_fppl_parameter_metode,
+                    idFpplParameterMetode: group.id_fppl_parameter_metode,
                     id_metode_parameter: group.id_metode_parameter,
+                    idMetodeParameter: group.id_metode_parameter,
                     id_parameter: group.id_parameter,
+                    idParameter: group.id_parameter,
                     nama_parameter_snapshot: group.nama_parameter_snapshot,
+                    namaParameterSnapshot: group.nama_parameter_snapshot,
                     metode_snapshot: group.metode_snapshot,
+                    metodeSnapshot: group.metode_snapshot,
                     acuan_metode_snapshot: group.acuan_metode_snapshot,
-                    hasil_snapshot: result.hasil || null,
+                    acuanMetodeSnapshot: group.acuan_metode_snapshot,
+                    hasil_snapshot: hasilSnapshot,
+                    hasilSnapshot,
                     is_terakreditasi: group.is_terakreditasi,
+                    isTerakreditasi: group.is_terakreditasi,
                     is_insitu_snapshot: group.is_insitu_snapshot,
+                    isInsituSnapshot: group.is_insitu_snapshot,
                     is_subkontrak_snapshot: group.is_subkontrak_snapshot,
+                    isSubkontrakSnapshot: group.is_subkontrak_snapshot,
                     bm_snapshot: group.bm_snapshot,
+                    bmSnapshot: group.bm_snapshot,
                     satuan_bm_snapshot: group.satuan_bm_snapshot,
+                    satuanBmSnapshot: group.satuan_bm_snapshot,
                     ada_di_bm_snapshot: group.ada_di_bm_snapshot,
-                    tanggal_sampling: sample.tanggal_pengambilan_sampel || null,
+                    adaDiBmSnapshot: group.ada_di_bm_snapshot,
+                    tanggal_sampling: sample.tanggal_pengambilan_sampel || sample.tanggalPengambilanSampel || null,
+                    tanggalSampling: sample.tanggal_pengambilan_sampel || sample.tanggalPengambilanSampel || null,
                 });
             });
         });
@@ -520,39 +629,77 @@ getPlain = (instance) => {
             throw new Error('Data LHU tidak ditemukan untuk generate PDF.');
         }
         const sampleRows = await this.getLhuSampleRowsForPdf(nomorLhu, transaction);
+        const explicitDetailOrder = this.normalizeDetailOrderInput(options.detailOrder || options.detail_order || []);
+        const storedDetailOrder = explicitDetailOrder.length ? explicitDetailOrder : await this.getStoredDetailOrderForLhu(nomorLhu, transaction);
         const [qc, kalab, details] = await Promise.all([
-            this.getPegawaiSnapshot(header.qc_by, transaction),
-            this.getPegawaiSnapshot(header.kalab_by, transaction),
-            this.getLhuDetailRowsForPdf(nomorLhu, header, sampleRows, transaction, options),
+            this.getPegawaiSnapshot(header.qc_by || header.qcBy, transaction),
+            this.getPegawaiSnapshot(header.kalab_by || header.kalabBy, transaction),
+            this.getLhuDetailRowsForPdf(nomorLhu, header, sampleRows, transaction, { ...options, detailOrder: storedDetailOrder }),
         ]);
         const firstSample = sampleRows[0] || {};
         const sampleNoList = formatSampleNoList(sampleRows);
         const coordinateText = formatSampleFieldLines(sampleRows, (row) => row.koordinat, firstSample.koordinat || null, { repeatShared: false });
+        const jenisSampel = normalizeSampleTypeForLhu(firstSample.jenis_sampel || firstSample.jenisSampel);
+        const jenisPengambilanSampel = normalizeSampleCollectorForLhu(header.jenis_pengambilan_sampel || header.jenisPengambilanSampel);
+        const tanggalPengambilanSampel = firstSample.tanggal_pengambilan_sampel || firstSample.tanggalPengambilanSampel || null;
+        const tanggalPenerimaan = firstSample.diterima_pada || firstSample.diterimaPada || null;
+        const abnormalitasSampel = formatSampleFieldLines(sampleRows, (row) => row.abnormalitas_sampel || row.abnormalitasSampel, firstSample.abnormalitas_sampel || firstSample.abnormalitasSampel || null);
+        const lokasiPengambilanSampel = formatSampleFieldLines(sampleRows, (row) => row.lokasi_spesifik || row.lokasiSpesifik || header.lokasi_pengambilan_sampel || header.lokasiPengambilanSampel, firstSample.lokasi_spesifik || firstSample.lokasiSpesifik || header.lokasi_pengambilan_sampel || header.lokasiPengambilanSampel || null);
+        const acuanPengambilanSampel = formatSampleFieldLines(sampleRows, (row) => row.acuan_pengambilan_sampel || row.acuanPengambilanSampel, firstSample.acuan_pengambilan_sampel || firstSample.acuanPengambilanSampel || null);
+        const standarLhu = header.teks_lhu || header.teksLhu || [header.reg_bm_instansi || header.regBmInstansi, header.ref_reg || header.refReg].filter(Boolean).join(' - ') || null;
         const lhu = {
             ...header,
+            nomor_lhu: header.nomor_lhu || header.nomorLhu || null,
+            nomorLhu: header.nomorLhu || header.nomor_lhu || null,
+            nomor_fppl: header.nomor_fppl || header.nomorFppl || null,
+            nomorFppl: header.nomorFppl || header.nomor_fppl || null,
+            nama_pelanggan: header.nama_pelanggan || header.namaPelanggan || null,
+            namaPelanggan: header.namaPelanggan || header.nama_pelanggan || null,
+            alamat_pelanggan: header.alamat_pelanggan || header.alamatPelanggan || null,
+            alamatPelanggan: header.alamatPelanggan || header.alamat_pelanggan || null,
+            telp_pelanggan: header.telp_pelanggan || header.telpPelanggan || null,
+            telpPelanggan: header.telpPelanggan || header.telp_pelanggan || null,
+            pic_pelanggan: header.pic_pelanggan || header.picPelanggan || null,
+            picPelanggan: header.picPelanggan || header.pic_pelanggan || null,
             no_sampel: sampleNoList,
+            noSampel: sampleNoList,
             sampleRows,
             sample_rows: sampleRows,
-            jenis_sampel: normalizeSampleTypeForLhu(firstSample.jenis_sampel),
-            jenisSampel: normalizeSampleTypeForLhu(firstSample.jenis_sampel),
-            jenis_pengambilan_sampel: normalizeSampleCollectorForLhu(header.jenis_pengambilan_sampel),
-            tanggal_pengambilan_sampel: firstSample.tanggal_pengambilan_sampel || null,
-            tanggal_penerimaan: firstSample.diterima_pada || null,
-            jam_penerimaan: firstSample.diterima_pada ? new Date(firstSample.diterima_pada).toTimeString().slice(0, 8) : null,
-            tanggal_sampling: firstSample.tanggal_pengambilan_sampel || null,
-            kondisi_sampel: firstSample.kondisi_sampel || null,
-            abnormalitas_sampel: formatSampleFieldLines(sampleRows, (row) => row.abnormalitas_sampel, firstSample.abnormalitas_sampel || null),
-            lokasi_spesifik: formatSampleFieldLines(sampleRows, (row) => row.lokasi_spesifik || header.lokasi_pengambilan_sampel, firstSample.lokasi_spesifik || header.lokasi_pengambilan_sampel || null),
-            lokasi_pengambilan_sampel: formatSampleFieldLines(sampleRows, (row) => row.lokasi_spesifik || header.lokasi_pengambilan_sampel, firstSample.lokasi_spesifik || header.lokasi_pengambilan_sampel || null),
+            jenis_sampel: jenisSampel,
+            jenisSampel,
+            jenis_pengambilan_sampel: jenisPengambilanSampel,
+            jenisPengambilanSampel,
+            tanggal_pengambilan_sampel: tanggalPengambilanSampel,
+            tanggalPengambilanSampel,
+            tanggal_penerimaan: tanggalPenerimaan,
+            tanggalPenerimaan,
+            jam_penerimaan: tanggalPenerimaan ? new Date(tanggalPenerimaan).toTimeString().slice(0, 8) : null,
+            jamPenerimaan: tanggalPenerimaan ? new Date(tanggalPenerimaan).toTimeString().slice(0, 8) : null,
+            tanggal_sampling: tanggalPengambilanSampel,
+            tanggalSampling: tanggalPengambilanSampel,
+            kondisi_sampel: firstSample.kondisi_sampel || firstSample.kondisiSampel || null,
+            kondisiSampel: firstSample.kondisi_sampel || firstSample.kondisiSampel || null,
+            abnormalitas_sampel: abnormalitasSampel,
+            abnormalitasSampel,
+            lokasi_spesifik: lokasiPengambilanSampel,
+            lokasiSpesifik: lokasiPengambilanSampel,
+            lokasi_pengambilan_sampel: lokasiPengambilanSampel,
+            lokasiPengambilanSampel,
             koordinat: coordinateText,
-            acuan_pengambilan_sampel: formatSampleFieldLines(sampleRows, (row) => row.acuan_pengambilan_sampel, firstSample.acuan_pengambilan_sampel || null),
-            standar_lhu: header.teks_lhu || [header.reg_bm_instansi, header.ref_reg].filter(Boolean).join(' - ') || null,
+            acuan_pengambilan_sampel: acuanPengambilanSampel,
+            acuanPengambilanSampel,
+            standar_lhu: standarLhu,
+            standarLhu,
             qc_nama: qc.nama_pegawai,
+            qcNama: qc.nama_pegawai,
             qc_nip: qc.nip,
+            qcNip: qc.nip,
             kalab_nama: kalab.nama_pegawai,
+            kalabNama: kalab.nama_pegawai,
             kalab_nip: kalab.nip,
+            kalabNip: kalab.nip,
         };
-        return { lhu, details };
+        return toCamelCaseDeep({ lhu, details });
     };
 }
 module.exports = new LhuPdfDataService();

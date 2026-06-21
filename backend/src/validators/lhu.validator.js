@@ -9,7 +9,7 @@ const { validateOperationalTime } = require('../utils/schedule-policy.util');
 
 const validateFinalizeLhu = (req, res, next) => {
   const body = req.body || {};
-  const rawList = body.noSampelList || body.no_sampel_list || body.noSampels || body.no_sampels;
+  const rawList = body.no_sampel_list || body.noSampelList || body.sampleNos || body.sample_nos || body.noSampels || body.no_sampels;
   const hasList = Array.isArray(rawList)
     ? rawList.some((item) => !isBlank(item))
     : !isBlank(rawList);

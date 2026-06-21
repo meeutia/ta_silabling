@@ -12,11 +12,11 @@ export const dashboardApi = {
   },
 
   getParameterTariffs() {
-    return requestData('/references/parameter-tariffs', {}, authConfig);
+    return requestData('/catalog/parameter-tariffs', {}, authConfig);
   },
 
   getPickupTariffs() {
-    return requestData('/references/pickup-tariffs', {}, authConfig);
+    return requestData('/catalog/pickup-tariffs', {}, authConfig);
   },
 
   getLhuPickupQueue() {

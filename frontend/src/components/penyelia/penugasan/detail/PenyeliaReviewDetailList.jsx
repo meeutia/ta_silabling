@@ -120,6 +120,32 @@ function getDetailPendingKasiRevisionRequests(detail = {}, pendingKasiRevisions 
 function getSampleNumber(row = {}) {
   return String(row.noSampel || row.no_sampel || '').trim();
 }
+function getSamplePreviousResult(row = {}) {
+  const comparison = getRevisionResultComparison(row);
+  const value = String(
+    row.hasilSebelumnya ||
+      row.hasil_sebelumnya ||
+      row.hasilSebelumRevisi ||
+      row.hasil_sebelum_revisi ||
+      comparison?.hasilSebelum ||
+      ''
+  ).trim();
+
+  return value || '-';
+}
+
+function getSampleCurrentResult(row = {}, comparison = null) {
+  const value = String(
+    row.hasil ||
+      row.hasilSetelahRevisi ||
+      row.hasil_setelah_revisi ||
+      comparison?.hasilSetelah ||
+      ''
+  ).trim();
+
+  return value || '-';
+}
+
 
 function getPendingKasiRevisionForSample(detail = {}, sample = {}, pendingKasiRevisionRequests = []) {
   const sampleNo = getSampleNumber(sample);
@@ -162,7 +188,7 @@ function PenyeliaReviewSamplesTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table style={{ width: '100%', minWidth: '1840px', fontSize: '0.875rem' }}>
+      <table style={{ width: '100%', minWidth: '1980px', fontSize: '0.875rem' }}>
         <thead className="border-b border-gray-200 bg-white">
           <tr>
             <th className="w-[150px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
@@ -187,6 +213,9 @@ function PenyeliaReviewSamplesTable({
               Koordinat Sampel
             </th>
             <th className="w-[170px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+              Hasil Sebelumnya
+            </th>
+            <th className="w-[170px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
               Hasil
             </th>
             <th className="w-[270px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
@@ -205,7 +234,7 @@ function PenyeliaReviewSamplesTable({
           {(detail.samples || []).length === 0 ? (
             <tr>
               <td
-                colSpan={11}
+                colSpan={12}
                 className="px-4 py-8 text-center text-sm text-gray-500"
               >
                 Belum ada sampel pada detail ini.
@@ -218,6 +247,8 @@ function PenyeliaReviewSamplesTable({
               const kasiRevisionNote = getSampleKasiPengujianRevisionNote(sample, detail);
               const penyeliaResponseNote = getPenyeliaResponseNote(sample);
               const revisionResultComparison = getRevisionResultComparison(sample);
+              const previousResult = getSamplePreviousResult(sample);
+              const currentResult = getSampleCurrentResult(sample, revisionResultComparison);
               const pendingKasiRevision = getPendingKasiRevisionForSample(
                 detail,
                 sample,
@@ -261,26 +292,21 @@ function PenyeliaReviewSamplesTable({
                     {getKoordinatSampel(sample)}
                   </td>
 
+                  <td className="bg-amber-50/60 px-4 py-3 text-sm text-gray-900 align-top">
+                    {previousResult}
+                    {revisionResultComparison?.catatanSebelum && (
+                      <p className="mt-1 text-xs font-normal text-gray-500">
+                        {revisionResultComparison.catatanSebelum}
+                      </p>
+                    )}
+                  </td>
+
                   <td className="bg-emerald-50/50 px-4 py-3 text-sm font-semibold text-gray-900 align-top">
-                    {revisionResultComparison ? (
-                      <div className="min-w-[240px] space-y-2">
-                        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Hasil sebelum revisi</p>
-                          <p className="mt-1 text-sm font-semibold text-gray-900">{revisionResultComparison.hasilSebelum}</p>
-                          {revisionResultComparison.catatanSebelum && (
-                            <p className="mt-1 text-xs font-normal text-gray-500">{revisionResultComparison.catatanSebelum}</p>
-                          )}
-                        </div>
-                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Hasil revisi sekarang</p>
-                          <p className="mt-1 text-sm font-semibold text-emerald-900">{revisionResultComparison.hasilSetelah}</p>
-                          {revisionResultComparison.catatanSetelah && (
-                            <p className="mt-1 text-xs font-normal text-emerald-700">{revisionResultComparison.catatanSetelah}</p>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      sample.hasHasil || sample.has_hasil ? sample.hasil : '-'
+                    {currentResult}
+                    {revisionResultComparison?.catatanSetelah && (
+                      <p className="mt-1 text-xs font-normal text-emerald-700">
+                        {revisionResultComparison.catatanSetelah}
+                      </p>
                     )}
                   </td>
 

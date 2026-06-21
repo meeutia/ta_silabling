@@ -6,15 +6,16 @@ const { getPlain, pickObject, pickArray, normalizeIdList, uniqueText, firstDate,
 const { parseWorksheetFiles, getPrimaryWorksheetPath, } = require('./assignment-worksheet-files.helper');
 const { getDetailParameterInfo, } = require('./assignment-monitor.mapper');
 const { internalAssignmentWhere, } = require('./assignment-scope.helper');
-const { loadRevisionRowsForLka, markRevisionItemsApprovedByPenyelia, } = require('./assignment-worksheet.service');
+const { loadRevisionRowsForLka } = require('./assignment-worksheet-revision-history.helper');
+const { markRevisionItemsApprovedByPenyelia } = require('./assignment-worksheet-result.helper');
 const { SNAPSHOT_BEFORE_ACTION, logRevisionResultSnapshotFromCurrentResult } = require('./assignment-revision-snapshot.helper');
 const { prefixRevisionNote, stripRevisionNotePrefix, appendRevisionNote, buildRevisionNotePatch, buildRevisionResultNotePatch, buildLkaHasilRevisionResponse, normalizeRevisionTargetItem, buildWorksheetRevisionResponse, collectRevisionNotesForSample, getLkaHasilKey, parseLkaHasilKey, lkaHasilWhereFromKey, lkaHasilWhereFromKeys, } = require('./assignment-revision.helper');
 const { resolveLkaHasilStatus, syncAssignmentHeaderStatusFromDetail, } = require('./assignment-status.helper');
 const { assertPenugasanDetailSamplesEditableBeforeLhu, } = require('./assignment-lhu-lock.helper');
 class AssignmentPenyeliaReviewService {
-normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPayload = null, fallbackKodeLka = null) => {
-        const source = Array.isArray(revisionsPayload) && revisionsPayload.length > 0
-            ? revisionsPayload
+normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsRequestData = null, fallbackKodeLka = null) => {
+        const source = Array.isArray(revisionsRequestData) && revisionsRequestData.length > 0
+            ? revisionsRequestData
             : Array.isArray(hasilTargets)
                 ? hasilTargets
                 : [];
@@ -197,27 +198,18 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPay
                 String(hasil.hasil || '').trim()).length;
             return {
                 idPenugasan: penugasan.id_penugasan,
-                id_penugasan: penugasan.id_penugasan,
                 idPenugasanDetail: row.id_penugasan_detail,
-                id_penugasan_detail: row.id_penugasan_detail,
                 analis: analis.username || penugasan.id_user_analis || '-',
                 analisNama: analis.username || penugasan.id_user_analis || '-',
-                analis_nama: analis.username || penugasan.id_user_analis || '-',
                 parameter: info.namaParameter,
                 namaParameter: info.namaParameter,
-                nama_parameter: info.namaParameter,
                 metode: info.acuanMetode || info.namaMetode || '-',
                 namaMetode: info.namaMetode,
-                nama_metode: info.namaMetode,
                 acuanMetode: info.acuanMetode,
-                acuan_metode: info.acuanMetode,
                 deadline: row.tanggal_tenggat,
                 tanggalTenggat: row.tanggal_tenggat,
-                tanggal_tenggat: row.tanggal_tenggat,
                 statusDetail: row.status_detail,
-                status_detail: row.status_detail,
                 statusLka: lka.status_lka || 'Draft',
-                status_lka: lka.status_lka || 'Draft',
                 totalSampel,
                 total_sampel: totalSampel,
                 totalHasil,
@@ -257,16 +249,15 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPay
         const lka = pickObject(row, ['lka', 'Lka']) || {};
         const lkaHasilRows = pickArray(lka, ['lka_hasils', 'LkaHasils', 'lka_hasil', 'LkaHasil']);
         const lkaRevisionRows = lka?.kode_lka ? await loadRevisionRowsForLka(lka.kode_lka) : [];
-        const worksheetRevisionPayload = buildWorksheetRevisionResponse(lka || {}, lkaRevisionRows, { audience: 'penyelia' });
+        const worksheetRevisionRequestData = buildWorksheetRevisionResponse(lka || {}, lkaRevisionRows, { audience: 'penyelia' });
         const worksheetFiles = parseWorksheetFiles(lka.file_worksheet_path);
         const resultRows = penugasanItems
             .map((item) => {
             const sampel = pickObject(item, ['sampel', 'Sampel']) || {};
             const noSampel = item.no_sampel || sampel.no_sampel;
             const hasilRow = lkaHasilRows.find((hasil) => hasil.no_sampel === noSampel) || {};
-            const revisionNotePayload = collectRevisionNotesForSample(lkaRevisionRows, noSampel, lka?.kode_lka || hasilRow.kode_lka || null, { audience: 'penyelia' });
+            const revisionNoteRequestData = collectRevisionNotesForSample(lkaRevisionRows, noSampel, lka?.kode_lka || hasilRow.kode_lka || null, { audience: 'penyelia' });
             return {
-                kode_lka: lka?.kode_lka || hasilRow.kode_lka || null,
                 kodeLka: lka?.kode_lka || hasilRow.kode_lka || null,
                 no_sampel: noSampel,
                 noSampel,
@@ -280,7 +271,7 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPay
                 hasil: hasilRow.hasil || '',
                 catatan_hasil: hasilRow.catatan_hasil || '',
                 statusReviewHasil: resolveLkaHasilStatus(hasilRow, lka?.status_lka, lkaHasilRows),
-                ...buildLkaHasilRevisionResponse({ ...hasilRow, ...revisionNotePayload }),
+                ...buildLkaHasilRevisionResponse({ ...hasilRow, ...revisionNoteRequestData }),
             };
         })
             .filter((item) => item.no_sampel)
@@ -292,56 +283,39 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPay
         const acuanPengambilanSampel = uniqueText(resultRows.map((item) => item.acuan_pengambilan_sampel));
         return {
             idPenugasan: penugasan.id_penugasan,
-            id_penugasan: penugasan.id_penugasan,
             idPenugasanDetail: row.id_penugasan_detail,
-            id_penugasan_detail: row.id_penugasan_detail,
             analis: analis.username || penugasan.id_user_analis || '-',
             analisNama: analis.username || penugasan.id_user_analis || '-',
-            analis_nama: analis.username || penugasan.id_user_analis || '-',
             parameter: info.namaParameter,
             namaParameter: info.namaParameter,
-            nama_parameter: info.namaParameter,
             metode: info.acuanMetode || info.namaMetode || '-',
             namaMetode: info.namaMetode,
-            nama_metode: info.namaMetode,
             acuanMetode: info.acuanMetode,
-            acuan_metode: info.acuanMetode,
             deadline: row.tanggal_tenggat,
             tanggalTenggat: row.tanggal_tenggat,
-            tanggal_tenggat: row.tanggal_tenggat,
             statusDetail: row.status_detail,
-            status_detail: row.status_detail,
             tanggalSampling,
             tanggal_sampling: tanggalSampling,
             tanggalPengambilanSampel: tanggalSampling,
-            tanggal_pengambilan_sampel: tanggalSampling,
             abnormalitasSampel,
             abnormalitas_sampel: abnormalitasSampel,
             acuanPengambilanSampel,
             acuan_pengambilan_sampel: acuanPengambilanSampel,
-            ...worksheetRevisionPayload,
-            catatanRevisi: worksheetRevisionPayload.catatanRevisiLka || worksheetRevisionPayload.catatanRevisi || null,
-            catatan_revisi: worksheetRevisionPayload.catatan_revisi_lka || worksheetRevisionPayload.catatan_revisi || null,
-            lkaRevisionNote: worksheetRevisionPayload.lkaRevisionNote || null,
-            lka_revision_note: worksheetRevisionPayload.lka_revision_note || null,
+            ...worksheetRevisionRequestData,
+            catatanRevisi: worksheetRevisionRequestData.catatanRevisiLka || worksheetRevisionRequestData.catatanRevisi || null,
+            lkaRevisionNote: worksheetRevisionRequestData.lkaRevisionNote || null,
             worksheet: {
                 kodeLka: lka.kode_lka || null,
-                kode_lka: lka.kode_lka || null,
                 fileWorksheetPath: getPrimaryWorksheetPath(lka.file_worksheet_path),
-                file_worksheet_path: getPrimaryWorksheetPath(lka.file_worksheet_path),
                 worksheetUrl: getPrimaryWorksheetPath(lka.file_worksheet_path),
                 worksheetFiles,
                 statusLka: lka.status_lka || 'Draft',
-                status_lka: lka.status_lka || 'Draft',
-                ...worksheetRevisionPayload,
-                catatanRevisi: worksheetRevisionPayload.catatanRevisiLka || worksheetRevisionPayload.catatanRevisi || null,
-                catatan_revisi: worksheetRevisionPayload.catatan_revisi_lka || worksheetRevisionPayload.catatan_revisi || null,
-                lkaRevisionNote: worksheetRevisionPayload.lkaRevisionNote || null,
-                lka_revision_note: worksheetRevisionPayload.lka_revision_note || null,
+                ...worksheetRevisionRequestData,
+                catatanRevisi: worksheetRevisionRequestData.catatanRevisiLka || worksheetRevisionRequestData.catatanRevisi || null,
+                lkaRevisionNote: worksheetRevisionRequestData.lkaRevisionNote || null,
                 tanggalSampling,
                 tanggal_sampling: tanggalSampling,
                 tanggalPengambilanSampel: tanggalSampling,
-                tanggal_pengambilan_sampel: tanggalSampling,
                 abnormalitasSampel,
                 abnormalitas_sampel: abnormalitasSampel,
                 acuanPengambilanSampel,
@@ -349,35 +323,24 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPay
             },
             results: resultRows.map((item) => ({
                 kodeLka: item.kodeLka || item.kode_lka || lka?.kode_lka || null,
-                kode_lka: item.kode_lka || item.kodeLka || lka?.kode_lka || null,
                 noSampel: item.no_sampel,
-                no_sampel: item.no_sampel,
                 tanggalPengambilanSampel: item.tanggal_pengambilan_sampel || null,
-                tanggal_pengambilan_sampel: item.tanggal_pengambilan_sampel || null,
                 tanggalSampling: item.tanggal_pengambilan_sampel || null,
-                tanggal_sampling: item.tanggal_pengambilan_sampel || null,
                 tanggalPenerimaan: item.tanggal_penerimaan || null,
-                tanggal_penerimaan: item.tanggal_penerimaan || null,
                 jamPenerimaan: item.jam_penerimaan || null,
-                jam_penerimaan: item.jam_penerimaan || null,
                 kondisiSampel: item.kondisi_sampel || '-',
-                kondisi_sampel: item.kondisi_sampel || '-',
                 koordinat: item.koordinat || '-',
                 hasil: item.hasil || '',
                 catatanHasil: item.catatan_hasil || '',
-                catatan_hasil: item.catatan_hasil || '',
                 statusReviewHasil: item.statusReviewHasil || null,
-                status_review_hasil: item.statusReviewHasil || null,
                 ...buildLkaHasilRevisionResponse(item),
                 abnormalitasSampel: item.abnormalitas_sampel || '',
-                abnormalitas_sampel: item.abnormalitas_sampel || '',
                 acuanPengambilanSampel: item.acuan_pengambilan_sampel || '',
-                acuan_pengambilan_sampel: item.acuan_pengambilan_sampel || '',
             })),
         };
     };
-    reviewWorksheet = async (idPenugasanDetail, payload, penyeliaNik) => {
-        const { action, catatanRevisi = null, hasilTargets = [], revisions = [], levelRevisi = null, level_revisi = null, } = payload || {};
+    reviewWorksheet = async (idPenugasanDetail, requestData, penyeliaNik) => {
+        const { action, catatanRevisi = null, hasilTargets = [], revisions = [], levelRevisi = null, level_revisi = null, } = requestData || {};
         if (!['approve', 'revise'].includes(action)) {
             throw new Error('Aksi review tidak valid.');
         }
@@ -539,9 +502,7 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPay
                             const note = noteById.get(id);
                             return {
                                 kodeLka: row.kode_lka,
-                                kode_lka: row.kode_lka,
                                 noSampel: row.no_sampel,
-                                no_sampel: row.no_sampel,
                                 catatanRevisi: stripRevisionNotePrefix(note),
                             };
                         })
@@ -552,20 +513,15 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPay
                     idPenugasanDetail,
                     id_penugasan_detail: idPenugasanDetail,
                     noSampel: targetSampleNos,
-                    no_sampel: targetSampleNos,
-                    hasilTargets: targetRows.map((row) => ({ kodeLka: row.kode_lka, kode_lka: row.kode_lka, noSampel: row.no_sampel, no_sampel: row.no_sampel })).filter((row) => row.kode_lka && row.no_sampel),
-                    hasil_targets: targetRows.map((row) => ({ kodeLka: row.kode_lka, kode_lka: row.kode_lka, noSampel: row.no_sampel, no_sampel: row.no_sampel })).filter((row) => row.kode_lka && row.no_sampel),
+                    hasilTargets: targetRows.map((row) => ({ kodeLka: row.kode_lka,  noSampel: row.no_sampel, })).filter((row) => row.kode_lka && row.no_sampel),
                     catatanRevisi: wholeLkaRevisionNote,
-                    catatan_revisi: wholeLkaRevisionNote,
                     revisions: isSpecificRevision
                         ? targetRows.map((row) => {
                             const id = String(getLkaHasilKey(row) || '');
                             const note = targetNoteById.get(id) || noteById.get(id) || null;
                             return {
                                 noSampel: row.no_sampel || row.noSampel || null,
-                                no_sampel: row.no_sampel || row.noSampel || null,
                                 catatanRevisi: note,
-                                catatan_revisi: note,
                             };
                         })
                         : [],
@@ -602,6 +558,57 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsPay
             return { status: 'Disetujui' };
         });
     };
+    updateAssignmentDetailDeadline = async (idPenugasanDetail, tanggalTenggat, currentUserNik = null) => {
+            const detailId = String(idPenugasanDetail || '').trim();
+            const nextDeadline = String(tanggalTenggat || '').trim();
+            if (!detailId)
+                throw new Error('ID detail penugasan wajib dikirim.');
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDeadline)) {
+                throw new Error('Deadline harus berformat YYYY-MM-DD.');
+            }
+            const deadlineDate = new Date(`${nextDeadline}T00:00:00`);
+            if (Number.isNaN(deadlineDate.getTime())) {
+                throw new Error('Deadline tidak valid.');
+            }
+            const t = await sequelize.transaction();
+            try {
+                const detail = await PenugasanDetail.findOne({
+                    where: { id_penugasan_detail: detailId },
+                    include: [
+                        {
+                            model: Penugasan,
+                            required: true,
+                        },
+                    ],
+                    transaction: t,
+                    lock: t.LOCK.UPDATE,
+                });
+                if (!detail)
+                    throw new Error('Detail penugasan tidak ditemukan.');
+                const plainDetail = getPlain(detail);
+                const penugasan = plainDetail.penugasan || plainDetail.Penugasan || {};
+                if (penugasan.status_penugasan === 'Dibatalkan') {
+                    throw new Error('Deadline tidak bisa diubah karena penugasan sudah dibatalkan.');
+                }
+                const nonEditableStatuses = new Set(['Disetujui', 'Selesai']);
+                if (nonEditableStatuses.has(plainDetail.status_detail)) {
+                    throw new Error(`Deadline tidak bisa diubah karena detail sudah berstatus ${plainDetail.status_detail}.`);
+                }
+                await assertPenugasanDetailSamplesEditableBeforeLhu(detailId, t);
+                await detail.update({ tanggal_tenggat: nextDeadline }, { transaction: t });
+                await t.commit();
+                return {
+                    idPenugasan: penugasan.id_penugasan || null,
+                    idPenugasanDetail: detailId,
+                    tanggalTenggat: nextDeadline,
+                    updatedBy: currentUserNik || null,
+                };
+            }
+            catch (error) {
+                await t.rollback();
+                throw error;
+            }
+        };
 }
 module.exports = new AssignmentPenyeliaReviewService();
 module.exports.AssignmentPenyeliaReviewService = AssignmentPenyeliaReviewService;

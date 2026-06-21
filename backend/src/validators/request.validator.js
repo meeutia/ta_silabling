@@ -98,7 +98,8 @@ const validateCreateRequest = (req, res, next) => {
     });
 
     const standar = e?.idRegBm || e?.id_reg_bm;
-    return !e?.jenisSampel || !standar || parameterList.length === 0 || hasInvalidParameter || Number(e?.jumlahSampel || 0) < 1;
+    const idJenisSampel = e?.idJenisSampel || e?.id_jenis_sampel || e?.jenisSampel;
+    return !idJenisSampel || !standar || parameterList.length === 0 || hasInvalidParameter || Number(e?.jumlahSampel || 0) < 1;
   });
 
   if (hasInvalidEntry) {
@@ -309,8 +310,8 @@ const validatePenyeliaAssignments = (req, res, next) => {
 const validateRequestIdParam = validateStringParamId('id', 'ID registrasi', 15);
 
 const validateReceiveSamples = (req, res, next) => {
-  const payload = req.body || {};
-  const rows = Array.isArray(payload) ? payload : Array.isArray(payload.sampels) ? payload.sampels : [];
+  const requestData = req.body || {};
+  const rows = Array.isArray(requestData) ? requestData : Array.isArray(requestData.sampels) ? requestData.sampels : [];
 
   if (!rows.length) {
     return errorResponse(res, 'Data sampel yang diterima wajib dikirim.', 400);
@@ -321,7 +322,7 @@ const validateReceiveSamples = (req, res, next) => {
     const rowValue = row?.[snakeKey] ?? row?.[camelKey];
     if (rowValue !== undefined && rowValue !== null && String(rowValue).trim() !== '') return rowValue;
     if (!useLegacyTopLevelFallback) return '';
-    return payload?.[snakeKey] ?? payload?.[camelKey] ?? '';
+    return requestData?.[snakeKey] ?? requestData?.[camelKey] ?? '';
   };
 
   for (let index = 0; index < rows.length; index += 1) {
@@ -362,7 +363,7 @@ const validateReceiveSamples = (req, res, next) => {
       return errorResponse(res, `Koordinat sampel ${label} wajib diisi.`, 400);
     }
 
-    if (asTrimmedText(row.abnormalitas_sampel || row.abnormalitasSampel || row.catatan || payload.abnormalitas_sampel || payload.abnormalitasSampel).length > 1000) {
+    if (asTrimmedText(row.abnormalitas_sampel || row.abnormalitasSampel || row.catatan || requestData.abnormalitas_sampel || requestData.abnormalitasSampel).length > 1000) {
       return errorResponse(res, `Catatan sampel ${label} maksimal 1000 karakter.`, 400);
     }
   }

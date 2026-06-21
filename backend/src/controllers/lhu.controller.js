@@ -1,9 +1,13 @@
 const lhuService = require('../services/lhu/lhu.service');
+const lhuFinalizationService = require('../services/lhu/lhu-finalization.service');
+const lhuDataService = require('../services/lhu/lhu-data.service');
 const notificationService = require('../services/notification/notification.service');
 const { secureKnownFileFields } = require('../utils/file-url.util');
 class LhuController {
-    constructor({ lhuService, notificationService }) {
+    constructor({ lhuService, lhuFinalizationService, lhuDataService, notificationService }) {
         this.lhuService = lhuService;
+        this.lhuFinalizationService = lhuFinalizationService;
+        this.lhuDataService = lhuDataService;
         this.notificationService = notificationService;
     }
     requireValue = (value, message) => {
@@ -55,7 +59,7 @@ class LhuController {
     };
     getFinalizationQueue = async (req, res) => {
         try {
-            const data = await this.lhuService.getFinalizationQueue();
+            const data = await this.lhuFinalizationService.getFinalizationQueue();
             return res.json({
                 success: true,
                 data: secureKnownFileFields(data),
@@ -68,7 +72,7 @@ class LhuController {
     getFinalizationDetail = async (req, res) => {
         try {
             const identifier = this.requireValue(req.query.idRegistrasi || req.query.id_registrasi || req.query.noSampel || req.query.no_sampel, 'ID registrasi atau nomor sampel wajib dikirim.');
-            const data = await this.lhuService.getFinalizationDetail(identifier);
+            const data = await this.lhuFinalizationService.getFinalizationDetail(identifier, req.query.sampleNos || req.query.sample_nos || null);
             return res.json({
                 success: true,
                 data: secureKnownFileFields(data),
@@ -81,7 +85,7 @@ class LhuController {
     getPaketBmOptions = async (req, res) => {
         try {
             const identifier = this.requireValue(req.query.idRegistrasi || req.query.id_registrasi || req.query.noSampel || req.query.no_sampel, 'ID registrasi atau nomor sampel wajib dikirim.');
-            const data = await this.lhuService.getPaketBmOptions(identifier);
+            const data = await this.lhuFinalizationService.getPaketBmOptions(identifier);
             return res.json({
                 success: true,
                 data: secureKnownFileFields(data),
@@ -93,7 +97,7 @@ class LhuController {
     };
     getPersonelOptions = async (req, res) => {
         try {
-            const data = await this.lhuService.getPersonelOptions();
+            const data = await this.lhuDataService.getPersonelOptions();
             return res.json({
                 success: true,
                 data: secureKnownFileFields(data),
@@ -107,7 +111,7 @@ class LhuController {
         try {
             const identifier = this.requireValue(req.query.idRegistrasi || req.query.id_registrasi || req.query.noSampel || req.query.no_sampel, 'ID registrasi atau nomor sampel wajib dikirim.');
             const idPktBm = this.requireValue(req.query.idPktBm || req.query.id_pkt_bm, 'Paket baku mutu wajib dipilih.');
-            const data = await this.lhuService.previewFinalization(identifier, idPktBm, req.query.sampleNos || req.query.sample_nos);
+            const data = await this.lhuFinalizationService.previewFinalization(identifier, idPktBm, req.query.sampleNos || req.query.sample_nos);
             return res.json({
                 success: true,
                 data: secureKnownFileFields(data),
@@ -128,7 +132,7 @@ class LhuController {
             }
             const identifier = this.requireValue(req.body.idRegistrasi || req.body.id_registrasi || req.body.noSampel || req.body.no_sampel || (Array.isArray(req.body.sampleNos) ? req.body.sampleNos[0] : ''), 'ID registrasi atau daftar sampel wajib dikirim.');
             this.requireValue(req.body.idPktBm || req.body.id_pkt_bm, 'Paket baku mutu wajib dipilih.');
-            const data = await this.lhuService.finalizeLhu(identifier, req.body, currentNik);
+            const data = await this.lhuFinalizationService.finalizeLhu(identifier, req.body, currentNik);
             try {
                 await this.notificationService.notifyLhuNeedsKalabApproval({
                     nomorLhu: data?.nomorLhu || data?.nomor_lhu,
@@ -218,12 +222,20 @@ class LhuController {
                 req.params.nomorLhu ||
                 req.params.nomor_lhu, 'Nomor LHU wajib dikirim.');
             const data = await this.lhuService.approveByKalab(nomorLhu, currentNik);
-            try {
-                await this.notificationService.notifyAdminWhenRequestLhusComplete({ nomorLhu: data?.nomor_lhu || data?.nomorLhu || nomorLhu });
-            }
-            catch (notifyError) {
-                console.error('notifyAdminWhenRequestLhusComplete this.approveByKalab error:', notifyError);
-            }
+            const approvedNomorLhu = data?.nomor_lhu || data?.nomorLhu || nomorLhu;
+            setImmediate(() => {
+                Promise.allSettled([
+                    this.notificationService.notifyLhuReady({ nomorLhu: approvedNomorLhu }),
+                    this.notificationService.notifyAdminWhenRequestLhusComplete({ nomorLhu: approvedNomorLhu }),
+                ]).then((results) => {
+                    results.forEach((result, index) => {
+                        if (result.status === 'rejected') {
+                            const target = index === 0 ? 'Pelanggan LHU siap diambil' : 'Admin kelengkapan LHU';
+                            console.error(`notify${target} this.approveByKalab error:`, result.reason);
+                        }
+                    });
+                });
+            });
             return res.json({
                 success: true,
                 message: 'LHU berhasil disahkan dan PDF final berhasil dibuat.',
@@ -237,6 +249,8 @@ class LhuController {
 }
 module.exports = new LhuController({
     lhuService,
+    lhuFinalizationService,
+    lhuDataService,
     notificationService,
 });
 module.exports.LhuController = LhuController;

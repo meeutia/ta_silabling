@@ -1,7 +1,42 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Lka = sequelize.define('lka', {
+class Lka extends Model {
+  static associate(models) {
+    Lka.belongsTo(models.PenugasanDetail, { foreignKey: 'id_penugasan_detail' });
+    Lka.belongsTo(models.User, { foreignKey: 'dilaporkan_oleh', as: 'Pelapor' });
+    Lka.belongsTo(models.User, { foreignKey: 'diperiksa_oleh', as: 'Pemeriksa' });
+    Lka.hasMany(models.LkaHasil, { foreignKey: 'kode_lka' });
+    Lka.hasMany(models.LkaRevisi, { foreignKey: 'kode_lka', as: 'revisi_lka' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_lka === status;
+  }
+
+  isDraft() {
+    return this.isStatus('Draft');
+  }
+
+  isReported() {
+    return Boolean(this.tanggal_pelaporan);
+  }
+
+  isChecked() {
+    return Boolean(this.tanggal_pemeriksaan);
+  }
+}
+
+Lka.init({
   kode_lka: {
     type: DataTypes.STRING(20),
     primaryKey: true,
@@ -57,7 +92,9 @@ const Lka = sequelize.define('lka', {
     defaultValue: 'Draft',
   },
 }, {
-  tableName: 'lka',
+  sequelize,
+  modelName: 'lka',
+tableName: 'lka',
   timestamps: false,
 });
 

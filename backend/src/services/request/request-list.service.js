@@ -4,6 +4,7 @@ const RequestStatus = require('../../constants/request-status');
 const Roles = require('../../constants/roles');
 const { buildPenyeliaRequestSummary, deriveCustomerHistoryStatus, getKasiDecisionStatus, } = require('./request-transform.util');
 const { decorateSampleReceiptFields, decorateScheduleFields, } = require('./request-schedule-fields.util');
+const { toCamelCaseDeep } = require('../../utils/case-transform.util');
 
 const sameFpplSampelComposite = (a = {}, b = {}) => {
     const pick = (row, snake, camel) => String(row?.[snake] ?? row?.[camel] ?? '').trim();
@@ -295,31 +296,31 @@ listRequests = async (userNik, role, queryStatus) => {
             order: [['tanggal_pendaftaran', 'DESC']]
         });
         return requestRecords.map((req) => {
-            const json = decorateSampleReceiptFields(decorateScheduleFields(normalizeRequestFpplSampelGraph(req.toJSON())));
+            const json = decorateSampleReceiptFields(decorateScheduleFields(toCamelCaseDeep(normalizeRequestFpplSampelGraph(req.toJSON()))));
             if (role === Roles.KASI) {
-                const fpplSamples = json.fppl_sampels || json.FpplSampels || [];
+                const fpplSamples = Array.isArray(json.fpplSampels) ? json.fpplSampels : [];
                 const types = new Set();
                 fpplSamples.forEach((sampel) => {
-                    const jenis = sampel?.jenis_sampel?.jenis_sampel ||
-                        sampel?.JenisSampel?.jenis_sampel ||
+                    const jenis = sampel?.jenisSampel?.jenisSampel ||
+                        sampel?.JenisSampel?.jenisSampel ||
                         '-';
                     if (jenis && jenis !== '-')
                         types.add(jenis);
                 });
                 return {
                     ...json,
-                    noReg: json.id_registrasi,
-                    tanggal: json.tanggal_pendaftaran,
-                    tanggalVerifikasi: json.tanggal_verifikasi,
-                    pelanggan: json.Pelanggan?.nama_instansi ||
-                        json.pelanggan?.nama_instansi ||
+                    noReg: json.idRegistrasi,
+                    tanggal: json.tanggalPendaftaran,
+                    tanggalVerifikasi: json.tanggalVerifikasi,
+                    pelanggan: json.Pelanggan?.namaInstansi ||
+                        json.pelanggan?.namaInstansi ||
                         json.Pelanggan?.pic ||
                         json.pelanggan?.pic ||
                         '-',
                     jenisSampel: Array.from(types).join(', ') || '-',
                     status: queryStatus === 'Riwayat'
-                        ? getKasiDecisionStatus(json.status_fppl, json.catatan_penolakan)
-                        : json.status_fppl
+                        ? getKasiDecisionStatus(json.statusFppl, json.catatanPenolakan)
+                        : json.statusFppl
                 };
             }
             if (role === Roles.PENYELIA) {
@@ -327,15 +328,13 @@ listRequests = async (userNik, role, queryStatus) => {
             }
             const customerHistoryStatus = role === Roles.CUSTOMER
                 ? deriveCustomerHistoryStatus(json)
-                : json.status_fppl;
+                : json.statusFppl;
             return {
                 ...json,
                 status: customerHistoryStatus,
                 statusDisplay: customerHistoryStatus,
-                status_display: customerHistoryStatus,
                 statusPelanggan: customerHistoryStatus,
-                status_pelanggan: customerHistoryStatus,
-                status_fppl_asli: json.status_fppl
+                statusFpplAsli: json.statusFppl
             };
         });
     };

@@ -1,17 +1,85 @@
-import { CheckCircle, Loader2, X } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
+
+function firstFilled(values = []) {
+  for (const value of values) {
+    const text = String(value ?? '').trim();
+    if (text && text !== '-') return text;
+  }
+  return '';
+}
 
 function getApproveLabel(detail = {}) {
-  const parameter =
-    detail.parameter ||
-    detail.namaParameter ||
-    detail.nama_parameter ||
-    '-';
+  const sample = Array.isArray(detail.samples) && detail.samples.length > 0
+    ? detail.samples[0]
+    : {};
 
-  const metode =
-    detail.metode ||
-    detail.namaMetode ||
-    detail.nama_metode ||
-    '-';
+  const parameterMetode =
+    detail.parameterMetode ||
+    detail.parameter_metode ||
+    detail.ParameterMetode ||
+    sample.parameterMetode ||
+    sample.parameter_metode ||
+    sample.ParameterMetode ||
+    {};
+
+  const nestedParameter =
+    parameterMetode.parameter ||
+    parameterMetode.Parameter ||
+    sample.parameter ||
+    sample.Parameter ||
+    {};
+
+  const nestedMetode =
+    parameterMetode.metode ||
+    parameterMetode.Metode ||
+    sample.metodeObj ||
+    sample.metode_object ||
+    sample.Metode ||
+    {};
+
+  const parameter = firstFilled([
+    detail.parameter,
+    detail.namaParameter,
+    detail.nama_parameter,
+    detail.parameterName,
+    detail.parameter_name,
+    detail.nama_parameter_uji,
+    sample.parameter,
+    sample.namaParameter,
+    sample.nama_parameter,
+    sample.parameterName,
+    sample.parameter_name,
+    nestedParameter.namaParameter,
+    nestedParameter.nama_parameter,
+    nestedParameter.parameter,
+  ]) || '-';
+
+  const metode = firstFilled([
+    detail.metode,
+    detail.namaMetode,
+    detail.nama_metode,
+    detail.method,
+    detail.methodName,
+    detail.method_name,
+    detail.metodePengujian,
+    detail.metode_pengujian,
+    detail.namaMetodePengujian,
+    detail.nama_metode_pengujian,
+    parameterMetode.namaMetode,
+    parameterMetode.nama_metode,
+    parameterMetode.metode,
+    parameterMetode.metodePengujian,
+    parameterMetode.metode_pengujian,
+    nestedMetode.namaMetode,
+    nestedMetode.nama_metode,
+    nestedMetode.metode,
+    sample.metode,
+    sample.namaMetode,
+    sample.nama_metode,
+    sample.method,
+    sample.methodName,
+    sample.method_name,
+  ]) || '-';
 
   return `${parameter} — ${metode}`;
 }

@@ -307,10 +307,21 @@ getLatestInvoiceAndPayment = async (registrasiId) => {
             where: { nomor_lhu: lhuNo },
             include: [
                 {
+                    model: Fppl,
+                    as: 'fppl',
+                    required: false,
+                    include: [
+                        {
+                            model: Pelanggan,
+                            as: 'pelanggan',
+                            required: false,
+                        },
+                    ],
+                },
+                {
                     model: Sampel,
                     as: 'sampels',
                     required: false,
-                    through: { attributes: [] },
                     include: [
                         {
                             model: FpplSampel,
@@ -346,10 +357,11 @@ getLatestInvoiceAndPayment = async (registrasiId) => {
             : [];
         const sampel = lhuSamples[0] || {};
         const fpplSampel = sampel.fppl_sampel || sampel.FpplSampel || {};
-        const request = fpplSampel.fppl || fpplSampel.Fppl || {};
+        const requestFromSample = fpplSampel.fppl || fpplSampel.Fppl || {};
+        const request = lhu.fppl || lhu.Fppl || requestFromSample || {};
         const pelanggan = request.pelanggan || request.Pelanggan || {};
-        const pelangganId = request.id_pelanggan || pelanggan.id_pelanggan;
-        const registrasiId = request.id_registrasi || null;
+        const pelangganId = request.id_pelanggan || pelanggan.id_pelanggan || lhu.id_pelanggan || null;
+        const registrasiId = request.id_registrasi || lhu.id_registrasi || null;
         if (!pelangganId) {
             const err = new Error('Pelanggan penerima notifikasi LHU tidak valid.');
             err.statusCode = 400;
@@ -726,7 +738,7 @@ getLatestInvoiceAndPayment = async (registrasiId) => {
                 idPenugasan: null,
             });
             try {
-                const to = await resolveRecipientEmail({
+                const to = safeString(penerima.email).trim() || await resolveRecipientEmail({
                     penerimaUserNik: nik,
                     penerimaPelangganId: null,
                 });

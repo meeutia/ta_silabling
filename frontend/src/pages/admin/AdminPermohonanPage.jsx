@@ -126,6 +126,7 @@ export function AdminPermohonanPage({ initialRegistrationId = '', onDetailRouteC
     handleCompletePickup,
     isPickupBusinessDay,
     pickupTimeOptions = ADMIN_SCHEDULE_TIME_OPTIONS,
+    isSavingPickupSchedule,
   } = useAdminLhuPickup({
     selectedRequest,
     setSelectedRequest,
@@ -494,7 +495,7 @@ const getPickupScheduleLabel = (row) => getPickupScheduleLabelValue(row, formatD
         selectedPickup={selectedPickup}
         pickupForm={pickupForm}
         setPickupForm={setPickupForm}
-        saving={saving}
+        saving={isSavingPickupSchedule}
         onClose={closePickupModalWithRoute}
         onSaveSchedule={handleSavePickupScheduleWithRoute}
         onRequestCompletePickup={requestCompletePickupConfirmation}

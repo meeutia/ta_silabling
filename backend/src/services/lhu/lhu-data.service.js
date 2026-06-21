@@ -1,228 +1,281 @@
+const { Lhu, Sampel, FpplSampel, JenisSampel, RegBm, Fppl, Pelanggan, PktBm, Klasifikasi, PktBmParam, Satuan, PktBmNilai, Parameter, ParameterMetode, Metode, Pegawai, JadwalSampel, Lka, LkaHasil, PenugasanDetail, User, FpplParameterMetode, SampelParameter, AktivitasSistemLog } = require('../../models/Associations');
 const { Op } = require('sequelize');
-const { User, Pegawai, Role, Pelanggan, Fppl, JadwalSampel, FpplSampel, JenisSampel, RegBm, PktBm, PktBmParam, PktBmNilai, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, PenugasanItem, PenugasanDetail, Lka, LkaHasil, Lhu, } = require('../../models/Associations');
-const { buildLkaHasilRevisionResponse } = require('../assignment/assignment-revision.helper');
-const { calculateAccreditationStats, getPlain, pickObject, pickArray, getAssociatedFpmsFromSample, getMethodIdFromFpm, getMethodIdFromDetail, firstDate, toDateOnly, buildAcuanBmSnapshot, getLkaHasilTargetKey, getFpplParameterMetodeKey, getParameterMethodKey, getFallbackParameterKey, applyDetailOrder, getDetailOrderDescriptor, sortDetailRowsForLhu, toTinyIntFlag, getSubkontrakSnapshot, getLkaHasilReviewStatus, isResultApprovedByKasi, getScheduleCreatedTime, getScheduleDateTime, getScheduleIdOrder, getActiveJadwalFromFppl, } = require('./lhu-data-utils');
-const { findApprovedResultForExpectedParameter, groupLhuDetailRowsByParameter, normalizeBmText, normalizeNilaiBmForLhu, } = require('./lhu-detail-row.mapper');
-const { isEditableByQcStatus, buildStandarLabel, mapSamplePayload, mapPelangganPayload, mapRequestPayload, buildDefaultDetailRows, getPegawaiDisplayName, getPktBmHeaderById, countDetailStats, mapLhuHeaderPayload, } = require('./lhu-payload.mapper');
+const { formatSampleNoList, formatSampleFieldLines, getSampleOrderValue, sortRowsBySampleOrder, normalizeSampleTypeForLhu, normalizeSampleCollectorForLhu, } = require('./lhu-pdf-format.util');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
-
-const normalizeSampleNoKey = (value) => String(value || '').trim().replace(/\s*\/\s*/g, '/').toLowerCase();
-const sortSampleNos = (items = []) => [...items].sort((a, b) => String(a || '').localeCompare(String(b || ''), 'id', { numeric: true, sensitivity: 'base' }));
-const dedupeRowsBySampleNo = (rows = []) => {
-    const map = new Map();
-    (Array.isArray(rows) ? rows : []).forEach((row) => {
-        const noSampel = String(row?.no_sampel || row?.noSampel || '').trim();
-        const key = normalizeSampleNoKey(noSampel);
-        if (!key || map.has(key))
-            return;
-        map.set(key, row);
-    });
-    return Array.from(map.values()).sort((a, b) => String(a?.no_sampel || a?.noSampel || '').localeCompare(String(b?.no_sampel || b?.noSampel || ''), 'id', { numeric: true, sensitivity: 'base' }));
-};
-const dedupeSampleNos = (values = []) => {
-    const map = new Map();
-    (Array.isArray(values) ? values : []).forEach((value) => {
-        const noSampel = String(value || '').trim();
-        const key = normalizeSampleNoKey(noSampel);
-        if (!key || map.has(key))
-            return;
-        map.set(key, noSampel);
-    });
-    return sortSampleNos(Array.from(map.values()));
-};
-class LhuDataService {
-getExistingLhuBySample = async (noSampel, transaction = null) => {
-        const sampleNo = String(noSampel || '').trim();
-        if (!sampleNo)
-            return null;
-        const sampleInstance = await Sampel.findOne({
-            where: { no_sampel: sampleNo },
-            include: [
-                {
-                    model: Lhu,
-                    as: 'lhu',
-                    required: false,
-                },
-            ],
-            transaction,
-        });
-        const sample = getPlain(sampleInstance);
-        const lhu = pickObject(sample, ['lhu', 'Lhu']);
-        if (lhu)
-            return lhu;
-        if (!sample?.nomor_lhu)
-            return null;
-        return getPlain(await Lhu.findByPk(sample.nomor_lhu, { transaction }));
+const { isLhuEditableByQc } = require('../../constants/lhu-status.constant');
+const { toCamelCaseDeep } = require('../../utils/case-transform.util');
+class LhuPdfDataService {
+getPlain = (instance) => {
+        return instance ? toCamelCaseDeep(instance.get({ plain: true })) : null;
     };
-    getSampleInfo = async (noSampel, transaction = null) => {
-        const sampleInstance = await Sampel.findOne({
-            where: { no_sampel: noSampel },
-            include: [
-                { model: JenisSampel, as: 'jenis_sampel', required: false },
-                { model: RegBm, as: 'reg_bm', required: false },
-                {
-                    model: Fppl,
-                    as: 'fppl',
-                    required: true,
-                    include: [
-                        { model: Pelanggan, as: 'pelanggan', required: true },
-                        { model: JadwalSampel, as: 'jadwal_sampels', required: false },
-                    ],
-                },
-                { model: Lhu, as: 'lhu', required: false },
-            ],
-            transaction,
-        });
-        if (!sampleInstance) {
-            throw new Error('Sampel tidak ditemukan.');
+    pickObject = (source, keys = []) => {
+        for (const key of keys) {
+            if (source?.[key])
+                return source[key];
         }
-        const sample = getPlain(sampleInstance);
-        const fpplSampel = await FpplSampel.findOne({
-            where: {
-                id_registrasi: sample.id_registrasi,
-                id_jenis_sampel: sample.id_jenis_sampel,
-                id_reg_bm: sample.id_reg_bm,
-            },
-            transaction,
-        }).then(getPlain);
-        const jenis = pickObject(sample, ['jenis_sampel', 'JenisSampel']) || {};
-        const regBm = pickObject(sample, ['reg_bm', 'RegBm']) || {};
-        const fppl = pickObject(sample, ['fppl', 'Fppl']) || {};
-        const pelanggan = pickObject(fppl, ['pelanggan', 'Pelanggan']) || {};
-        const jadwal = getActiveJadwalFromFppl(fppl);
-        return {
-            no_sampel: sample.no_sampel,
-            nomor_lhu: sample.nomor_lhu || null,
-            nomorLhu: sample.nomor_lhu || null,
-            status_lhu: pickObject(sample, ['lhu', 'Lhu'])?.status_lhu || null,
-            statusLhu: pickObject(sample, ['lhu', 'Lhu'])?.status_lhu || null,
-            tanggal_pengambilan_sampel: sample.tanggal_pengambilan ||
-                sample.tanggal_pengambilan_sampel ||
-                null,
-            tanggal_jadwal: jadwal?.tanggal_jadwal || null,
-            jam_jadwal: jadwal?.jam_jadwal || null,
-            diterima_pada: sample.diterima_pada || null,
-            tanggal_penerimaan: sample.diterima_pada || null,
-            jam_penerimaan: sample.diterima_pada ? new Date(sample.diterima_pada).toTimeString().slice(0, 8) : null,
-            kondisi_sampel: sample.kondisi_sampel || null,
-            abnormalitas_sampel: sample.abnormalitas_sampel || null,
-            acuan_pengambilan_sampel: sample.acuan_pengambilan_sampel || null,
-            lokasi_spesifik: sample.lokasi_spesifik || null,
-            lokasi_pengambilan_sampel: sample.lokasi_spesifik || fppl.lokasi_pengambilan_sampel || null,
-            koordinat: sample.koordinat || null,
-            status_sample: sample.status_sample || null,
-            id_registrasi: sample.id_registrasi || fpplSampel?.id_registrasi || null,
-            id_jenis_sampel: sample.id_jenis_sampel || fpplSampel?.id_jenis_sampel || null,
-            id_reg_bm: sample.id_reg_bm || fpplSampel?.id_reg_bm || null,
-            jumlah_sampel: fpplSampel?.jumlah_sampel || null,
-            jenis_sampel: jenis.jenis_sampel || null,
-            jenisSampel: jenis.jenis_sampel || null,
-            reg_bm_instansi: regBm.instansi || null,
-            ref_reg: regBm.ref_reg || null,
-            nomor_fppl: fppl.nomor_fppl || null,
-            tanggal_pendaftaran: fppl.tanggal_pendaftaran || null,
-            maksud_pengujian: fppl.maksud_pengujian || null,
-            lokasi_pengambilan_permohonan: fppl.lokasi_pengambilan_sampel || null,
-            jenis_pengambilan_sampel: fppl.jenis_pengambilan_sampel || null,
-            tanggal_rencana_pengambilan_sampel: fppl.tanggal_rencana_pengambilan_sampel || null,
-            jam_rencana_pengambilan_sampel: fppl.jam_rencana_pengambilan_sampel || null,
-            tanggal_rencana_pengantaran_sampel: fppl.tanggal_rencana_pengantaran_sampel || null,
-            status_fppl: fppl.status_fppl || null,
-            id_pelanggan: pelanggan.id_pelanggan || null,
-            nama_pelanggan: pelanggan.nama_instansi || null,
-            nama_instansi: pelanggan.nama_instansi || null,
-            alamat_pelanggan: pelanggan.alamat || null,
-            alamat: pelanggan.alamat || null,
-            pic_pelanggan: pelanggan.pic || null,
-            pic: pelanggan.pic || null,
-            telp_pelanggan: pelanggan.no_telp || null,
-            no_telp: pelanggan.no_telp || null,
-            email_pelanggan: pelanggan.email_kontak || null,
-            email_kontak: pelanggan.email_kontak || null,
-        };
+        return null;
     };
-    resolvePersonelDihubungiPic = (sample = {}, payloadValue = null) => {
-        const pic = sample.pic_pelanggan ||
-            sample.pic ||
-            payloadValue ||
-            null;
-        const value = String(pic || '').trim();
-        return value || null;
+    pickArray = (source, keys = []) => {
+        for (const key of keys) {
+            if (Array.isArray(source?.[key]))
+                return source[key];
+        }
+        return [];
     };
-    getPersonelOptions = async () => {
-        const rows = await Pegawai.findAll({
-            where: {
-                nik: {
-                    [Op.ne]: null,
-                },
-            },
-            include: [
-                {
-                    model: User,
-                    required: false,
-                    include: [{ model: Role, required: false }],
-                },
-            ],
-            order: [['nama_pegawai', 'ASC']],
-        });
-        return rows.map((instance) => {
-            const row = getPlain(instance);
-            const user = pickObject(row, ['user', 'User']) || {};
-            const role = pickObject(user, ['role', 'Role']) || {};
-            return {
-                id_pegawai: row.id_pegawai,
-                nik: row.nik,
-                nip: row.nip,
-                nama_pegawai: row.nama_pegawai,
-                username: user.username || row.nama_pegawai,
-                no_wa: row.no_wa,
-                nama_role: role.nama_role || null,
-                is_pcc: Number(row.is_pcc || 0),
-            };
-        });
+    toTinyIntFlag = (value) => {
+        if (value === true || value === 1)
+            return 1;
+        const text = String(value ?? '').trim().toLowerCase();
+        return text === '1' || text === 'true' || text === 'yes' ? 1 : 0;
     };
-    dedupeLkaResultRows = (rows = []) => {
+    normalizeBmText = (value) => {
+        if (value === null || value === undefined)
+            return null;
+        const text = String(value).trim();
+        return text || null;
+    };
+    normalizeNilaiBmForLhu = (value) => {
+        const text = this.normalizeBmText(value);
+        if (!text || text === '-' || text === '(-)')
+            return '(-)';
+        return text;
+    };
+    dedupeSampleRowsForPdf = (rows = []) => {
         const map = new Map();
-        (Array.isArray(rows) ? rows : []).forEach((row, index) => {
-            const key = String(row.id_fppl_parameter_metode ||
-                row.idFpplParameterMetode ||
-                row.id_metode_parameter ||
-                row.idMetodeParameter ||
-                row.id_parameter ||
-                row.idParameter ||
-                getLkaHasilTargetKey(row) ||
-                `row-${index}`).trim();
-            if (!key)
+        sortRowsBySampleOrder(Array.isArray(rows) ? rows : []).forEach((row, index) => {
+            const noSampel = String(row?.noSampel || '').trim();
+            if (!noSampel || map.has(noSampel))
                 return;
-            const current = map.get(key);
-            if (!current) {
-                map.set(key, row);
-                return;
-            }
-            const currentId = Number(String(current.kode_lka || current.kodeLka || getLkaHasilTargetKey(current) || '').replace(/\D/g, '')) || 0;
-            const nextId = Number(String(row.kode_lka || row.kodeLka || getLkaHasilTargetKey(row) || '').replace(/\D/g, '')) || 0;
-            if (nextId >= currentId) {
-                map.set(key, row);
-            }
+            map.set(noSampel, {
+                ...row,
+                noSampel,
+                urutanSampel: map.size + 1 || getSampleOrderValue(row, index),
+            });
         });
         return Array.from(map.values());
     };
-    getLkaResultRows = async (noSampel, transaction = null) => {
-        const expectedRows = await this.getExpectedParameterRows(noSampel, transaction);
-        const expectedByFpmId = new Map(expectedRows
-            .filter((row) => row.id_fppl_parameter_metode)
-            .map((row) => [String(row.id_fppl_parameter_metode), row]));
-        const expectedByMethodId = new Map();
-        expectedRows.forEach((row) => {
-            if (!row.id_metode_parameter)
-                return;
-            const key = String(row.id_metode_parameter);
-            if (!expectedByMethodId.has(key)) {
-                expectedByMethodId.set(key, row);
-            }
+    getLkaHasilReviewStatus = (row = {}) => {
+        return row.statusReviewHasil || null;
+    };
+    isResultApprovedByKasi = (row = {}) => {
+        return String(this.getLkaHasilReviewStatus(row) || '').trim() === 'Disetujui Kasi Pengujian';
+    };
+    getParameterMethodKey = (row = {}) => {
+        return String(row.idMetodeParameter || row.idParameterMetode ||
+            '').trim();
+    };
+    getParameterKey = (row = {}) => {
+        return String(row.idParameter || '').trim();
+    };
+    getFpplParameterMetodeKey = (row = {}) => {
+        return String(row.idFpplParameterMetode || row.idFpplPm ||
+            '').trim();
+    };
+    getSubkontrakSnapshot = (row = {}) => {
+        return this.toTinyIntFlag(row.isSubkontrakSnapshot ?? row.isSubkontrak);
+    };
+    getScheduleCreatedTime = (row = {}) => {
+        const createdCandidates = [row.dibuatPada, row.createdAt, row.updatedAt];
+        for (const value of createdCandidates) {
+            if (!value)
+                continue;
+            const time = new Date(value).getTime();
+            if (!Number.isNaN(time))
+                return time;
+        }
+        return 0;
+    };
+    getScheduleDateTime = (row = {}) => {
+        const time = new Date(`${row.tanggalJadwal || '1900-01-01'} ${row.jamJadwal || '00:00:00'}`).getTime();
+        return Number.isNaN(time) ? 0 : time;
+    };
+    getScheduleIdOrder = (row = {}) => {
+        const numeric = String(row.idJadwal || '').match(/\d+/g)?.join('');
+        return Number(numeric || 0);
+    };
+    getActiveJadwalFromFppl = (fppl = {}) => {
+        const rows = this.pickArray(fppl, [
+            'jadwalSampels',
+        ]);
+        return rows
+            .filter((row) => String(row?.statusJadwal || '').trim().toLowerCase() !== 'dibatalkan')
+            .sort((a, b) => (this.getScheduleCreatedTime(b) - this.getScheduleCreatedTime(a) ||
+            this.getScheduleIdOrder(b) - this.getScheduleIdOrder(a) ||
+            this.getScheduleDateTime(b) - this.getScheduleDateTime(a)))[0] || null;
+    };
+    getPegawaiSnapshot = async (nik, transaction = null) => {
+        const userNik = String(nik || '').trim();
+        if (!userNik) {
+            return {
+                namaPegawai: null,
+                nip: null,
+            };
+        }
+        const pegawai = await Pegawai.findOne({
+            where: { nik: userNik },
+            attributes: ['nik', 'nama_pegawai', 'nip'],
+            transaction,
         });
+        if (!pegawai) {
+            return {
+                namaPegawai: null,
+                nip: null,
+            };
+        }
+        const row = this.getPlain(pegawai);
+        return {
+            namaPegawai: row.namaPegawai || null,
+            nip: row.nip || null,
+        };
+    };
+    getLhuHeaderForPdf = async (nomorLhu, transaction = null) => {
+        const instance = await Lhu.findByPk(nomorLhu, {
+            include: [
+                {
+                    model: Fppl,
+                    as: 'fppl',
+                    required: false,
+                    include: [
+                        { model: Pelanggan, as: 'pelanggan', required: false },
+                        { model: JadwalSampel, as: 'jadwal_sampels', required: false },
+                    ],
+                },
+                {
+                    model: PktBm,
+                    required: false,
+                    include: [{ model: RegBm, required: false }, { model: JenisSampel, required: false }, { model: Klasifikasi, required: false }],
+                },
+            ],
+            transaction,
+        });
+        const rawRow = instance ? instance.get({ plain: true }) : null;
+        const row = toCamelCaseDeep(rawRow);
+        if (!row)
+            return null;
+        const rawFppl = this.pickObject(rawRow, ['fppl', 'Fppl']) || {};
+        const rawPelanggan = this.pickObject(rawFppl, ['pelanggan', 'Pelanggan']) || {};
+        const rawPktBm = this.pickObject(rawRow, ['pkt_bm', 'PktBm']) || {};
+        const fppl = toCamelCaseDeep(rawFppl);
+        const pelanggan = toCamelCaseDeep(rawPelanggan);
+        const pktBm = toCamelCaseDeep(withPaketBmDisplayFields(rawPktBm));
+        const regBm = toCamelCaseDeep(this.pickObject(rawPktBm, ['reg_bm', 'RegBm']) || {});
+        return {
+            ...row,
+            nomorFppl: fppl.nomorFppl || null,
+            tanggalPendaftaran: fppl.tanggalPendaftaran || null,
+            maksudPengujian: fppl.maksudPengujian || null,
+            lokasiPengambilanSampel: fppl.lokasiPengambilanSampel || null,
+            jenisPengambilanSampel: fppl.jenisPengambilanSampel || null,
+            namaPelanggan: pelanggan.namaInstansi || null,
+            alamatPelanggan: pelanggan.alamat || null,
+            picPelanggan: pelanggan.pic || null,
+            telpPelanggan: pelanggan.noTelp || null,
+            emailPelanggan: pelanggan.emailKontak || null,
+            namaPkt: pktBm.namaPkt || null,
+            klasifikasi: pktBm.klasifikasi || null,
+            teksLhu: pktBm.teksLhu || null,
+            regBmInstansi: regBm.instansi || null,
+            refReg: regBm.refReg || null,
+        };
+    };
+    getLhuSampleRowsForPdf = async (nomorLhu, transaction = null) => {
+        const instances = await Sampel.findAll({
+            where: { nomor_lhu: nomorLhu },
+            include: [
+                {
+                    model: FpplSampel,
+                    as: 'fppl_sampel',
+                    required: false,
+                    include: [{ model: JenisSampel, required: false }],
+                },
+            ],
+            order: [['no_sampel', 'ASC']],
+            transaction,
+        });
+        const mappedRows = instances.map((instance, index) => {
+            const sample = this.getPlain(instance) || {};
+            const fpplSampel = this.pickObject(sample, ['fpplSampel', 'FpplSampel']) || {};
+            const jenisSampel = this.pickObject(fpplSampel, ['jenisSampel', 'JenisSampel']) || {};
+            return {
+                noSampel: sample.noSampel || null,
+                urutanSampel: index + 1,
+                tanggalPengambilanSampel: sample.tanggalPengambilanSampel || null,
+                diterimaPada: sample.diterimaPada || null,
+                kondisiSampel: sample.kondisiSampel || null,
+                abnormalitasSampel: sample.abnormalitasSampel || null,
+                lokasiSpesifik: sample.lokasiSpesifik || null,
+                koordinat: sample.koordinat || null,
+                acuanPengambilanSampel: sample.acuanPengambilanSampel || null,
+                jenisSampel: jenisSampel.jenisSampel || null,
+            };
+        });
+        return this.dedupeSampleRowsForPdf(mappedRows);
+    };
+    getBmParamMapForPdf = async (idPktBm, transaction = null) => {
+        const id = String(idPktBm || '').trim();
+        if (!id)
+            return new Map();
+        const paket = await PktBm.findByPk(id, { transaction });
+        if (!paket)
+            return new Map();
+        const [metaRows, nilaiRows] = await Promise.all([
+            PktBmParam.findAll({
+                where: { id_reg_bm: paket.id_reg_bm, id_jenis_sampel: paket.id_jenis_sampel },
+                include: [{ model: Satuan, attributes: ['id_satuan', 'satuan'], required: false }],
+                transaction,
+            }),
+            PktBmNilai.findAll({ where: { id_pkt_bm: id }, transaction }),
+        ]);
+        const nilaiMap = new Map(nilaiRows.map((row) => {
+            const plain = this.getPlain(row);
+            return [String(plain.idParameter), plain];
+        }));
+        const map = new Map();
+        metaRows.map(this.getPlain).forEach((row) => {
+            if (!row?.idParameter)
+                return;
+            const nilai = nilaiMap.get(String(row.idParameter)) || {};
+            const satuanRow = row.satuan || row.Satuan || {};
+            const satuanLabel = satuanRow.satuan || row.satuan || row.satuanBm || null;
+            map.set(String(row.idParameter), {
+                ...row,
+                idPktBm: id,
+                nilaiBm: nilai.nilaiBm ?? null,
+                idSatuan: row.idSatuan || satuanRow.idSatuan || null,
+                satuan: satuanLabel,
+                satuanBm: satuanLabel,
+            });
+        });
+        return map;
+    };
+    buildResultRowForPdf = (instance) => {
+        const row = this.getPlain(instance) || {};
+        const lka = this.pickObject(row, ['lka', 'Lka']) || {};
+        const penugasanDetail = this.pickObject(lka, ['penugasanDetail', 'PenugasanDetail']) || {};
+        const parameterMetode = this.pickObject(penugasanDetail, ['parameterMetode', 'ParameterMetode']) || {};
+        const parameter = this.pickObject(parameterMetode, ['parameter', 'Parameter']) || {};
+        const metode = this.pickObject(parameterMetode, ['metode', 'Metode']) || {};
+        return {
+            kodeLka: row.kodeLka || lka.kodeLka || null,
+            noSampel: row.noSampel || null,
+            hasil: row.hasil || null,
+            catatanHasil: row.catatanHasil || null,
+            statusReviewHasil: row.statusReviewHasil || null,
+            idParameter: parameterMetode.idParameter || parameter.idParameter || null,
+            idMetodeParameter: penugasanDetail.idMetodeParameter || parameterMetode.idMetodeParameter || null,
+            namaParameter: parameter.namaParameter || null,
+            namaMetode: metode.namaMetode || null,
+            acuanMetode: parameterMetode.acuanMetode || null,
+            isTerakreditasi: parameterMetode.isTerakreditasi ?? 0,
+            isSubkontrak: parameterMetode.isSubkontrak ?? 0,
+        };
+    };
+    getApprovedResultRowsForPdf = async (sampleNo, transaction = null) => {
         const rows = await LkaHasil.findAll({
-            where: { no_sampel: noSampel },
+            where: {
+                no_sampel: sampleNo,
+                statusReviewHasil: 'Disetujui Kasi Pengujian',
+            },
             include: [
                 {
                     model: Lka,
@@ -247,498 +300,902 @@ getExistingLhuBySample = async (noSampel, transaction = null) => {
             ],
             transaction,
         });
-        const mappedRows = rows
-            .map((instance) => {
-            const row = getPlain(instance);
-            const lka = pickObject(row, ['lka', 'Lka']) || {};
-            const detail = pickObject(lka, ['penugasan_detail', 'PenugasanDetail']) || {};
-            const directParameterMetode = pickObject(detail, ['parameter_metode', 'ParameterMetode']) || {};
-            const detailFpm = pickObject(detail, ['fppl_parameter_metode', 'FpplParameterMetode']) || {};
-            const detailMethodId = getMethodIdFromDetail(detail);
-            const expectedByMethod = detailMethodId
-                ? expectedByMethodId.get(String(detailMethodId))
-                : null;
-            const expectedByFpm = detail.id_fppl_parameter_metode
-                ? expectedByFpmId.get(String(detail.id_fppl_parameter_metode))
-                : null;
-            const expected = expectedByMethod || expectedByFpm || null;
-            const fpmParameter = pickObject(detailFpm, ['parameter', 'Parameter']) || {};
-            const fpmParameterMetode = pickObject(detailFpm, ['parameter_metode', 'ParameterMetode']) || {};
-            const fpmMetode = pickObject(fpmParameterMetode, ['metode', 'Metode']) || {};
-            const directParameter = pickObject(directParameterMetode, ['parameter', 'Parameter']) || {};
-            const directMetode = pickObject(directParameterMetode, ['metode', 'Metode']) || {};
-            return {
-                kode_lka: row.kode_lka,
-                no_sampel: row.no_sampel,
-                hasil: row.hasil,
-                catatan_hasil: row.catatan_hasil,
-                status_review_hasil: getLkaHasilReviewStatus(row),
-                statusReviewHasil: getLkaHasilReviewStatus(row),
-                ...buildLkaHasilRevisionResponse(row),
-                status_lka: lka.status_lka,
-                tanggal_mulai_pengujian: lka.tanggal_mulai_pengujian,
-                tanggal_selesai_pengujian: lka.tanggal_selesai_pengujian,
-                id_penugasan_detail: detail.id_penugasan_detail,
-                // ini tetap diisi dari FPM asli sampel kalau ada
-                id_fppl_parameter_metode: expected?.id_fppl_parameter_metode ||
-                    detail.id_fppl_parameter_metode ||
-                    detailFpm.id_fppl_parameter_metode ||
-                    null,
-                id_parameter: expected?.id_parameter ||
-                    detailFpm.id_parameter ||
-                    directParameter.id_parameter ||
-                    fpmParameter.id_parameter ||
-                    null,
-                id_metode_parameter: expected?.id_metode_parameter ||
-                    detail.id_metode_parameter ||
-                    directParameterMetode.id_metode_parameter ||
-                    detailFpm.id_metode_parameter ||
-                    fpmParameterMetode.id_metode_parameter ||
-                    null,
-                is_insitu: expected?.is_insitu ??
-                    detailFpm.is_insitu ??
-                    0,
-                status_kemampuan_lab: expected?.status_kemampuan_lab ||
-                    detailFpm.status_kemampuan_lab ||
-                    null,
-                is_subkontrak: expected?.is_subkontrak ??
-                    directParameterMetode.is_subkontrak ??
-                    fpmParameterMetode.is_subkontrak ??
-                    0,
-                is_subkontrak_snapshot: directParameterMetode.is_subkontrak ??
-                    fpmParameterMetode.is_subkontrak ??
-                    expected?.is_subkontrak ??
-                    0,
-                nama_parameter: expected?.nama_parameter ||
-                    directParameter.nama_parameter ||
-                    fpmParameter.nama_parameter ||
-                    '-',
-                kategori_parameter: expected?.kategori_parameter ||
-                    directParameter.kategori_parameter ||
-                    fpmParameter.kategori_parameter ||
-                    null,
-                acuan_metode: expected?.acuan_metode ||
-                    directParameterMetode.acuan_metode ||
-                    fpmParameterMetode.acuan_metode ||
-                    '-',
-                is_terakreditasi: expected?.is_terakreditasi ??
-                    directParameterMetode.is_terakreditasi ??
-                    fpmParameterMetode.is_terakreditasi ??
-                    0,
-                nama_metode: expected?.nama_metode ||
-                    directMetode.nama_metode ||
-                    fpmMetode.nama_metode ||
-                    '-',
-            };
-        })
-            .filter((row) => row.kode_lka && row.no_sampel);
-        return this.dedupeLkaResultRows(mappedRows).sort((a, b) => String(a.nama_parameter || '').localeCompare(String(b.nama_parameter || '')));
+        return rows
+            .map(this.buildResultRowForPdf)
+            .filter((row) => String(row.hasil || '').trim() && this.isResultApprovedByKasi(row));
     };
-    getExpectedParameterRows = async (noSampel, transaction = null) => {
-        const sample = await Sampel.findOne({
-            where: { no_sampel: noSampel },
+    findApprovedResultForPdf = (expected = {}, rows = []) => {
+        const expectedMethodKey = this.getParameterMethodKey(expected);
+        const expectedParameterKey = this.getParameterKey(expected);
+        return (Array.isArray(rows) ? rows : []).find((row) => {
+            const rowMethodKey = this.getParameterMethodKey(row);
+            if (expectedMethodKey && rowMethodKey && expectedMethodKey === rowMethodKey)
+                return true;
+            const rowParameterKey = this.getParameterKey(row);
+            if (expectedParameterKey && rowParameterKey && expectedParameterKey === rowParameterKey)
+                return true;
+            return false;
+        }) || null;
+    };
+    getDetailFallbackKeyForPdf = (row = {}) => {
+        const textKey = [
+            this.getParameterKey(row),
+            row.namaParameterSnapshot || row.namaParameter,
+            row.metodeSnapshot || row.namaMetode || row.metode,
+            row.acuanMetodeSnapshot || row.acuanMetode,
+        ].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean).join('|');
+        return String(
+            row.detailKey ||
+            row.key ||
+            this.getParameterMethodKey(row) ||
+            textKey
+        ).trim();
+    };
+    compareText = (a, b) => {
+        return String(a || '').localeCompare(String(b || ''), 'id', {
+            sensitivity: 'base',
+            numeric: true,
+        });
+    };
+    sortPdfDetailGroups = (groups = []) => {
+        return (Array.isArray(groups) ? [...groups] : []).sort((a, b) => {
+            const parameterCompare = this.compareText(a.namaParameterSnapshot || a.namaParameter, b.namaParameterSnapshot || b.namaParameter);
+            if (parameterCompare)
+                return parameterCompare;
+            const metodeCompare = this.compareText(a.metodeSnapshot || a.namaMetode || a.metode, b.metodeSnapshot || b.namaMetode || b.metode);
+            if (metodeCompare)
+                return metodeCompare;
+            return this.compareText(this.getDetailFallbackKeyForPdf(a), this.getDetailFallbackKeyForPdf(b));
+        });
+    };
+    normalizeDetailOrderInput = (value) => {
+        if (Array.isArray(value))
+            return value;
+        if (!value)
+            return [];
+        if (typeof value === 'string') {
+            try {
+                const parsed = JSON.parse(value);
+                if (Array.isArray(parsed))
+                    return parsed;
+            }
+            catch (error) {
+                return value.split(/[\n,]+/).map((item) => item.trim()).filter(Boolean);
+            }
+        }
+        return [];
+    };
+    getPdfDetailOrderCandidateKeys = (row = {}) => {
+        const textKey = [row.namaParameterSnapshot || row.namaParameter, row.metodeSnapshot || row.namaMetode || row.metode, row.acuanMetodeSnapshot || row.acuanMetode]
+            .map((value) => String(value || '').trim().toLowerCase())
+            .filter(Boolean)
+            .join('|');
+        return [
+            row.detailKey || row.key,
+            this.getDetailFallbackKeyForPdf(row),
+            row.idFpplParameterMetode,
+            row.idMetodeParameter || row.idParameterMetode,
+            row.idParameter,
+            textKey,
+        ].map((value) => String(value || '').trim()).filter(Boolean);
+    };
+    getStoredOrderCandidateKeys = (item = {}) => {
+        if (!item || typeof item !== 'object') {
+            const text = String(item || '').trim();
+            return text ? [text] : [];
+        }
+        const textKey = [item.namaParameter, item.metode || item.namaMetode, item.acuanMetode]
+            .map((value) => String(value || '').trim().toLowerCase())
+            .filter(Boolean)
+            .join('|');
+        return [
+            item.detailKey,
+            item.key,
+            item.idFpplParameterMetode,
+            item.idMetodeParameter || item.idParameterMetode,
+            item.idParameter,
+            textKey,
+        ].map((value) => String(value || '').trim()).filter(Boolean);
+    };
+    applyStoredDetailOrder = (groups = [], detailOrder = []) => {
+        const defaultGroups = this.sortPdfDetailGroups(groups);
+        const orderIndexByKey = new Map();
+        (Array.isArray(detailOrder) ? detailOrder : []).forEach((item, index) => {
+            this.getStoredOrderCandidateKeys(item).forEach((key) => {
+                const normalized = String(key || '').trim().toLowerCase();
+                if (normalized && !orderIndexByKey.has(normalized))
+                    orderIndexByKey.set(normalized, index);
+            });
+        });
+        if (!orderIndexByKey.size)
+            return defaultGroups;
+        const matched = [];
+        const unmatched = [];
+        defaultGroups.forEach((row, defaultIndex) => {
+            const matchedIndex = this.getPdfDetailOrderCandidateKeys(row)
+                .map((key) => orderIndexByKey.get(String(key).toLowerCase()))
+                .find((index) => Number.isInteger(index));
+            const requestData = { ...row, __matchedOrderIndex: matchedIndex, __defaultIndex: defaultIndex };
+            if (Number.isInteger(matchedIndex))
+                matched.push(requestData);
+            else
+                unmatched.push(requestData);
+        });
+        return [...matched.sort((a, b) => a.__matchedOrderIndex - b.__matchedOrderIndex || a.__defaultIndex - b.__defaultIndex), ...unmatched]
+            .map(({ __matchedOrderIndex, __defaultIndex, ...row }) => row);
+    };
+    getLhuDetailRowsForPdf = async (nomorLhu, header = {}, sampleRows = [], transaction = null, options = {}) => {
+        const bmParamMap = await this.getBmParamMapForPdf(header.idPktBm, transaction);
+        const orderedSampleRows = this.dedupeSampleRowsForPdf(sampleRows);
+        const sampleOrderMap = new Map();
+        const grouped = new Map();
+        for (const [index, sample] of orderedSampleRows.entries()) {
+            const sampleNo = String(sample.noSampel || '').trim();
+            if (!sampleNo)
+                continue;
+            const sampleOrder = getSampleOrderValue(sample, index);
+            sampleOrderMap.set(sampleNo, sampleOrder);
+            const resultRows = await this.getApprovedResultRowsForPdf(sampleNo, transaction);
+            resultRows.forEach((result) => {
+                const key = this.getDetailFallbackKeyForPdf(result);
+                if (!key)
+                    return;
+                if (!grouped.has(key)) {
+                    const bm = bmParamMap.get(String(result.idParameter || '')) || null;
+                    const nilaiBm = bm ? this.normalizeNilaiBmForLhu(bm.nilaiBm) : '(-)';
+                    const satuanBm = bm ? this.normalizeBmText(bm.satuanBm) : null;
+                    const adaDiBm = bm ? 1 : 0;
+                    grouped.set(key, {
+                        nomorLhu: nomorLhu,
+                        idFpplParameterMetode: result.idFpplParameterMetode || null,
+                        idMetodeParameter: result.idMetodeParameter || null,
+                        idParameter: result.idParameter || null,
+                        namaParameterSnapshot: result.namaParameter || '-',
+                        metodeSnapshot: result.namaMetode || result.metode || '-',
+                        acuanMetodeSnapshot: result.acuanMetode || '-',
+                        isTerakreditasi: this.toTinyIntFlag(result.isTerakreditasi),
+                        isInsituSnapshot: this.toTinyIntFlag(result.isInsitu),
+                        isSubkontrakSnapshot: this.getSubkontrakSnapshot(result),
+                        bmSnapshot: nilaiBm,
+                        satuanBmSnapshot: satuanBm,
+                        adaDiBmSnapshot: adaDiBm,
+                        resultsBySample: new Map(),
+                    });
+                }
+                grouped.get(key).resultsBySample.set(sampleNo, result);
+            });
+        }
+        const sortedGroups = this.applyStoredDetailOrder(
+            Array.from(grouped.values()),
+            this.normalizeDetailOrderInput(options.detailOrder || [])
+        );
+        const rows = [];
+        sortedGroups.forEach((group, detailIndex) => {
+            orderedSampleRows.forEach((sample, sampleIndex) => {
+                const sampleNo = String(sample.noSampel || '').trim();
+                if (!sampleNo)
+                    return;
+                const result = group.resultsBySample.get(sampleNo) || {};
+                rows.push({
+                    nomorLhu: nomorLhu,
+                    noSampel: sampleNo,
+                    urutanSampel: sampleOrderMap.get(sampleNo) || getSampleOrderValue(sample, sampleIndex),
+                    urutanLhu: detailIndex + 1,
+                    idFpplParameterMetode: group.idFpplParameterMetode,
+                    idMetodeParameter: group.idMetodeParameter,
+                    idParameter: group.idParameter,
+                    namaParameterSnapshot: group.namaParameterSnapshot,
+                    metodeSnapshot: group.metodeSnapshot,
+                    acuanMetodeSnapshot: group.acuanMetodeSnapshot,
+                    hasilSnapshot: result.hasil || null,
+                    isTerakreditasi: group.isTerakreditasi,
+                    isInsituSnapshot: group.isInsituSnapshot,
+                    isSubkontrakSnapshot: group.isSubkontrakSnapshot,
+                    bmSnapshot: group.bmSnapshot,
+                    satuanBmSnapshot: group.satuanBmSnapshot,
+                    adaDiBmSnapshot: group.adaDiBmSnapshot,
+                    tanggalSampling: sample.tanggalPengambilanSampel || null,
+                });
+            });
+        });
+        return rows.sort((a, b) => Number(a.urutanLhu || 0) - Number(b.urutanLhu || 0) ||
+            this.compareText(a.namaParameterSnapshot, b.namaParameterSnapshot) ||
+            Number(a.urutanSampel || 0) - Number(b.urutanSampel || 0) ||
+            this.compareText(a.noSampel, b.noSampel));
+    };
+    getLhuPdfData = async (nomorLhu, transaction = null, options = {}) => {
+        const header = await this.getLhuHeaderForPdf(nomorLhu, transaction);
+        if (!header) {
+            throw new Error('Data LHU tidak ditemukan untuk generate PDF.');
+        }
+        const sampleRows = await this.getLhuSampleRowsForPdf(nomorLhu, transaction);
+        const [qc, kalab, details] = await Promise.all([
+            this.getPegawaiSnapshot(header.qcBy, transaction),
+            this.getPegawaiSnapshot(header.kalabBy, transaction),
+            this.getLhuDetailRowsForPdf(nomorLhu, header, sampleRows, transaction, options),
+        ]);
+        const firstSample = sampleRows[0] || {};
+        const sampleNoList = formatSampleNoList(sampleRows);
+        const coordinateText = formatSampleFieldLines(sampleRows, (row) => row.koordinat, firstSample.koordinat || null, { repeatShared: false });
+        const lhu = {
+            ...toCamelCaseDeep(header),
+            noSampel: sampleNoList,
+            sampleRows: toCamelCaseDeep(sampleRows),
+            jenisSampel: normalizeSampleTypeForLhu(firstSample.jenisSampel),
+            jenisPengambilanSampel: normalizeSampleCollectorForLhu(header.jenisPengambilanSampel),
+            tanggalPengambilanSampel: firstSample.tanggalPengambilanSampel || null,
+            tanggalPenerimaan: firstSample.diterimaPada || null,
+            jamPenerimaan: firstSample.diterimaPada ? new Date(firstSample.diterimaPada).toTimeString().slice(0, 8) : null,
+            tanggalSampling: firstSample.tanggalPengambilanSampel || null,
+            kondisiSampel: firstSample.kondisiSampel || null,
+            abnormalitasSampel: formatSampleFieldLines(sampleRows, (row) => row.abnormalitasSampel, firstSample.abnormalitasSampel || null),
+            lokasiSpesifik: formatSampleFieldLines(sampleRows, (row) => row.lokasiSpesifik || header.lokasiPengambilanSampel, firstSample.lokasiSpesifik || header.lokasiPengambilanSampel || null),
+            lokasiPengambilanSampel: formatSampleFieldLines(sampleRows, (row) => row.lokasiSpesifik || header.lokasiPengambilanSampel, firstSample.lokasiSpesifik || header.lokasiPengambilanSampel || null),
+            koordinat: coordinateText,
+            acuanPengambilanSampel: formatSampleFieldLines(sampleRows, (row) => row.acuanPengambilanSampel, firstSample.acuanPengambilanSampel || null),
+            standarLhu: header.teksLhu || [header.regBmInstansi, header.refReg].filter(Boolean).join(' - ') || null,
+            qcNama: qc.namaPegawai,
+            qcNip: qc.nip,
+            kalabNama: kalab.namaPegawai,
+            kalabNip: kalab.nip,
+        };
+        return { lhu, details: toCamelCaseDeep(details) };
+    };
+    isEditableByQcStatus = (status) => isLhuEditableByQc(status);
+
+    calculateAccreditationStats = (details = []) => {
+        const uniqueMap = new Map();
+        (Array.isArray(details) ? details : []).forEach((row, index) => {
+            const key = this.getFallbackParameterKey(row) || `row-${index}`;
+            if (!uniqueMap.has(key)) uniqueMap.set(key, row);
+        });
+        const uniqueRows = Array.from(uniqueMap.values());
+        const totalParameter = uniqueRows.length;
+        const totalTerakreditasi = uniqueRows.filter((row) => Number(row.is_terakreditasi || row.isTerakreditasi || row.isTerakreditasiSnapshot || 0) === 1).length;
+        const persentase = totalParameter > 0 ? Number(((totalTerakreditasi / totalParameter) * 100).toFixed(2)) : 0;
+        return {
+            totalParameter,
+            totalTerakreditasi,
+            persentase,
+            showLogoKan: persentase >= 60,
+        };
+    };
+
+    getLkaHasilTargetKey = (row = {}) => {
+        const kode = String(row.kode_lka || row.kodeLka || '').trim();
+        const noSampel = String(row.no_sampel || row.noSampel || '').trim();
+        return kode && noSampel ? `${kode}|${noSampel}` : '';
+    };
+
+    getFpplParameterMetodeKey = (row = {}) => String(row.id_fppl_parameter_metode || row.idFpplParameterMetode || row.id_fppl_pm || row.idFpplPm || '').trim();
+
+    getParameterMethodKey = (row = {}) => String(row.id_metode_parameter || row.idMetodeParameter || row.id_parameter_metode || row.idParameterMetode || '').trim();
+
+    getFallbackParameterKey = (row = {}) => {
+        const explicitKey = String(row.detail_key || row.detailKey || row.key || '').trim();
+        if (explicitKey) return explicitKey;
+        const fpplParameterMetodeKey = this.getFpplParameterMetodeKey(row);
+        if (fpplParameterMetodeKey) return fpplParameterMetodeKey;
+        const methodKey = this.getParameterMethodKey(row);
+        if (methodKey) return methodKey;
+        return [
+            row.id_parameter || row.idParameter,
+            row.nama_parameter_snapshot || row.namaParameterSnapshot || row.nama_parameter || row.namaParameter,
+            row.metode_snapshot || row.metodeSnapshot || row.nama_metode || row.namaMetode || row.metode,
+            row.acuan_metode_snapshot || row.acuanMetodeSnapshot || row.acuan_metode || row.acuanMetode,
+        ].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean).join('|');
+    };
+
+    getDetailSortText = (row = {}, keys = []) => {
+        for (const key of keys) {
+            const value = row?.[key];
+            if (value !== null && value !== undefined && String(value).trim() !== '') return String(value).trim();
+        }
+        return '';
+    };
+
+    compareDetailRowsForLhu = (a = {}, b = {}) => {
+        const kategoriCompare = this.compareText(
+            this.getDetailSortText(a, ['kategori_parameter', 'kategoriParameter', 'kategori_parameter_snapshot', 'kategoriParameterSnapshot']),
+            this.getDetailSortText(b, ['kategori_parameter', 'kategoriParameter', 'kategori_parameter_snapshot', 'kategoriParameterSnapshot'])
+        );
+        if (kategoriCompare) return kategoriCompare;
+        const parameterCompare = this.compareText(
+            this.getDetailSortText(a, ['nama_parameter_snapshot', 'namaParameterSnapshot', 'nama_parameter', 'namaParameter']),
+            this.getDetailSortText(b, ['nama_parameter_snapshot', 'namaParameterSnapshot', 'nama_parameter', 'namaParameter'])
+        );
+        if (parameterCompare) return parameterCompare;
+        const metodeCompare = this.compareText(
+            this.getDetailSortText(a, ['metode_snapshot', 'metodeSnapshot', 'nama_metode', 'namaMetode', 'metode']),
+            this.getDetailSortText(b, ['metode_snapshot', 'metodeSnapshot', 'nama_metode', 'namaMetode', 'metode'])
+        );
+        if (metodeCompare) return metodeCompare;
+        return this.compareText(this.getFallbackParameterKey(a), this.getFallbackParameterKey(b));
+    };
+
+    getDetailOrderDescriptor = (row = {}) => ({
+        key: this.getFallbackParameterKey(row),
+        detailKey: row.detailKey || row.detail_key || row.key || null,
+        idFpplParameterMetode: row.idFpplParameterMetode || row.id_fppl_parameter_metode || null,
+        idMetodeParameter: row.idMetodeParameter || row.id_metode_parameter || row.idParameterMetode || row.id_parameter_metode || null,
+        idParameter: row.idParameter || row.id_parameter || null,
+        namaParameter: row.namaParameterSnapshot || row.nama_parameter_snapshot || row.namaParameter || row.nama_parameter || null,
+        metode: row.metodeSnapshot || row.metode_snapshot || row.namaMetode || row.nama_metode || row.metode || null,
+        acuanMetode: row.acuanMetodeSnapshot || row.acuan_metode_snapshot || row.acuanMetode || row.acuan_metode || null,
+    });
+
+    getDetailOrderCandidateKeys = (row = {}) => {
+        const descriptor = this.getDetailOrderDescriptor(row);
+        const textKey = [descriptor.namaParameter, descriptor.metode, descriptor.acuanMetode]
+            .map((value) => String(value || '').trim().toLowerCase())
+            .filter(Boolean)
+            .join('|');
+        return [
+            descriptor.detailKey,
+            descriptor.key,
+            descriptor.idFpplParameterMetode,
+            descriptor.idMetodeParameter,
+            descriptor.idParameter,
+            textKey,
+        ].map((value) => String(value || '').trim()).filter(Boolean);
+    };
+
+    normalizeDetailOrderInput = (detailOrder = []) => {
+        const items = Array.isArray(detailOrder) ? detailOrder : String(detailOrder || '').split(/[,\n]+/);
+        const keys = [];
+        items.forEach((item) => {
+            if (item && typeof item === 'object') {
+                keys.push(...this.getDetailOrderCandidateKeys(item));
+                return;
+            }
+            const text = String(item || '').trim();
+            if (text) keys.push(text);
+        });
+        const seen = new Set();
+        return keys.filter((key) => {
+            const normalized = key.toLowerCase();
+            if (!normalized || seen.has(normalized)) return false;
+            seen.add(normalized);
+            return true;
+        });
+    };
+
+    sortDetailRowsForLhu = (rows = []) => {
+        return (Array.isArray(rows) ? [...rows] : [])
+            .sort(this.compareDetailRowsForLhu)
+            .map((row, index) => ({ ...row, urutanLhu: index + 1 }));
+    };
+
+    applyDetailOrder = (rows = [], detailOrder = []) => {
+        const defaultRows = this.sortDetailRowsForLhu(rows);
+        const orderKeys = this.normalizeDetailOrderInput(detailOrder);
+        if (!orderKeys.length) return defaultRows;
+        const orderIndexByKey = new Map(orderKeys.map((key, index) => [key.toLowerCase(), index]));
+        const matched = [];
+        const unmatched = [];
+        defaultRows.forEach((row, defaultIndex) => {
+            const matchedKey = this.getDetailOrderCandidateKeys(row).find((key) => orderIndexByKey.has(key.toLowerCase()));
+            if (matchedKey) matched.push({ row, orderIndex: orderIndexByKey.get(matchedKey.toLowerCase()), defaultIndex });
+            else unmatched.push({ row, defaultIndex });
+        });
+        return [...matched.sort((a, b) => a.orderIndex - b.orderIndex || a.defaultIndex - b.defaultIndex), ...unmatched.sort((a, b) => a.defaultIndex - b.defaultIndex)]
+            .map(({ row }, index) => ({ ...row, urutanLhu: index + 1 }));
+    };
+
+    getSampleInfo = async (noSampel, transaction = null) => {
+        const sampleNo = String(noSampel || '').trim();
+        if (!sampleNo) throw new Error('Nomor sampel wajib dipilih.');
+        const instance = await Sampel.findOne({
+            where: { no_sampel: sampleNo },
             include: [
+                { model: JenisSampel, as: 'jenis_sampel', required: false },
+                { model: RegBm, as: 'reg_bm', required: false },
                 {
-                    model: FpplParameterMetode,
-                    as: 'parameter_metodes',
+                    model: Fppl,
+                    as: 'fppl',
                     required: false,
-                    through: { attributes: [] },
                     include: [
-                        { model: Parameter, required: false },
+                        { model: Pelanggan, as: 'pelanggan', required: false },
+                        { model: JadwalSampel, as: 'jadwal_sampels', required: false },
+                    ],
+                },
+                {
+                    model: FpplSampel,
+                    as: 'fppl_sampel',
+                    required: false,
+                    include: [
+                        { model: JenisSampel, required: false },
+                        { model: RegBm, required: false },
                         {
-                            model: ParameterMetode,
+                            model: Fppl,
+                            as: 'fppl',
                             required: false,
-                            include: [{ model: Metode, required: false }],
+                            include: [
+                                { model: Pelanggan, as: 'pelanggan', required: false },
+                                { model: JadwalSampel, as: 'jadwal_sampels', required: false },
+                            ],
                         },
                     ],
                 },
             ],
             transaction,
         });
-        if (!sample)
-            return [];
-        const plain = getPlain(sample);
-        const fpms = getAssociatedFpmsFromSample(plain);
-        return fpms
-            .map((fpm) => {
-            const parameter = pickObject(fpm, ['parameter', 'Parameter']) || {};
-            const parameterMetode = pickObject(fpm, ['parameter_metode', 'ParameterMetode']) || {};
-            const metode = pickObject(parameterMetode, ['metode', 'Metode']) || {};
-            return {
-                no_sampel: plain.no_sampel,
-                id_fppl_parameter_metode: fpm.id_fppl_parameter_metode,
-                id_parameter: fpm.id_parameter,
-                id_metode_parameter: fpm.id_metode_parameter || parameterMetode.id_metode_parameter || null,
-                is_insitu: fpm.is_insitu,
-                status_kemampuan_lab: fpm.status_kemampuan_lab,
-                is_subkontrak: parameterMetode.is_subkontrak ?? 0,
-                is_subkontrak_snapshot: parameterMetode.is_subkontrak ?? 0,
-                nama_parameter: parameter.nama_parameter,
-                kategori_parameter: parameter.kategori_parameter,
-                acuan_metode: parameterMetode.acuan_metode,
-                is_terakreditasi: parameterMetode.is_terakreditasi,
-                nama_metode: metode.nama_metode,
-            };
-        })
-            .sort((a, b) => String(a.nama_parameter || '').localeCompare(String(b.nama_parameter || '')));
+        if (!instance) throw new Error('Sampel tidak ditemukan.');
+        const sample = instance.get({ plain: true });
+        const fpplSampel = this.pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {};
+        const fppl = this.pickObject(sample, ['fppl', 'Fppl']) || this.pickObject(fpplSampel, ['fppl', 'Fppl']) || {};
+        const pelanggan = this.pickObject(fppl, ['pelanggan', 'Pelanggan']) || {};
+        const jenis = this.pickObject(sample, ['jenis_sampel', 'JenisSampel']) || this.pickObject(fpplSampel, ['jenis_sampel', 'JenisSampel']) || {};
+        const regBm = this.pickObject(sample, ['reg_bm', 'RegBm']) || this.pickObject(fpplSampel, ['reg_bm', 'RegBm']) || {};
+        const activeSchedule = this.getActiveJadwalFromFppl(fppl) || {};
+        return {
+            ...sample,
+            noSampel: sample.no_sampel,
+            idRegistrasi: sample.id_registrasi || fpplSampel.id_registrasi || fppl.id_registrasi || null,
+            nomorFppl: fppl.nomor_fppl || null,
+            tanggalPendaftaran: fppl.tanggal_pendaftaran || null,
+            maksudPengujian: fppl.maksud_pengujian || null,
+            lokasiPengambilanSampel: fppl.lokasi_pengambilan_sampel || sample.lokasi_pengambilan_sampel || null,
+            jenisPengambilanSampel: fppl.jenis_pengambilan_sampel || null,
+            tanggalRencanaPengambilanSampel: fppl.tanggal_rencana_pengambilan_sampel || null,
+            jamRencanaPengambilanSampel: fppl.jam_rencana_pengambilan_sampel || null,
+            tanggalRencanaPengantaranSampel: fppl.tanggal_rencana_pengantaran_sampel || null,
+            statusFppl: fppl.status_fppl || null,
+            idPelanggan: pelanggan.id_pelanggan || null,
+            namaInstansi: pelanggan.nama_instansi || null,
+            namaPelanggan: pelanggan.nama_instansi || null,
+            pic: pelanggan.pic || null,
+            emailKontak: pelanggan.email_kontak || null,
+            email: pelanggan.email_kontak || null,
+            noTelp: pelanggan.no_telp || null,
+            alamat: pelanggan.alamat || null,
+            idJenisSampel: sample.id_jenis_sampel || fpplSampel.id_jenis_sampel || null,
+            jenisSampel: jenis.jenis_sampel || null,
+            idRegBm: sample.id_reg_bm || fpplSampel.id_reg_bm || null,
+            regBmInstansi: regBm.instansi || null,
+            refReg: regBm.ref_reg || null,
+            jumlahSampel: fpplSampel.jumlah_sampel || null,
+            tanggalPengambilanSampel: sample.tanggal_pengambilan || sample.tanggal_pengambilan_sampel || null,
+            tanggalJadwal: activeSchedule.tanggal_jadwal || null,
+            jamJadwal: activeSchedule.jam_jadwal || null,
+            diterimaPada: sample.diterima_pada || null,
+            tanggalPenerimaan: sample.diterima_pada || null,
+            abnormalitasSampel: sample.abnormalitas_sampel || null,
+            acuanPengambilanSampel: sample.acuan_pengambilan_sampel || null,
+            lokasiSpesifik: sample.lokasi_spesifik || sample.lokasi_pengambilan_sampel || null,
+            koordinat: sample.koordinat || null,
+            kondisiSampel: sample.kondisi_sampel || null,
+            statusSample: sample.status_sample || null,
+            nomorLhu: sample.nomor_lhu || null,
+            statusLhu: null,
+        };
     };
-    getBmInfo = async (idPktBm, transaction = null) => {
-        const pktInstance = await PktBm.findOne({
-            where: { id_pkt_bm: idPktBm },
-            include: [
-                { model: RegBm, required: false },
-                { model: JenisSampel, required: false },
-            ],
+
+    getSampleInfosForLhu = async (nomorLhu, transaction = null) => {
+        const lhuNo = String(nomorLhu || '').trim();
+        if (!lhuNo) return [];
+        const rows = await Sampel.findAll({
+            where: { nomor_lhu: lhuNo },
+            attributes: ['no_sampel'],
+            order: [['no_sampel', 'ASC']],
             transaction,
         });
-        if (!pktInstance) {
-            throw new Error('Paket baku mutu tidak ditemukan.');
+        const infos = [];
+        for (const row of rows) {
+            const plain = this.getPlain(row) || {};
+            const noSampel = plain.noSampel || plain.no_sampel || row.no_sampel || row.get?.('no_sampel');
+            if (noSampel) infos.push(await this.getSampleInfo(noSampel, transaction));
         }
-        const pkt = withPaketBmDisplayFields(getPlain(pktInstance));
-        const regBm = pickObject(pkt, ['reg_bm', 'RegBm']) || {};
-        const header = {
-            id_pkt_bm: pkt.id_pkt_bm,
-            id_reg_bm: pkt.id_reg_bm,
-            id_jenis_sampel: pkt.id_jenis_sampel,
-            klasifikasi: pkt.klasifikasi,
-            nama_pkt: pkt.nama_pkt,
-            teks_lhu: pkt.teks_lhu,
-            instansi: regBm.instansi,
-            ref_reg: regBm.ref_reg,
-        };
-        const [paramRows, nilaiRows] = await Promise.all([
-            PktBmParam.findAll({
-                where: { id_reg_bm: pkt.id_reg_bm, id_jenis_sampel: pkt.id_jenis_sampel },
-                transaction,
-            }),
-            PktBmNilai.findAll({ where: { id_pkt_bm: pkt.id_pkt_bm }, transaction }),
-        ]);
-        const nilaiMap = new Map(nilaiRows.map((row) => [String(row.id_parameter), getPlain(row)]));
-        const rows = paramRows.map(getPlain).map((row) => ({
-            ...header,
-            id_parameter: row.id_parameter,
-            nilai_bm: nilaiMap.get(String(row.id_parameter))?.nilai_bm ?? null,
-            satuan_bm: row.satuan_bm,
-            ket_bm: row.ket_bm,
-        })).sort((a, b) => String(a.id_parameter || '').localeCompare(String(b.id_parameter || '')));
-        const map = new Map();
-        rows.forEach((row) => {
-            if (row.id_parameter) {
-                map.set(row.id_parameter, row);
-            }
-        });
-        return { header, rows, map };
+        return infos;
     };
-    getDetailLhuRows = async (nomorLhu, transaction = null) => {
-        const lhuInstance = await Lhu.findByPk(nomorLhu, {
+
+    getExistingLhuBySample = async (noSampel, transaction = null) => {
+        const sampleNo = String(noSampel || '').trim();
+        if (!sampleNo) return null;
+        const sample = await Sampel.findOne({
+            where: { no_sampel: sampleNo },
+            attributes: ['no_sampel', 'nomor_lhu'],
+            transaction,
+        });
+        const nomorLhu = sample?.nomor_lhu || null;
+        if (!nomorLhu) return null;
+        const lhu = await Lhu.findOne({ where: { nomor_lhu: nomorLhu }, transaction });
+        return lhu ? lhu.get({ plain: true }) : null;
+    };
+
+    getExpectedParameterRows = async (noSampel, transaction = null) => {
+        const sampleNo = String(noSampel || '').trim();
+        if (!sampleNo) return [];
+        const expectedInstances = await SampelParameter.findAll({
+            where: { no_sampel: sampleNo },
             include: [
                 {
-                    model: Sampel,
-                    as: 'sampels',
-                    required: false,
-                    attributes: ['no_sampel'],
+                    model: FpplParameterMetode,
+                    as: 'fppl_parameter_metode',
+                    required: true,
+                    include: [
+                        { model: Parameter, required: false },
+                        { model: ParameterMetode, required: false, include: [{ model: Metode, required: false }] },
+                    ],
                 },
             ],
             transaction,
         });
-        if (!lhuInstance)
-            return [];
-        const lhu = getPlain(lhuInstance);
-        const lhuSamples = dedupeRowsBySampleNo(pickArray(lhu, ['sampels', 'Sampels']));
-        const sampleNos = dedupeSampleNos(lhuSamples.map((row) => row.no_sampel || row.noSampel));
-        if (!sampleNos.length)
-            return [];
-        const bmInfo = lhu.id_pkt_bm
-            ? await this.getBmInfo(lhu.id_pkt_bm, transaction)
-            : { map: new Map() };
-        const rows = [];
-        for (const sampleNo of sampleNos) {
-            const resultRows = await this.getLkaResultRows(sampleNo, transaction);
-            resultRows
-                .filter((row) => String(row.hasil || '').trim() && isResultApprovedByKasi(row))
-                .forEach((row) => {
-                    const bm = bmInfo.map.get(row.id_parameter) || null;
-                    const nilaiBm = normalizeNilaiBmForLhu(bm?.nilai_bm);
-                    const satuanBm = normalizeBmText(bm?.satuan_bm);
-                    const adaDiBm = bm ? 1 : 0;
-                    rows.push({
-                        nomor_lhu: nomorLhu,
-                        nomorLhu,
-                        no_sampel: sampleNo,
-                        noSampel: sampleNo,
-                        kode_lka: row.kode_lka || row.kodeLka || null,
-                        kodeLka: row.kode_lka || row.kodeLka || null,
-                        id_fppl_parameter_metode: row.id_fppl_parameter_metode || row.idFpplParameterMetode || null,
-                        idFpplParameterMetode: row.id_fppl_parameter_metode || row.idFpplParameterMetode || null,
-                        id_parameter: row.id_parameter || row.idParameter || null,
-                        idParameter: row.id_parameter || row.idParameter || null,
-                        id_metode_parameter: row.id_metode_parameter || row.idMetodeParameter || null,
-                        idMetodeParameter: row.id_metode_parameter || row.idMetodeParameter || null,
-                        nama_parameter: row.nama_parameter || row.namaParameter || '-',
-                        namaParameter: row.nama_parameter || row.namaParameter || '-',
-                        nama_parameter_snapshot: row.nama_parameter || row.namaParameter || '-',
-                        namaParameterSnapshot: row.nama_parameter || row.namaParameter || '-',
-                        kategori_parameter: row.kategori_parameter || row.kategoriParameter || null,
-                        kategoriParameter: row.kategori_parameter || row.kategoriParameter || null,
-                        metode: row.nama_metode || row.namaMetode || row.metode || '-',
-                        nama_metode: row.nama_metode || row.namaMetode || row.metode || '-',
-                        namaMetode: row.nama_metode || row.namaMetode || row.metode || '-',
-                        metode_snapshot: row.nama_metode || row.namaMetode || row.metode || '-',
-                        metodeSnapshot: row.nama_metode || row.namaMetode || row.metode || '-',
-                        acuan_metode: row.acuan_metode || row.acuanMetode || '-',
-                        acuanMetode: row.acuan_metode || row.acuanMetode || '-',
-                        acuan_metode_snapshot: row.acuan_metode || row.acuanMetode || '-',
-                        acuanMetodeSnapshot: row.acuan_metode || row.acuanMetode || '-',
-                        hasil: row.hasil || null,
-                        hasil_snapshot: row.hasil || null,
-                        hasilSnapshot: row.hasil || null,
-                        catatan_hasil: row.catatan_hasil || row.catatanHasil || null,
-                        catatanHasil: row.catatan_hasil || row.catatanHasil || null,
-                        is_terakreditasi: toTinyIntFlag(row.is_terakreditasi),
-                        isTerakreditasi: toTinyIntFlag(row.isTerakreditasi ?? row.is_terakreditasi),
-                        is_terakreditasi_snapshot: toTinyIntFlag(row.is_terakreditasi),
-                        isTerakreditasiSnapshot: toTinyIntFlag(row.isTerakreditasi ?? row.is_terakreditasi),
-                        is_insitu: toTinyIntFlag(row.is_insitu),
-                        isInsitu: toTinyIntFlag(row.isInsitu ?? row.is_insitu),
-                        is_insitu_snapshot: toTinyIntFlag(row.is_insitu),
-                        isInsituSnapshot: toTinyIntFlag(row.isInsitu ?? row.is_insitu),
-                        is_subkontrak: getSubkontrakSnapshot(row),
-                        isSubkontrak: getSubkontrakSnapshot(row),
-                        is_subkontrak_snapshot: getSubkontrakSnapshot(row),
-                        isSubkontrakSnapshot: getSubkontrakSnapshot(row),
-                        bm: nilaiBm,
-                        nilai_bm: nilaiBm,
-                        nilaiBm,
-                        nilai_bm_pkt: nilaiBm,
-                        nilaiBmPkt: nilaiBm,
-                        satuan_bm: satuanBm,
-                        satuanBm,
-                        satuan_bm_pkt: satuanBm,
-                        satuanBmPkt: satuanBm,
-                        ada_di_bm: adaDiBm,
-                        adaDiBm,
-                        ada_di_bm_pkt: adaDiBm,
-                        adaDiBmPkt: adaDiBm,
-                    });
-                });
-        }
-        return sortDetailRowsForLhu(groupLhuDetailRowsByParameter(rows));
+        return expectedInstances.map((instance) => {
+            const row = instance.get({ plain: true });
+            const fpm = this.pickObject(row, ['fppl_parameter_metode', 'FpplParameterMetode']) || {};
+            const parameter = this.pickObject(fpm, ['parameter', 'Parameter']) || {};
+            const parameterMetode = this.pickObject(fpm, ['parameter_metode', 'ParameterMetode']) || {};
+            const metode = this.pickObject(parameterMetode, ['metode', 'Metode']) || {};
+            return {
+                noSampel: sampleNo,
+                no_sampel: sampleNo,
+                idFpplParameterMetode: fpm.id_fppl_parameter_metode || row.id_fppl_parameter_metode || null,
+                id_fppl_parameter_metode: fpm.id_fppl_parameter_metode || row.id_fppl_parameter_metode || null,
+                idParameter: fpm.id_parameter || parameter.id_parameter || parameterMetode.id_parameter || null,
+                id_parameter: fpm.id_parameter || parameter.id_parameter || parameterMetode.id_parameter || null,
+                idMetodeParameter: fpm.id_metode_parameter || parameterMetode.id_metode_parameter || null,
+                id_metode_parameter: fpm.id_metode_parameter || parameterMetode.id_metode_parameter || null,
+                isInsitu: fpm.is_insitu ?? 0,
+                is_insitu: fpm.is_insitu ?? 0,
+                statusKemampuanLab: fpm.status_kemampuan_lab || null,
+                status_kemampuan_lab: fpm.status_kemampuan_lab || null,
+                isSubkontrak: parameterMetode.is_subkontrak ?? 0,
+                isSubkontrakSnapshot: parameterMetode.is_subkontrak ?? 0,
+                namaParameter: parameter.nama_parameter || '-',
+                nama_parameter: parameter.nama_parameter || '-',
+                kategoriParameter: parameter.kategori_parameter || parameter.id_kategori_parameter || null,
+                kategori_parameter: parameter.kategori_parameter || parameter.id_kategori_parameter || null,
+                acuanMetode: parameterMetode.acuan_metode || '-',
+                acuan_metode: parameterMetode.acuan_metode || '-',
+                isTerakreditasi: parameterMetode.is_terakreditasi ?? 0,
+                is_terakreditasi: parameterMetode.is_terakreditasi ?? 0,
+                namaMetode: metode.nama_metode || '-',
+                nama_metode: metode.nama_metode || '-',
+            };
+        }).filter((row) => row.idFpplParameterMetode || row.idMetodeParameter || row.idParameter);
     };
-    getLhuSampleRows = async (nomorLhu, transaction = null) => {
-        const rows = await Sampel.findAll({
-            where: { nomor_lhu: nomorLhu },
-            order: [['no_sampel', 'ASC']],
+
+    getLkaResultRows = async (noSampel, transaction = null) => {
+        const sampleNo = String(noSampel || '').trim();
+        if (!sampleNo) return [];
+        const resultInstances = await LkaHasil.findAll({
+            where: {
+                no_sampel: sampleNo,
+                statusReviewHasil: 'Disetujui Kasi Pengujian',
+                hasil: { [Op.ne]: null },
+            },
+            include: [
+                {
+                    model: Lka,
+                    required: true,
+                    include: [
+                        {
+                            model: PenugasanDetail,
+                            required: false,
+                            include: [
+                                { model: ParameterMetode, required: false, include: [{ model: Parameter, required: false }, { model: Metode, required: false }] },
+                            ],
+                        },
+                    ],
+                },
+            ],
             transaction,
         });
-        return dedupeRowsBySampleNo(rows.map((instance) => getPlain(instance)));
+        return resultInstances.map((instance) => {
+            const row = instance.get({ plain: true });
+            const lka = this.pickObject(row, ['lka', 'Lka']) || {};
+            const detail = this.pickObject(lka, ['penugasan_detail', 'PenugasanDetail']) || {};
+            const parameterMetode = this.pickObject(detail, ['parameter_metode', 'ParameterMetode']) || {};
+            const parameter = this.pickObject(parameterMetode, ['parameter', 'Parameter']) || {};
+            const metode = this.pickObject(parameterMetode, ['metode', 'Metode']) || {};
+            return {
+                kodeLka: row.kode_lka,
+                noSampel: sampleNo,
+                hasil: row.hasil,
+                catatanHasil: row.catatan_hasil,
+                statusReviewHasil: row.statusReviewHasil || row.status_review_hasil,
+                statusLka: lka.status_lka,
+                tanggalMulaiPengujian: lka.tanggal_mulai_pengujian,
+                tanggalSelesaiPengujian: lka.tanggal_selesai_pengujian,
+                idPenugasanDetail: detail.id_penugasan_detail || lka.id_penugasan_detail || null,
+                idMetodeParameter: detail.id_metode_parameter || parameterMetode.id_metode_parameter || null,
+                idParameter: parameterMetode.id_parameter || parameter.id_parameter || null,
+                isSubkontrak: parameterMetode.is_subkontrak ?? 0,
+                isSubkontrakSnapshot: parameterMetode.is_subkontrak ?? 0,
+                namaParameter: parameter.nama_parameter || '-',
+                kategoriParameter: parameter.kategori_parameter || parameter.id_kategori_parameter || null,
+                acuanMetode: parameterMetode.acuan_metode || '-',
+                isTerakreditasi: parameterMetode.is_terakreditasi ?? 0,
+                namaMetode: metode.nama_metode || '-',
+            };
+        }).filter((row) => String(row.hasil || '').trim() && this.isResultApprovedByKasi(row));
     };
-    getFirstSampleInfoForLhu = async (nomorLhu, transaction = null) => {
-        const rows = await this.getLhuSampleRows(nomorLhu, transaction);
-        const noSampel = rows?.[0]?.no_sampel;
-        return noSampel ? this.getSampleInfo(noSampel, transaction) : null;
+
+    isResultApprovedByKasi = (row = {}) => {
+        const status = row.statusReviewHasil || row.status_review_hasil || null;
+        return status === 'Disetujui Kasi Pengujian';
     };
-    getSampleInfosForLhu = async (nomorLhu, transaction = null) => {
-        const rows = await this.getLhuSampleRows(nomorLhu, transaction);
-        const sampleNos = dedupeSampleNos((rows || []).map((row) => row.no_sampel));
-        const sampleInfos = [];
-        for (const noSampel of sampleNos) {
-            sampleInfos.push(await this.getSampleInfo(noSampel, transaction));
-        }
-        return sampleInfos;
-    };
-    buildLhuListRow = async (lhu = {}) => {
-        const sampleInfos = await this.getSampleInfosForLhu(lhu.nomor_lhu);
-        const sample = sampleInfos[0] || {};
-        const samplePayloads = sampleInfos.map(mapSamplePayload);
-        const sampleNos = dedupeSampleNos(sampleInfos.map((info) => info.no_sampel));
-        const noSampelText = sampleNos.join('\n') || null;
-        const joinUnique = (values = [], separator = ', ') => {
-            const seen = new Set();
-            const result = [];
-            values.forEach((value) => {
-                const text = String(value || '').trim();
-                if (!text || seen.has(text.toLowerCase()))
-                    return;
-                seen.add(text.toLowerCase());
-                result.push(text);
+
+    getBmInfo = async (idPktBm, transaction = null) => {
+        if (!idPktBm) throw new Error('Paket baku mutu wajib dipilih.');
+        const paket = await PktBm.findOne({
+            where: { id_pkt_bm: idPktBm },
+            include: [
+                { model: RegBm, required: false },
+                { model: JenisSampel, required: false },
+                { model: Klasifikasi, required: false },
+            ],
+            transaction,
+        });
+        if (!paket) throw new Error('Paket baku mutu tidak ditemukan.');
+        const headerRaw = withPaketBmDisplayFields(paket.get({ plain: true }));
+        const nilaiRows = await PktBmNilai.findAll({
+            where: { id_pkt_bm: idPktBm },
+            include: [{ model: Parameter, required: false }],
+            transaction,
+        });
+        const metaRows = await PktBmParam.findAll({
+            where: {
+                id_reg_bm: paket.id_reg_bm,
+                id_jenis_sampel: paket.id_jenis_sampel,
+            },
+            include: [{ model: Satuan, required: false }],
+            transaction,
+        });
+        const metaMap = new Map(metaRows.map((row) => [String(row.id_parameter), row.get({ plain: true })]));
+        const map = new Map();
+        nilaiRows.forEach((row) => {
+            const nilai = row.get({ plain: true });
+            const meta = metaMap.get(String(nilai.id_parameter)) || {};
+            const satuan = meta.satuan || meta.Satuan || {};
+            map.set(nilai.id_parameter, {
+                idParameter: nilai.id_parameter,
+                id_parameter: nilai.id_parameter,
+                nilaiBm: nilai.nilai_bm,
+                nilai_bm: nilai.nilai_bm,
+                satuanBm: satuan.satuan || null,
+                satuan_bm: satuan.satuan || null,
+                ketBm: meta.ket_bm || null,
+                ket_bm: meta.ket_bm || null,
             });
-            return result.join(separator) || null;
-        };
-        const nomorFppl = joinUnique(sampleInfos.map((info) => info.nomor_fppl)) || sample.nomor_fppl || null;
-        const jenisSampel = joinUnique(sampleInfos.map((info) => info.jenis_sampel)) || sample.jenis_sampel || null;
-        const acuanPengambilan = joinUnique(sampleInfos.map((info) => info.acuan_pengambilan_sampel), '\n') || sample.acuan_pengambilan_sampel || null;
-        const abnormalitas = joinUnique(sampleInfos.map((info) => info.abnormalitas_sampel), '\n') || sample.abnormalitas_sampel || null;
-        const pktBm = await getPktBmHeaderById(lhu.id_pkt_bm);
-        const details = await this.getDetailLhuRows(lhu.nomor_lhu);
-        const stats = countDetailStats(details);
-        const standarLabel = buildAcuanBmSnapshot(pktBm) || buildStandarLabel(sample);
-        const [qcNama, kalabNama] = await Promise.all([
-            getPegawaiDisplayName(lhu.qc_by),
-            getPegawaiDisplayName(lhu.kalab_by),
-        ]);
+        });
         return {
-            nomorLhu: lhu.nomor_lhu,
-            nomor_lhu: lhu.nomor_lhu,
-            nomorFppl,
-            nomor_fppl: nomorFppl,
-            noSampel: noSampelText,
-            no_sampel: noSampelText,
-            sampleNos,
-            sample_nos: sampleNos,
-            daftarSampelFinalisasiQc: noSampelText,
-            daftar_sampel_finalisasi_qc: noSampelText,
-            totalSampelFinalisasiQc: sampleNos.length,
-            total_sampel_finalisasi_qc: sampleNos.length,
-            samples: samplePayloads,
-            sampels: samplePayloads,
-            idRegistrasi: sample.id_registrasi,
-            id_registrasi: sample.id_registrasi,
-            idPktBm: lhu.id_pkt_bm,
-            id_pkt_bm: lhu.id_pkt_bm,
-            jenisSampel,
-            jenis_sampel: jenisSampel,
-            namaPkt: pktBm.nama_pkt,
-            nama_pkt: pktBm.nama_pkt,
-            klasifikasi: pktBm.klasifikasi,
-            teksLhu: pktBm.teks_lhu,
-            teks_lhu: pktBm.teks_lhu,
-            statusLhu: lhu.status_lhu,
-            status_lhu: lhu.status_lhu,
-            tanggalPenerbitan: lhu.tanggal_penerbitan,
-            tanggal_penerbitan: lhu.tanggal_penerbitan,
-            fileLhuPath: lhu.file_lhu_path,
-            file_lhu_path: lhu.file_lhu_path,
-            acuanPengambilanSampel: acuanPengambilan,
-            acuan_pengambilan_sampel: acuanPengambilan,
-            abnormalitasSampel: abnormalitas,
-            abnormalitas_sampel: abnormalitas,
-            regBm: standarLabel,
-            reg_bm: standarLabel,
-            standar: standarLabel,
-            regBmInstansi: sample.reg_bm_instansi || pktBm.instansi || null,
-            reg_bm_instansi: sample.reg_bm_instansi || pktBm.instansi || null,
-            refReg: sample.ref_reg || pktBm.ref_reg || null,
-            ref_reg: sample.ref_reg || pktBm.ref_reg || null,
-            qcBy: lhu.qc_by,
-            qc_by: lhu.qc_by,
-            qcNama,
-            qc_nama: qcNama,
-            qcAt: lhu.qc_at,
-            qc_at: lhu.qc_at,
-            kalabBy: lhu.kalab_by,
-            kalab_by: lhu.kalab_by,
-            kalabNama,
-            kalab_nama: kalabNama,
-            kalabAt: lhu.kalab_at,
-            kalab_at: lhu.kalab_at,
-            ...stats,
+            header: headerRaw,
+            map,
         };
     };
-    calculateAccreditationStats = (...args) => {
-        return calculateAccreditationStats(...args);
+
+    buildStandarLabel = (sampleInfo = {}) => {
+        const sampleData = toCamelCaseDeep(sampleInfo);
+        return [sampleData.regBmInstansi, sampleData.refReg].filter(Boolean).join(' - ');
     };
-    getPlain = (...args) => {
-        return getPlain(...args);
+
+    mapSampleRequestData = (sampleInfo = {}) => {
+        const sampleData = toCamelCaseDeep(sampleInfo);
+        const standarLabel = this.buildStandarLabel(sampleData);
+        const receivedAt = sampleData.diterimaPada;
+        const sampleLocation = sampleData.lokasiSpesifik || sampleData.lokasiPengambilanSampel || null;
+        return {
+            noSampel: sampleData.noSampel,
+            idRegistrasi: sampleData.idRegistrasi,
+            idJenisSampel: sampleData.idJenisSampel,
+            jenisSampel: sampleData.jenisSampel,
+            idRegBm: sampleData.idRegBm,
+            regBm: standarLabel,
+            standar: standarLabel,
+            jumlahSampel: sampleData.jumlahSampel,
+            tanggalPengambilanSampel: sampleData.tanggalPengambilanSampel,
+            tanggalJadwal: sampleData.tanggalJadwal,
+            jamJadwal: sampleData.jamJadwal,
+            tanggalPenerimaan: receivedAt,
+            jamPenerimaan: receivedAt ? new Date(receivedAt).toTimeString().slice(0, 8) : null,
+            abnormalitasSampel: sampleData.abnormalitasSampel,
+            acuanPengambilanSampel: sampleData.acuanPengambilanSampel,
+            lokasiSpesifik: sampleLocation,
+            lokasiPengambilanSampel: sampleLocation,
+            koordinat: sampleData.koordinat,
+            kondisiSampel: sampleData.kondisiSampel,
+            statusSample: sampleData.statusSample,
+            nomorLhu: sampleData.nomorLhu || null,
+            statusLhu: sampleData.statusLhu || null,
+        };
     };
-    pickObject = (...args) => {
-        return pickObject(...args);
+
+    mapPelangganRequestData = (sampleInfo = {}) => {
+        const sampleData = toCamelCaseDeep(sampleInfo);
+        return {
+            idPelanggan: sampleData.idPelanggan,
+            namaInstansi: sampleData.namaInstansi,
+            namaPelanggan: sampleData.namaPelanggan || sampleData.namaInstansi,
+            pic: sampleData.pic,
+            emailKontak: sampleData.emailKontak,
+            email: sampleData.email || sampleData.emailKontak,
+            noTelp: sampleData.noTelp,
+            alamat: sampleData.alamat,
+        };
     };
-    pickArray = (...args) => {
-        return pickArray(...args);
+
+    mapRequestRequestData = (sampleInfo = {}) => {
+        const sampleData = toCamelCaseDeep(sampleInfo);
+        return {
+            idRegistrasi: sampleData.idRegistrasi,
+            nomorFppl: sampleData.nomorFppl,
+            tanggalPendaftaran: sampleData.tanggalPendaftaran,
+            maksudPengujian: sampleData.maksudPengujian,
+            lokasiPengambilanSampel: sampleData.lokasiPengambilanSampel,
+            jenisPengambilanSampel: sampleData.jenisPengambilanSampel,
+            tanggalRencanaPengambilanSampel: sampleData.tanggalRencanaPengambilanSampel,
+            jamRencanaPengambilanSampel: sampleData.jamRencanaPengambilanSampel,
+            tanggalRencanaPengantaranSampel: sampleData.tanggalRencanaPengantaranSampel,
+            statusFppl: sampleData.statusFppl,
+        };
     };
-    getAssociatedFpmsFromSample = (...args) => {
-        return getAssociatedFpmsFromSample(...args);
+
+    buildDefaultDetailRows = (resultRows = [], sampleInfo = {}) => {
+        const sampleData = toCamelCaseDeep(sampleInfo);
+        const samplingDate = sampleData.tanggalPengambilanSampel;
+        return (Array.isArray(resultRows) ? resultRows : []).map((row, index) => {
+            const resultData = toCamelCaseDeep(row);
+            return {
+                noSampel: resultData.noSampel,
+                idFpplParameterMetode: resultData.idFpplParameterMetode || null,
+                idParameter: resultData.idParameter || null,
+                idMetodeParameter: resultData.idMetodeParameter || null,
+                namaParameter: resultData.namaParameter,
+                metode: resultData.namaMetode || resultData.metode,
+                acuanMetode: resultData.acuanMetode,
+                hasil: resultData.hasil,
+                isTerakreditasi: Number(resultData.isTerakreditasi ?? 0),
+                bm: null,
+                satuanBm: null,
+                adaDiBm: 0,
+                urutanLhu: index + 1,
+                isInsitu: this.toTinyIntFlag(resultData.isInsitu),
+                isInsituSnapshot: this.toTinyIntFlag(resultData.isInsitu),
+                isSubkontrak: this.getSubkontrakSnapshot(resultData),
+                isSubkontrakSnapshot: this.getSubkontrakSnapshot(resultData),
+                tanggalSampling: this.toDateOnly(samplingDate),
+                catatanHasil: resultData.catatanHasil || null,
+            };
+        });
     };
-    getMethodIdFromFpm = (...args) => {
-        return getMethodIdFromFpm(...args);
+
+    getPegawaiDisplayName = async (nik, transaction = null) => {
+        const userNik = String(nik || '').trim();
+        if (!userNik) return null;
+        const pegawai = await Pegawai.findOne({ where: { nik: userNik }, attributes: ['nik', 'nama_pegawai'], transaction });
+        if (pegawai?.nama_pegawai) return pegawai.nama_pegawai;
+        const user = await User.findOne({ where: { nik: userNik }, attributes: ['nik', 'username'], transaction });
+        return user?.username || userNik;
     };
-    getMethodIdFromDetail = (...args) => {
-        return getMethodIdFromDetail(...args);
+
+    getPktBmHeaderById = async (idPktBm, transaction = null) => {
+        if (!idPktBm) return {};
+        const instance = await PktBm.findOne({
+            where: { id_pkt_bm: idPktBm },
+            include: [
+                { model: RegBm, required: false },
+                { model: JenisSampel, required: false },
+                { model: Klasifikasi, required: false },
+            ],
+            transaction,
+        });
+        if (!instance) return {};
+        const row = toCamelCaseDeep(withPaketBmDisplayFields(instance.get({ plain: true })));
+        const regBm = this.pickObject(row, ['regBm', 'RegBm']) || {};
+        return {
+            idPktBm: row.idPktBm,
+            idRegBm: row.idRegBm,
+            idJenisSampel: row.idJenisSampel,
+            namaPkt: row.namaPkt,
+            klasifikasi: row.klasifikasi,
+            teksLhu: row.teksLhu,
+            instansi: regBm.instansi || null,
+            refReg: regBm.refReg || null,
+        };
     };
-    firstDate = (...args) => {
-        return firstDate(...args);
+
+    mapLhuHeaderRequestData = (lhu = {}, sample = {}, pktBm = {}, names = {}) => {
+        const lhuData = toCamelCaseDeep(lhu);
+        const sampleData = toCamelCaseDeep(sample);
+        const bmData = toCamelCaseDeep(pktBm);
+        const standarLabel = buildPaketBmTeksLhu(bmData) || this.buildStandarLabel(sampleData);
+        const receivedAt = sampleData.diterimaPada;
+        return {
+            ...lhuData,
+            tanggalPengambilanSampel: sampleData.tanggalPengambilanSampel || null,
+            tanggalJadwal: sampleData.tanggalJadwal || null,
+            jamJadwal: sampleData.jamJadwal || null,
+            tanggalPenerimaan: receivedAt || null,
+            jamPenerimaan: receivedAt ? new Date(receivedAt).toTimeString().slice(0, 8) : null,
+            kondisiSampel: sampleData.kondisiSampel || null,
+            abnormalitasSampel: sampleData.abnormalitasSampel || null,
+            koordinat: sampleData.koordinat || null,
+            acuanPengambilanSampel: sampleData.acuanPengambilanSampel || null,
+            idRegistrasi: sampleData.idRegistrasi || null,
+            idJenisSampel: sampleData.idJenisSampel || null,
+            idRegBm: sampleData.idRegBm || null,
+            regBmInstansi: sampleData.regBmInstansi || bmData.instansi || null,
+            refReg: sampleData.refReg || bmData.refReg || null,
+            regBm: standarLabel || null,
+            standar: standarLabel || null,
+            jenisSampel: sampleData.jenisSampel || null,
+            nomorFppl: sampleData.nomorFppl || null,
+            tanggalPendaftaran: sampleData.tanggalPendaftaran || null,
+            maksudPengujian: sampleData.maksudPengujian || null,
+            lokasiPengambilanSampel: sampleData.lokasiPengambilanSampel || null,
+            jenisPengambilanSampel: sampleData.jenisPengambilanSampel || null,
+            idPelanggan: sampleData.idPelanggan || null,
+            namaPelanggan: sampleData.namaPelanggan || sampleData.namaInstansi || null,
+            alamatPelanggan: sampleData.alamatPelanggan || sampleData.alamat || null,
+            picPelanggan: sampleData.picPelanggan || sampleData.pic || null,
+            telpPelanggan: sampleData.telpPelanggan || sampleData.noTelp || null,
+            emailPelanggan: sampleData.emailPelanggan || sampleData.emailKontak || null,
+            namaPkt: bmData.namaPkt || null,
+            klasifikasi: bmData.klasifikasi || null,
+            teksLhu: bmData.teksLhu || null,
+            qcNama: names.qcNama || null,
+            kalabNama: names.kalabNama || null,
+        };
     };
-    toDateOnly = (...args) => {
-        return toDateOnly(...args);
+
+    getStoredDetailOrderForLhu = async (nomorLhu, transaction = null) => {
+        const lhuNo = String(nomorLhu || '').trim();
+        if (!lhuNo)
+            return [];
+        const row = await AktivitasSistemLog.findOne({
+            where: {
+                entity_type: 'LHU',
+                entity_id: lhuNo,
+                aksi: 'MENYIMPAN_URUTAN_DETAIL_LHU',
+            },
+            order: [['dibuat_pada', 'DESC'], ['id_aktivitas_log', 'DESC']],
+            transaction,
+        });
+        if (!row?.catatan)
+            return [];
+        try {
+            const parsed = JSON.parse(row.catatan);
+            return this.normalizeDetailOrderInput(parsed?.detailOrder || parsed?.detail_order || parsed);
+        }
+        catch {
+            return [];
+        }
     };
-    buildAcuanBmSnapshot = (...args) => {
-        return buildAcuanBmSnapshot(...args);
+
+    getDetailLhuRows = async (nomorLhu, transaction = null, options = {}) => {
+        const header = await this.getLhuHeaderForPdf(nomorLhu, transaction);
+        if (!header) return [];
+        const sampleRows = await this.getLhuSampleRowsForPdf(nomorLhu, transaction);
+        
+        const explicitDetailOrder = this.normalizeDetailOrderInput(options.detailOrder || options.detail_order || []);
+        const storedDetailOrder = explicitDetailOrder.length ? explicitDetailOrder : await this.getStoredDetailOrderForLhu(nomorLhu, transaction);
+
+        return toCamelCaseDeep(await this.getLhuDetailRowsForPdf(nomorLhu, header, sampleRows, transaction, { ...options, detailOrder: storedDetailOrder }));
     };
-    getLkaHasilTargetKey = (...args) => {
-        return getLkaHasilTargetKey(...args);
-    };
-    getFpplParameterMetodeKey = (...args) => {
-        return getFpplParameterMetodeKey(...args);
-    };
-    getParameterMethodKey = (...args) => {
-        return getParameterMethodKey(...args);
-    };
-    getFallbackParameterKey = (...args) => {
-        return getFallbackParameterKey(...args);
-    };
-    applyDetailOrder = (...args) => {
-        return applyDetailOrder(...args);
-    };
-    getDetailOrderDescriptor = (...args) => {
-        return getDetailOrderDescriptor(...args);
-    };
-    sortDetailRowsForLhu = (...args) => {
-        return sortDetailRowsForLhu(...args);
-    };
-    toTinyIntFlag = (...args) => {
-        return toTinyIntFlag(...args);
-    };
-    getSubkontrakSnapshot = (...args) => {
-        return getSubkontrakSnapshot(...args);
-    };
-    getLkaHasilReviewStatus = (...args) => {
-        return getLkaHasilReviewStatus(...args);
-    };
-    isResultApprovedByKasi = (...args) => {
-        return isResultApprovedByKasi(...args);
-    };
-    getScheduleCreatedTime = (...args) => {
-        return getScheduleCreatedTime(...args);
-    };
-    getScheduleDateTime = (...args) => {
-        return getScheduleDateTime(...args);
-    };
-    getScheduleIdOrder = (...args) => {
-        return getScheduleIdOrder(...args);
-    };
-    getActiveJadwalFromFppl = (...args) => {
-        return getActiveJadwalFromFppl(...args);
-    };
-    isEditableByQcStatus = (...args) => {
-        return isEditableByQcStatus(...args);
-    };
-    buildStandarLabel = (...args) => {
-        return buildStandarLabel(...args);
-    };
-    mapSamplePayload = (...args) => {
-        return mapSamplePayload(...args);
-    };
-    mapPelangganPayload = (...args) => {
-        return mapPelangganPayload(...args);
-    };
-    mapRequestPayload = (...args) => {
-        return mapRequestPayload(...args);
-    };
-    buildDefaultDetailRows = (...args) => {
-        return buildDefaultDetailRows(...args);
-    };
-    getPegawaiDisplayName = (...args) => {
-        return getPegawaiDisplayName(...args);
-    };
-    getPktBmHeaderById = (...args) => {
-        return getPktBmHeaderById(...args);
-    };
-    countDetailStats = (...args) => {
-        return countDetailStats(...args);
-    };
-    mapLhuHeaderPayload = (...args) => {
-        return mapLhuHeaderPayload(...args);
+
+    buildLhuListRow = async (lhu = {}) => {
+        const lhuData = toCamelCaseDeep(lhu);
+        const sampleInfos = await this.getSampleInfosForLhu(lhuData.nomorLhu || lhuData.nomor_lhu);
+        const firstSample = sampleInfos[0] || {};
+        const sampleNos = sampleInfos.map((sample) => sample.noSampel || sample.no_sampel).filter(Boolean);
+        const qcNama = await this.getPegawaiDisplayName(lhuData.qcBy || lhuData.qc_by);
+        const kalabNama = await this.getPegawaiDisplayName(lhuData.kalabBy || lhuData.kalab_by);
+        const nomorFppl = firstSample.nomorFppl || firstSample.nomor_fppl || lhuData.nomorFppl || lhuData.nomor_fppl || null;
+        return {
+            ...lhuData,
+            nomorLhu: lhuData.nomorLhu,
+            idRegistrasi: lhuData.idRegistrasi,
+            nomorFppl,
+            noSampel: sampleNos.join(', '),
+            sampleNos,
+            jenisSampel: firstSample.jenisSampel || null,
+            namaPelanggan: firstSample.namaPelanggan || firstSample.namaInstansi || null,
+            qcNama,
+            kalabNama,
+        };
     };
 }
-module.exports = new LhuDataService();
-module.exports.LhuDataService = LhuDataService;
+module.exports = new LhuPdfDataService();
+module.exports.LhuPdfDataService = LhuPdfDataService;

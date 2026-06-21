@@ -36,35 +36,25 @@ getApprovedLkaRowsForExpectedParameters = async (noSampel, transaction = null) =
             const parameterMetode = pickObject(fpm, ['parameter_metode', 'ParameterMetode']) || {};
             const metode = pickObject(parameterMetode, ['metode', 'Metode']) || {};
             return {
-                no_sampel: sampleNo,
                 noSampel: sampleNo,
-                id_fppl_parameter_metode: fpm.id_fppl_parameter_metode || row.id_fppl_parameter_metode || null,
-                idFpplParameterMetode: fpm.id_fppl_parameter_metode || row.id_fppl_parameter_metode || null,
-                id_parameter: fpm.id_parameter || parameter.id_parameter || parameterMetode.id_parameter || null,
-                idParameter: fpm.id_parameter || parameter.id_parameter || parameterMetode.id_parameter || null,
-                id_metode_parameter: fpm.id_metode_parameter || parameterMetode.id_metode_parameter || null,
-                idMetodeParameter: fpm.id_metode_parameter || parameterMetode.id_metode_parameter || null,
-                is_insitu: fpm.is_insitu ?? 0,
-                isInsitu: fpm.is_insitu ?? 0,
-                status_kemampuan_lab: fpm.status_kemampuan_lab || null,
-                statusKemampuanLab: fpm.status_kemampuan_lab || null,
-                is_subkontrak: parameterMetode.is_subkontrak ?? 0,
-                isSubkontrak: parameterMetode.is_subkontrak ?? 0,
-                is_subkontrak_snapshot: parameterMetode.is_subkontrak ?? 0,
-                isSubkontrakSnapshot: parameterMetode.is_subkontrak ?? 0,
-                nama_parameter: parameter.nama_parameter || '-',
-                namaParameter: parameter.nama_parameter || '-',
-                kategori_parameter: parameter.kategori_parameter || parameter.id_kategori_parameter || null,
-                kategoriParameter: parameter.kategori_parameter || parameter.id_kategori_parameter || null,
-                acuan_metode: parameterMetode.acuan_metode || '-',
-                acuanMetode: parameterMetode.acuan_metode || '-',
-                is_terakreditasi: parameterMetode.is_terakreditasi ?? 0,
-                isTerakreditasi: parameterMetode.is_terakreditasi ?? 0,
-                nama_metode: metode.nama_metode || '-',
-                namaMetode: metode.nama_metode || '-',
+                idFpplParameterMetode: fpm.idFpplParameterMetode || fpm.id_fppl_parameter_metode || row.idFpplParameterMetode || row.id_fppl_parameter_metode || null,
+                idParameter: fpm.idParameter || fpm.id_parameter || parameter.idParameter || parameter.id_parameter || parameterMetode.idParameter || parameterMetode.id_parameter || null,
+                idMetodeParameter: fpm.idMetodeParameter || fpm.id_metode_parameter || parameterMetode.idMetodeParameter || parameterMetode.id_metode_parameter || null,
+                isInsitu: fpm.isInsitu ?? fpm.is_insitu ?? 0,
+                statusKemampuanLab: fpm.statusKemampuanLab || fpm.status_kemampuan_lab || null,
+                isSubkontrak: parameterMetode.isSubkontrak ?? parameterMetode.is_subkontrak ?? 0,
+                isSubkontrakSnapshot: parameterMetode.isSubkontrak ?? parameterMetode.is_subkontrak ?? 0,
+                namaParameter: parameter.namaParameter || parameter.nama_parameter || '-',
+                nama_parameter: parameter.namaParameter || parameter.nama_parameter || '-',
+                kategoriParameter: parameter.kategoriParameter || parameter.kategori_parameter || parameter.idKategoriParameter || parameter.id_kategori_parameter || null,
+                acuanMetode: parameterMetode.acuanMetode || parameterMetode.acuan_metode || '-',
+                acuan_metode: parameterMetode.acuanMetode || parameterMetode.acuan_metode || '-',
+                isTerakreditasi: parameterMetode.isTerakreditasi ?? parameterMetode.is_terakreditasi ?? 0,
+                namaMetode: metode.namaMetode || metode.nama_metode || '-',
+                nama_metode: metode.namaMetode || metode.nama_metode || '-',
             };
         })
-            .filter((row) => row.id_fppl_parameter_metode || row.id_metode_parameter || row.id_parameter);
+            .filter((row) => row.idFpplParameterMetode || row.idMetodeParameter || row.idParameter);
         if (!expectedRows.length) {
             throw new Error(`Belum ada parameter yang terdaftar untuk sampel ${sampleNo}.`);
         }
@@ -154,52 +144,44 @@ getApprovedLkaRowsForExpectedParameters = async (noSampel, transaction = null) =
             const metode = pickObject(parameterMetode, ['metode', 'Metode']) || {};
             const statusReview = getLkaHasilReviewStatus(row);
             return {
-                kode_lka: row.kode_lka,
-                kodeLka: row.kode_lka,
-                no_sampel: sampleNo,
+                kodeLka: row.kodeLka || row.kode_lka,
+                kode_lka: row.kodeLka || row.kode_lka,
                 noSampel: sampleNo,
+                no_sampel: sampleNo,
                 hasil: row.hasil,
-                catatan_hasil: row.catatan_hasil,
-                catatanHasil: row.catatan_hasil,
-                status_review_hasil: statusReview,
+                catatanHasil: row.catatanHasil || row.catatan_hasil,
                 statusReviewHasil: statusReview,
-                status_lka: lka.status_lka,
-                statusLka: lka.status_lka,
-                tanggal_mulai_pengujian: lka.tanggal_mulai_pengujian,
-                tanggalMulaiPengujian: lka.tanggal_mulai_pengujian,
-                tanggal_selesai_pengujian: lka.tanggal_selesai_pengujian,
-                tanggalSelesaiPengujian: lka.tanggal_selesai_pengujian,
-                id_penugasan_detail: detail.id_penugasan_detail || lka.id_penugasan_detail || null,
-                idPenugasanDetail: detail.id_penugasan_detail || lka.id_penugasan_detail || null,
-                id_metode_parameter: detail.id_metode_parameter || parameterMetode.id_metode_parameter || null,
-                idMetodeParameter: detail.id_metode_parameter || parameterMetode.id_metode_parameter || null,
-                id_parameter: parameterMetode.id_parameter || parameter.id_parameter || null,
-                idParameter: parameterMetode.id_parameter || parameter.id_parameter || null,
-                is_subkontrak: parameterMetode.is_subkontrak ?? 0,
-                isSubkontrak: parameterMetode.is_subkontrak ?? 0,
-                is_subkontrak_snapshot: parameterMetode.is_subkontrak ?? 0,
-                isSubkontrakSnapshot: parameterMetode.is_subkontrak ?? 0,
-                nama_parameter: parameter.nama_parameter || '-',
-                namaParameter: parameter.nama_parameter || '-',
-                kategori_parameter: parameter.kategori_parameter || parameter.id_kategori_parameter || null,
-                kategoriParameter: parameter.kategori_parameter || parameter.id_kategori_parameter || null,
-                acuan_metode: parameterMetode.acuan_metode || '-',
-                acuanMetode: parameterMetode.acuan_metode || '-',
-                is_terakreditasi: parameterMetode.is_terakreditasi ?? 0,
-                isTerakreditasi: parameterMetode.is_terakreditasi ?? 0,
-                nama_metode: metode.nama_metode || '-',
-                namaMetode: metode.nama_metode || '-',
+                status_review_hasil: statusReview,
+                statusLka: lka.statusLka || lka.status_lka,
+                tanggalMulaiPengujian: lka.tanggalMulaiPengujian || lka.tanggal_mulai_pengujian,
+                tanggalSelesaiPengujian: lka.tanggalSelesaiPengujian || lka.tanggal_selesai_pengujian,
+                idPenugasanDetail: detail.idPenugasanDetail || detail.id_penugasan_detail || lka.idPenugasanDetail || lka.id_penugasan_detail || null,
+                id_penugasan_detail: detail.idPenugasanDetail || detail.id_penugasan_detail || lka.idPenugasanDetail || lka.id_penugasan_detail || null,
+                idMetodeParameter: detail.idMetodeParameter || detail.id_metode_parameter || parameterMetode.idMetodeParameter || parameterMetode.id_metode_parameter || null,
+                id_metode_parameter: detail.idMetodeParameter || detail.id_metode_parameter || parameterMetode.idMetodeParameter || parameterMetode.id_metode_parameter || null,
+                idParameter: parameterMetode.idParameter || parameterMetode.id_parameter || parameter.idParameter || parameter.id_parameter || null,
+                id_parameter: parameterMetode.idParameter || parameterMetode.id_parameter || parameter.idParameter || parameter.id_parameter || null,
+                isSubkontrak: parameterMetode.isSubkontrak ?? parameterMetode.is_subkontrak ?? 0,
+                isSubkontrakSnapshot: parameterMetode.isSubkontrak ?? parameterMetode.is_subkontrak ?? 0,
+                namaParameter: parameter.namaParameter || parameter.nama_parameter || '-',
+                nama_parameter: parameter.namaParameter || parameter.nama_parameter || '-',
+                kategoriParameter: parameter.kategoriParameter || parameter.kategori_parameter || parameter.idKategoriParameter || parameter.id_kategori_parameter || null,
+                acuanMetode: parameterMetode.acuanMetode || parameterMetode.acuan_metode || '-',
+                acuan_metode: parameterMetode.acuanMetode || parameterMetode.acuan_metode || '-',
+                isTerakreditasi: parameterMetode.isTerakreditasi ?? parameterMetode.is_terakreditasi ?? 0,
+                namaMetode: metode.namaMetode || metode.nama_metode || '-',
+                nama_metode: metode.namaMetode || metode.nama_metode || '-',
             };
         })
             .filter((row) => String(row.hasil || '').trim() && isResultApprovedByKasi(row));
         const approvedRows = [];
         const missingRows = [];
         expectedRows.forEach((expected) => {
-            const expectedMethodId = String(expected.id_metode_parameter || expected.idMetodeParameter || '').trim();
-            const expectedParameterId = String(expected.id_parameter || expected.idParameter || '').trim();
+            const expectedMethodId = String(expected.idMetodeParameter || '').trim();
+            const expectedParameterId = String(expected.idParameter || '').trim();
             const candidates = resultRows.filter((row) => {
-                const rowMethodId = String(row.id_metode_parameter || row.idMetodeParameter || '').trim();
-                const rowParameterId = String(row.id_parameter || row.idParameter || '').trim();
+                const rowMethodId = String(row.idMetodeParameter || '').trim();
+                const rowParameterId = String(row.idParameter || '').trim();
                 if (expectedMethodId && rowMethodId && expectedMethodId === rowMethodId)
                     return true;
                 if (expectedParameterId && rowParameterId && expectedParameterId === rowParameterId)
@@ -217,44 +199,32 @@ getApprovedLkaRowsForExpectedParameters = async (noSampel, transaction = null) =
             }
             approvedRows.push({
                 ...result,
-                id_fppl_parameter_metode: expected.id_fppl_parameter_metode || result.id_fppl_parameter_metode || null,
                 idFpplParameterMetode: expected.idFpplParameterMetode || result.idFpplParameterMetode || null,
-                id_parameter: expected.id_parameter || result.id_parameter || null,
                 idParameter: expected.idParameter || result.idParameter || null,
-                id_metode_parameter: expected.id_metode_parameter || result.id_metode_parameter || null,
                 idMetodeParameter: expected.idMetodeParameter || result.idMetodeParameter || null,
-                is_insitu: expected.is_insitu ?? result.is_insitu ?? 0,
                 isInsitu: expected.isInsitu ?? result.isInsitu ?? 0,
-                status_kemampuan_lab: expected.status_kemampuan_lab || result.status_kemampuan_lab || null,
                 statusKemampuanLab: expected.statusKemampuanLab || result.statusKemampuanLab || null,
-                is_subkontrak: expected.is_subkontrak ?? result.is_subkontrak ?? 0,
                 isSubkontrak: expected.isSubkontrak ?? result.isSubkontrak ?? 0,
-                is_subkontrak_snapshot: expected.is_subkontrak_snapshot ?? result.is_subkontrak_snapshot ?? result.is_subkontrak ?? 0,
                 isSubkontrakSnapshot: expected.isSubkontrakSnapshot ?? result.isSubkontrakSnapshot ?? result.isSubkontrak ?? 0,
-                nama_parameter: expected.nama_parameter || result.nama_parameter || '-',
                 namaParameter: expected.namaParameter || result.namaParameter || '-',
-                kategori_parameter: expected.kategori_parameter || result.kategori_parameter || null,
                 kategoriParameter: expected.kategoriParameter || result.kategoriParameter || null,
-                acuan_metode: expected.acuan_metode || result.acuan_metode || '-',
                 acuanMetode: expected.acuanMetode || result.acuanMetode || '-',
-                is_terakreditasi: expected.is_terakreditasi ?? result.is_terakreditasi ?? 0,
                 isTerakreditasi: expected.isTerakreditasi ?? result.isTerakreditasi ?? 0,
-                nama_metode: expected.nama_metode || result.nama_metode || '-',
                 namaMetode: expected.namaMetode || result.namaMetode || '-',
-                no_sampel: sampleNo,
                 noSampel: sampleNo,
+                no_sampel: sampleNo,
             });
         });
         if (missingRows.length) {
             const names = missingRows
-                .map((row) => [row.nama_parameter || row.namaParameter, row.nama_metode || row.namaMetode || row.acuan_metode || row.acuanMetode]
+                .map((row) => [row.namaParameter, row.namaMetode || row.acuanMetode]
                 .filter(Boolean)
                 .join(' - '))
                 .filter(Boolean);
             const suffix = names.length ? ` Parameter belum siap: ${names.join(', ')}.` : '';
             throw new Error(`Semua parameter pada sampel ${sampleNo} harus memiliki hasil dan sudah Disetujui Kasi Pengujian.${suffix}`);
         }
-        return approvedRows.sort((a, b) => String(a.nama_parameter || '').localeCompare(String(b.nama_parameter || '')));
+        return approvedRows.sort((a, b) => String(a.namaParameter || '').localeCompare(String(b.namaParameter || '')));
     };
 }
 module.exports = new LhuApprovedLkaRowsService();

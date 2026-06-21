@@ -1,7 +1,52 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const PengajuanPerubahanJadwal = sequelize.define('pengajuan_perubahan_jadwal', {
+class PengajuanPerubahanJadwal extends Model {
+  static associate(models) {
+    PengajuanPerubahanJadwal.belongsTo(models.Fppl, {
+  foreignKey: 'id_registrasi',
+  targetKey: 'id_registrasi',
+  as: 'fppl',
+});
+    PengajuanPerubahanJadwal.belongsTo(models.JadwalSampel, {
+  foreignKey: 'id_jadwal_sampel',
+  targetKey: 'id_jadwal',
+  as: 'jadwal_sampel',
+});
+    PengajuanPerubahanJadwal.belongsTo(models.JadwalPengambilanLhu, {
+  foreignKey: 'id_jadwal_lhu',
+  targetKey: 'id_jadwal_lhu',
+  as: 'jadwal_pengambilan_lhu',
+});
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_pengajuan === status;
+  }
+
+  isWaitingAdminApproval() {
+    return this.isStatus('Menunggu Persetujuan Admin');
+  }
+
+  isForSampelSchedule() {
+    return this.tipe_jadwal === 'SAMPEL';
+  }
+
+  isForLhuPickupSchedule() {
+    return this.tipe_jadwal === 'LHU';
+  }
+}
+
+PengajuanPerubahanJadwal.init({
   id_pengajuan_jadwal: {
     type: DataTypes.STRING(20),
     primaryKey: true,
@@ -72,7 +117,9 @@ const PengajuanPerubahanJadwal = sequelize.define('pengajuan_perubahan_jadwal', 
     defaultValue: DataTypes.NOW,
   },
 }, {
-  tableName: 'pengajuan_perubahan_jadwal',
+  sequelize,
+  modelName: 'pengajuan_perubahan_jadwal',
+tableName: 'pengajuan_perubahan_jadwal',
   underscored: true,
   timestamps: true,
   createdAt: 'created_at',

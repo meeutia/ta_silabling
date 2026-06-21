@@ -2,14 +2,14 @@ const { Op } = require('sequelize');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
 const { sequelize, Fppl, FpplSampel, FpplParameterMetode, Pelanggan, JenisSampel, RegBm, ParameterMetode, Parameter, Metode, TarifPengambilan, JadwalSampel, PktBm, Klasifikasi, Pegawai, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, Lhu, JadwalPengambilanLhu, PengajuanPerubahanJadwal, User } = require('../../models/Associations');
 const { generateId } = require('../../utils/id-generator');
-const { buildInvoiceSummary, getAvailablePaymentMethods } = require('../payment/payment.service');
+const { buildInvoiceSummary } = require('../payment/payment-billing.service');
+const { getAvailablePaymentMethods } = require('../payment/payment-policy.util');
 const RequestStatus = require('../../constants/request-status');
 const Roles = require('../../constants/roles');
 const WorkflowLogService = require('../workflow/workflow-log.service');
 const { buildPenyeliaRequestSummary, deriveCustomerDecisionStatus, deriveCustomerHistoryStatus, getKasiDecisionStatus, resolveSampleQuantity, resolveSamplingLocation, resolveSamplingSchedule, resolveSamplingType } = require('./request-transform.util');
-const { decorateSampleReceiptFields, decorateScheduleFields, getActiveScheduleFromPayload, stripCustomerSensitiveLhuData, } = require('./request-schedule-fields.util');
-const { listRequests } = require('./request-list.service');
-const { getAnalystOptions, getMyPelanggans } = require('./request-account.service');
+const { decorateSampleReceiptFields, decorateScheduleFields, stripCustomerSensitiveLhuData, } = require('./request-schedule-fields.util');
+const { toCamelCaseDeep } = require('../../utils/case-transform.util');
 
 const sameFpplSampelComposite = (a = {}, b = {}) => {
     const pick = (row, snake, camel) => String(row?.[snake] ?? row?.[camel] ?? '').trim();
@@ -48,10 +48,11 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
     createRequest = async (userNik, data) => {
         const t = await sequelize.transaction();
         try {
-            const { id_pelanggan, namaInstansi, pic, emailPic, noTelp, alamat, maksudPengujian, maksudLainnya, metodePengambilan, tanggalPengambilan, jamPengambilan, lokasiPengambilan, alamatPengambilan, estimasiDiterima, sampleEntries } = data;
+            const { namaInstansi, pic, emailPic, noTelp, alamat, maksudPengujian, maksudLainnya, metodePengambilan, tanggalPengambilan, jamPengambilan, lokasiPengambilan, alamatPengambilan, estimasiDiterima, sampleEntries } = data;
+            const idPelanggan = data.idPelanggan || data.id_pelanggan || null;
             let pelanggan;
-            if (id_pelanggan) {
-                pelanggan = await Pelanggan.findOne({ where: { id_pelanggan, nik: userNik } });
+            if (idPelanggan) {
+                pelanggan = await Pelanggan.findOne({ where: { id_pelanggan: idPelanggan, nik: userNik } });
                 if (!pelanggan)
                     throw new Error('Data pelanggan yang dipilih tidak ditemukan atau tidak valid.');
                 await pelanggan.update({
@@ -126,7 +127,7 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
             let createdParamCount = 0;
             for (const entry of sampleEntries) {
                 const idRegBm = entry.idRegBm || entry.id_reg_bm;
-                const jenisSampel = entry.jenisSampel || entry.id_jenis_sampel;
+                const jenisSampel = entry.idJenisSampel || entry.id_jenis_sampel || entry.jenisSampel;
                 const parameterIds = Array.isArray(entry.parameters)
                     ? entry.parameters.map(p => (typeof p === 'string' ? p : p?.id_parameter)).filter(Boolean)
                     : [];
@@ -164,7 +165,7 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                 transaction: t
             });
             await t.commit();
-            return { id_registrasi: idRegistrasi, status: RequestStatus.WAITING_VERIFICATION };
+            return { idRegistrasi, status: RequestStatus.WAITING_VERIFICATION };
         }
         catch (error) {
             await t.rollback();
@@ -525,15 +526,15 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
         if (!request) {
             throw new Error('Permohonan tidak ditemukan.');
         }
-        const json = normalizeRequestFpplSampelGraph(request.toJSON());
-        const fpplSamples = json.fppl_sampels || json.FpplSampels || [];
+        const json = toCamelCaseDeep(normalizeRequestFpplSampelGraph(request.toJSON()));
+        const fpplSamples = Array.isArray(json.fpplSampels) ? json.fpplSampels : [];
         const parameterIds = new Set();
         fpplSamples.forEach((sampel) => {
-            const pmList = sampel?.fppl_parameter_metodes || sampel?.FpplParameterMetodes || [];
+            const pmList = sampel?.fpplParameterMetodes || sampel?.FpplParameterMetodes || [];
             pmList.forEach((fpm) => {
-                const paramId = fpm?.parameter?.id_parameter ||
-                    fpm?.Parameter?.id_parameter ||
-                    fpm?.id_parameter;
+                const paramId = fpm?.parameter?.idParameter ||
+                    fpm?.Parameter?.idParameter ||
+                    fpm?.idParameter;
                 if (paramId) {
                     parameterIds.add(paramId);
                 }
@@ -569,72 +570,74 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
             : [];
         const methodOptionsByParameter = {};
         methodRows.forEach((row) => {
-            const item = row.toJSON();
-            const idParameter = item.id_parameter;
+            const item = toCamelCaseDeep(row);
+            const idParameter = item.idParameter;
             if (!methodOptionsByParameter[idParameter]) {
                 methodOptionsByParameter[idParameter] = [];
             }
-            const namaMetode = item.metode?.nama_metode ||
-                item.Metode?.nama_metode ||
+            const namaMetode = item.metode?.namaMetode ||
+                item.Metode?.namaMetode ||
                 '-';
-            const acuanMetode = item.acuan_metode || '';
+            const acuanMetode = item.acuanMetode || '';
             const normalizeTinyIntFlag = (value) => {
                 return value === true || value === 1 || value === '1' || value === 'true';
             };
-            const isSubkontrak = normalizeTinyIntFlag(item.is_subkontrak);
+            const isSubkontrak = normalizeTinyIntFlag(item.isSubkontrak);
             methodOptionsByParameter[idParameter].push({
-                id: item.id_metode_parameter,
-                id_metode_parameter: item.id_metode_parameter,
-                idMetodeParameter: item.id_metode_parameter,
-                id_metode: item.id_metode,
-                idMetode: item.id_metode,
+                id: item.idMetodeParameter,
+                idMetodeParameter: item.idMetodeParameter,
+                idMetodeParameter: item.idMetodeParameter,
+                idMetode: item.idMetode,
+                idMetode: item.idMetode,
                 name: namaMetode,
                 label: acuanMetode ? `${namaMetode} - ${acuanMetode}` : namaMetode,
                 nama: namaMetode,
-                nama_metode: namaMetode,
+                namaMetode: namaMetode,
                 namaMetode,
                 acuan: acuanMetode,
-                acuan_metode: acuanMetode,
+                acuanMetode: acuanMetode,
                 acuanMetode,
                 tarif: item.tarif,
-                is_terakreditasi: item.is_terakreditasi,
-                isTerakreditasi: item.is_terakreditasi,
-                is_subkontrak: isSubkontrak ? 1 : 0,
-                isSubkontrak: isSubkontrak,
-                is_active: item.is_active,
-                isActive: item.is_active
+                isTerakreditasi: item.isTerakreditasi,
+                isSubkontrak,
+                isActive: item.isActive
             });
         });
-        const requestDecisionStatus = deriveCustomerDecisionStatus(json.status_fppl);
+        const requestDecisionStatus = deriveCustomerDecisionStatus(json.statusFppl);
         const kelompokSampel = fpplSamples.map((sampel) => {
-            const jenisSampelNama = sampel?.jenis_sampel?.jenis_sampel ||
-                sampel?.JenisSampel?.jenis_sampel ||
+            const jenisSampelNama = sampel?.jenisSampel?.jenisSampel ||
+                sampel?.JenisSampel?.jenisSampel ||
                 '-';
-            const regBmInstansi = sampel?.reg_bm?.instansi ||
+            const regBmInstansi = sampel?.regBm?.instansi ||
                 sampel?.RegBm?.instansi ||
                 '';
-            const regBmRef = sampel?.reg_bm?.ref_reg ||
+            const regBmRef = sampel?.regBm?.refReg ||
+                sampel?.regBm?.ref_reg ||
+                sampel?.RegBm?.refReg ||
                 sampel?.RegBm?.ref_reg ||
                 '-';
-            const pmList = sampel?.fppl_parameter_metodes || sampel?.FpplParameterMetodes || [];
+            const regBmLabel = [regBmInstansi, regBmRef]
+                .filter((item) => item && item !== '-')
+                .join(' - ') || '-';
+            const pmList = sampel?.fpplParameterMetodes || sampel?.FpplParameterMetodes || [];
             const parameters = pmList.map((fpm) => {
-                const paramId = fpm?.parameter?.id_parameter ||
-                    fpm?.Parameter?.id_parameter ||
-                    fpm?.id_parameter;
-                const paramName = fpm?.parameter?.nama_parameter ||
-                    fpm?.Parameter?.nama_parameter ||
+                const paramId = fpm?.parameter?.idParameter ||
+                    fpm?.Parameter?.idParameter ||
+                    fpm?.idParameter;
+                const paramName = fpm?.parameter?.namaParameter ||
+                    fpm?.Parameter?.namaParameter ||
                     '-';
-                const currentMethodId = fpm?.id_metode_parameter || null;
-                const currentMethod = fpm?.parameter_metode ||
+                const currentMethodId = fpm?.idMetodeParameter || null;
+                const currentMethod = fpm?.parameterMetode ||
                     fpm?.ParameterMetode ||
                     null;
-                const currentMetodeName = currentMethod?.metode?.nama_metode ||
-                    currentMethod?.Metode?.nama_metode ||
+                const currentMetodeName = currentMethod?.metode?.namaMetode ||
+                    currentMethod?.Metode?.namaMetode ||
                     '-';
                 const availableMethods = methodOptionsByParameter[paramId] || [];
-                const currentMethodIsSubkontrak = currentMethod?.is_subkontrak === true ||
-                    currentMethod?.is_subkontrak === 1 ||
-                    currentMethod?.is_subkontrak === '1'
+                const currentMethodIsSubkontrak = currentMethod?.isSubkontrak === true ||
+                    currentMethod?.isSubkontrak === 1 ||
+                    currentMethod?.isSubkontrak === '1'
                     ? 1
                     : 0;
                 const isSubkontrakSnapshot = undefined !== null &&
@@ -644,88 +647,57 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                         ? currentMethodIsSubkontrak
                         : null;
                 return {
-                    fpmId: fpm.id_fppl_parameter_metode,
+                    fpmId: fpm.idFpplParameterMetode,
                     paramId,
                     paramName,
                     currentMethodId,
                     currentMethodName: currentMetodeName,
-                    capabilityStatus: fpm.status_kemampuan_lab || '',
-                    isInsitu: fpm.is_insitu,
-                    capabilityNote: fpm.catatan_kemampuan || '',
+                    capabilityStatus: fpm.statusKemampuanLab || '',
+                    capabilityNote: fpm.catatanKemampuan || '',
                     tarifSnapshot: null,
                     isSubkontrakSnapshot,
                     statusPersetujuanPelanggan: requestDecisionStatus,
-                    legacyStatusPersetujuanPelanggan: null,
                     availableMethods,
-                    id_fppl_parameter_metode: fpm.id_fppl_parameter_metode,
-                    id_parameter: paramId,
-                    nama_parameter: paramName,
-                    id_metode_parameter: currentMethodId,
-                    nama_metode: currentMetodeName,
-                    status_kemampuan_lab: fpm.status_kemampuan_lab || '',
-                    is_insitu: fpm.is_insitu,
-                    catatan_kemampuan: fpm.catatan_kemampuan || '',
-                    tarif: fpm.parameter_metode?.tarif ?? fpm.ParameterMetode?.tarif ?? null,
-                    is_subkontrak: isSubkontrakSnapshot,
-                    status_keputusan_permohonan: requestDecisionStatus,
-                    legacy_status_keputusan_permohonan: null,
+                    tarif: fpm.parameterMetode?.tarif ?? fpm.ParameterMetode?.tarif ?? null,
                     methods: availableMethods
                 };
             });
             return {
-                // format camelCase
-                idRegistrasi: sampel.id_registrasi || json.id_registrasi || null,
+                idRegistrasi: sampel.idRegistrasi || json.idRegistrasi || null,
                 jenisSampel: jenisSampelNama,
-                idJenisSampel: sampel.id_jenis_sampel,
-                idRegBm: sampel.id_reg_bm,
+                idJenisSampel: sampel.idJenisSampel,
+                idRegBm: sampel.idRegBm,
                 standar: regBmRef,
-                jumlahSampel: sampel.jumlah_sampel,
+                regBm: regBmLabel,
+                jumlahSampel: sampel.jumlahSampel,
                 parameters,
-                // format snake_case
-                id_registrasi: sampel.id_registrasi || json.id_registrasi || null,
-                jenis_sampel: jenisSampelNama,
-                id_jenis_sampel: sampel.id_jenis_sampel,
-                id_reg_bm: sampel.id_reg_bm,
-                reg_bm: `${regBmInstansi} - ${regBmRef}`.trim(),
-                jumlah_sampel: sampel.jumlah_sampel
             };
         });
         const pelanggan = json.Pelanggan ||
             json.pelanggan ||
             {};
         return {
-            noReg: json.id_registrasi,
-            id_registrasi: json.id_registrasi,
-            tanggal: json.tanggal_pendaftaran,
-            tanggal_pendaftaran: json.tanggal_pendaftaran,
-            tanggalPendaftaran: json.tanggal_pendaftaran,
-            tanggalDaftar: json.tanggal_pendaftaran,
-            tanggal_verifikasi: json.tanggal_verifikasi || null,
-            tanggalVerifikasi: json.tanggal_verifikasi || null,
-            pelanggan: pelanggan.nama_instansi || pelanggan.pic || '-',
+            noReg: json.idRegistrasi,
+            idRegistrasi: json.idRegistrasi,
+            tanggal: json.tanggalPendaftaran,
+            tanggalPendaftaran: json.tanggalPendaftaran,
+            tanggalDaftar: json.tanggalPendaftaran,
+            tanggalVerifikasi: json.tanggalVerifikasi || null,
+            pelanggan: pelanggan.namaInstansi || pelanggan.pic || '-',
             pic: pelanggan.pic || '-',
-            noTelp: pelanggan.no_telp || '-',
-            no_telp: pelanggan.no_telp || '-',
+            noTelp: pelanggan.noTelp || '-',
             alamat: pelanggan.alamat || '-',
-            status: json.status_fppl,
-            status_fppl: json.status_fppl,
+            status: json.statusFppl,
+            statusFppl: json.statusFppl,
             kelompokSampel
         };
     };
-    listRequests = async (...args) => {
-        return listRequests(...args);
-    };
-    getMyPelanggans = async (...args) => {
-        return getMyPelanggans(...args);
-    };
-    getActiveScheduleFromPayload = (...args) => {
-        return getActiveScheduleFromPayload(...args);
-    };
-    decorateScheduleFields = (...args) => {
-        return decorateScheduleFields(...args);
-    };
-    getAnalystOptions = async (...args) => {
-        return getAnalystOptions(...args);
+    getMyPelanggans = async (userNik) => {
+        const rows = await Pelanggan.findAll({
+            where: { nik: userNik },
+            order: [['id_pelanggan', 'DESC']],
+        });
+        return rows.map((row) => toCamelCaseDeep(row));
     };
 }
 module.exports = new RequestService();

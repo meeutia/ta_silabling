@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { publicReferenceApi } from '../../api/publicReferenceApi';
+import { catalogApi } from '../../api/catalogApi';
 
 function toRows(value) {
   if (Array.isArray(value)) return value;
@@ -263,9 +263,9 @@ export function useLandingTariffs() {
       setErrorMessage('');
 
       const [sampleResult, tariffResult, pickupResult] = await Promise.allSettled([
-        publicReferenceApi.getSampleTypes(),
-        publicReferenceApi.getParameterTariffs(),
-        publicReferenceApi.getPickupTariffs(),
+        catalogApi.getSampleTypes(),
+        catalogApi.getParameterTariffs(),
+        catalogApi.getPickupTariffs(),
       ]);
 
       if (ignore) return;
@@ -291,7 +291,7 @@ export function useLandingTariffs() {
 
       const standardsEntries = await Promise.allSettled(
         nextSampleTypes.map(async (sampleType) => {
-          const standards = await publicReferenceApi.getBmStandards(sampleType.id);
+          const standards = await catalogApi.getBmStandards(sampleType.id);
           return [sampleType.id, toRows(standards).map(normalizeStandard).filter(Boolean)];
         })
       );
@@ -354,7 +354,7 @@ export function useLandingTariffs() {
 
       try {
         const results = await Promise.allSettled(
-          standards.map((standard) => publicReferenceApi.getParametersBySampleTypeAndStandard(selectedSampleTypeId, standard.id))
+          standards.map((standard) => catalogApi.getParametersBySampleTypeAndStandard(selectedSampleTypeId, standard.id))
         );
 
         if (ignore) return;

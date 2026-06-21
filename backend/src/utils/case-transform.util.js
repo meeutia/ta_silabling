@@ -6,6 +6,16 @@ function isPlainSerializableObject(value) {
 }
 
 function toPlainValue(value) {
+  // Map harus dikonversi ke plain object SEBELUM cek `.get()`,
+  // karena Map juga punya method `.get()` yang akan salah dipanggil
+  // dan menghasilkan undefined (bukan plain object).
+  if (value instanceof Map) {
+    const obj = {};
+    value.forEach((val, key) => {
+      obj[String(key)] = val;
+    });
+    return obj;
+  }
   if (value && typeof value.get === 'function') {
     return value.get({ plain: true });
   }

@@ -5,6 +5,37 @@ import {
 } from './penyeliaPenugasanUtils';
 import { addBusinessDays, isBusinessDayYmd } from '../../../utils/businessDays';
 
+
+function getSampleNumberSortParts(noSampel) {
+  const text = String(noSampel || '').trim();
+  const numberMatch = text.match(/^\s*(\d+)/);
+  const number = numberMatch ? Number(numberMatch[1]) : Number.MAX_SAFE_INTEGER;
+
+  return {
+    number: Number.isFinite(number) ? number : Number.MAX_SAFE_INTEGER,
+    text,
+  };
+}
+
+function compareSampleNumberAsc(aNoSampel, bNoSampel) {
+  const a = getSampleNumberSortParts(aNoSampel);
+  const b = getSampleNumberSortParts(bNoSampel);
+
+  if (a.number !== b.number) return a.number - b.number;
+
+  return a.text.localeCompare(b.text, 'id-ID', { numeric: true, sensitivity: 'base' });
+}
+
+function compareSampleOptionAsc(a, b) {
+  const sampleSort = compareSampleNumberAsc(a?.noSampel || a?.no_sampel, b?.noSampel || b?.no_sampel);
+  if (sampleSort !== 0) return sampleSort;
+
+  return String(a?.ref || '').localeCompare(String(b?.ref || ''), 'id-ID', {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
 export function getPendingSortValue(item) {
   const dateCandidates = [
     item?.tanggal_penerimaan,
@@ -90,11 +121,7 @@ export function buildFilteredPendingItems(pendingItems = [], searchQuery = '') {
 
       if (dateSort !== 0) return dateSort;
 
-      return String(b.noSampel || '').localeCompare(
-        String(a.noSampel || ''),
-        'id-ID',
-        { numeric: true }
-      );
+      return compareSampleNumberAsc(a.noSampel, b.noSampel);
     });
 }
 
@@ -247,7 +274,7 @@ export function buildGroupedPendingOptions(pendingItems = [], holidayDateSet = n
       parameter: group.parameter,
       metode: group.metode,
       items: group.items,
-      sampleOptions: group.sampleOptions.sort((a, b) => b.sortValue - a.sortValue),
+      sampleOptions: group.sampleOptions.sort(compareSampleOptionAsc),
       customers: Array.from(group.customerSet),
       jenisSampel: Array.from(group.jenisSet),
       totalAvailableSamples: group.sampleOptions.length,

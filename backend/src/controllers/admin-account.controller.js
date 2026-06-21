@@ -22,6 +22,17 @@ class AdminAccountController {
         }
         return 500;
     };
+    getPccEmployees = async (req, res) => {
+        try {
+            const data = await this.adminAccountService.getPccPegawai();
+            return successResponse(res, 'Berhasil mengambil data PCC.', data, 200);
+        }
+        catch (error) {
+            console.error('this.getPccEmployees error:', error.message);
+            return errorResponse(res, error.message || 'Gagal mengambil data PCC.', this.getErrorCode(error));
+        }
+    };
+
     getRoles = async (req, res) => {
         try {
             const roles = await this.adminAccountService.listRoles();

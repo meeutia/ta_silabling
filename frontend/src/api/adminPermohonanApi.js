@@ -32,15 +32,23 @@ export const adminPermohonanApi = {
 
   async getScheduleReferences() {
     const [holidays, pccEmployees, pickupTariffs] = await Promise.all([
-      requestData('/references/holidays', {}, authConfig),
-      requestData('/references/pcc-employees', {}, authConfig),
-      requestData('/references/pickup-tariffs', {}, authConfig),
+      requestData('/requests/schedule/holidays', {}, authConfig),
+      requestData('/admin/accounts/pcc-employees', {}, authConfig),
+      requestData('/catalog/pickup-tariffs', {}, authConfig),
     ]);
 
     return {
       holidays: asArray(holidays),
       pccEmployees: asArray(pccEmployees),
       pickupTariffs: asArray(pickupTariffs),
+    };
+  },
+
+  async getLhuPickupReferences() {
+    const holidays = await requestData('/lhu/pickup/holidays', {}, authConfig);
+
+    return {
+      holidays: asArray(holidays),
     };
   },
 

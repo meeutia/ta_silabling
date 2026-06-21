@@ -153,7 +153,7 @@ findExistingFile = (paths = []) => {
         });
         titleY = doc.y + 2;
         doc.font(PDF_FONT.regular).fontSize(9);
-        doc.text(`Nomor : ${valueOrDash(lhu.nomor_lhu)}`, PAGE_LEFT, titleY, {
+        doc.text(`Nomor : ${valueOrDash(lhu.nomorLhu)}`, PAGE_LEFT, titleY, {
             width: CONTENT_WIDTH,
             align: 'center',
         });
@@ -212,22 +212,22 @@ findExistingFile = (paths = []) => {
         return result;
     };
     getHasilBySampleNo = (row = {}, sampleNo = '') => {
-        const hasilBySample = row.hasil_by_sample || {};
+        const resultsBySample = row.resultsBySample || {};
         const normalizedSampleNo = this.normalizeSampleKey(sampleNo);
-        const directValue = hasilBySample[normalizedSampleNo] ?? hasilBySample[String(sampleNo || '').trim()];
+        const directValue = resultsBySample[normalizedSampleNo] ?? resultsBySample[String(sampleNo || '').trim()];
         if (directValue !== null && directValue !== undefined && String(directValue).trim() !== '')
             return directValue;
         const displayKey = this.getSampleDisplayKey(normalizedSampleNo);
-        const matchedKey = Object.keys(hasilBySample).find((key) => this.getSampleDisplayKey(key) === displayKey);
-        return matchedKey ? hasilBySample[matchedKey] : null;
+        const matchedKey = Object.keys(resultsBySample).find((key) => this.getSampleDisplayKey(key) === displayKey);
+        return matchedKey ? resultsBySample[matchedKey] : null;
     };
     buildParameterGroupKey = (row = {}) => {
         return [
-            row.nama_parameter_snapshot,
-            row.metode_snapshot,
-            row.acuan_metode_snapshot,
-            row.satuan_bm_snapshot,
-            row.bm_snapshot,
+            row.namaParameterSnapshot,
+            row.metodeSnapshot,
+            row.acuanMetodeSnapshot,
+            row.satuanBmSnapshot,
+            row.bmSnapshot,
         ].map((value) => String(value || '').trim()).join('|');
     };
     buildParameterGroups = (details = []) => {
@@ -237,14 +237,14 @@ findExistingFile = (paths = []) => {
             if (!map.has(key)) {
                 map.set(key, {
                     ...row,
-                    hasil_by_sample: {},
+                    resultsBySample: {},
                     samples: [],
                 });
             }
             const group = map.get(key);
-            const sampleNo = this.normalizeSampleKey(row.no_sampel);
+            const sampleNo = this.normalizeSampleKey(row.noSampel);
             if (sampleNo) {
-                group.hasil_by_sample[sampleNo] = row.hasil_snapshot;
+                group.resultsBySample[sampleNo] = row.hasilSnapshot;
                 if (!group.__sampleKeySet)
                     group.__sampleKeySet = new Set(group.samples.map((item) => this.getSampleDisplayKey(item) || String(item || '').toLowerCase()));
                 const sampleKey = this.getSampleDisplayKey(sampleNo) || sampleNo.toLowerCase();
@@ -256,11 +256,11 @@ findExistingFile = (paths = []) => {
         });
         return Array.from(map.values())
             .map((row) => {
-            const { __sampleKeySet, ...payload } = row;
-            return payload;
+            const { __sampleKeySet, ...requestData } = row;
+            return requestData;
         })
-            .sort((a, b) => Number(a.urutan_lhu || 0) - Number(b.urutan_lhu || 0) ||
-            String(a.nama_parameter_snapshot || '').localeCompare(String(b.nama_parameter_snapshot || '')));
+            .sort((a, b) => Number(a.urutanLhu || 0) - Number(b.urutanLhu || 0) ||
+            String(a.namaParameterSnapshot || '').localeCompare(String(b.namaParameterSnapshot || '')));
     };
     getTableColumns = (sampleChunk = []) => {
         const sampleCount = Math.max(1, sampleChunk.length);
@@ -348,19 +348,19 @@ findExistingFile = (paths = []) => {
             if (col.type === 'hasil')
                 return { ...col, text: valueOrDash(this.getHasilBySampleNo(row, col.sampleNo)) };
             if (col.type === 'satuan')
-                return { ...col, text: valueOrDash(row.satuan_bm_snapshot) };
+                return { ...col, text: valueOrDash(row.satuanBmSnapshot) };
             if (col.type === 'bakuMutu')
-                return { ...col, text: normalizeBakuMutuForLhu(row.bm_snapshot) };
-            return { ...col, text: valueOrDash(row.acuan_metode_snapshot || row.metode_snapshot), align: 'left' };
+                return { ...col, text: normalizeBakuMutuForLhu(row.bmSnapshot) };
+            return { ...col, text: valueOrDash(row.acuanMetodeSnapshot || row.metodeSnapshot), align: 'left' };
         });
         const maxTextHeight = values.reduce((maxHeight, col) => Math.max(maxHeight, this.getCellTextHeight(doc, col.text, col.width, col.align)), 0);
         return Math.ceil(Math.max(22, maxTextHeight + TABLE_CELL_PADDING_Y * 2));
     };
     buildParameterName = (row = {}) => {
-        const nama = formatParameterDisplayName(valueOrDash(row.nama_parameter_snapshot));
-        const isTerakreditasi = Number(row.is_terakreditasi || row.isTerakreditasi || 0) === 1;
-        const isInsitu = Number(row.is_insitu_snapshot || row.isInsituSnapshot || row.is_insitu || row.isInsitu || 0) === 1;
-        const isSubkontrak = Number(row.is_subkontrak_snapshot || row.isSubkontrakSnapshot || row.is_subkontrak || row.isSubkontrak || 0) === 1;
+        const nama = formatParameterDisplayName(valueOrDash(row.namaParameterSnapshot));
+        const isTerakreditasi = Number(row.isTerakreditasi || 0) === 1;
+        const isInsitu = Number(row.isInsituSnapshot || row.isInsitu || 0) === 1;
+        const isSubkontrak = Number(row.isSubkontrakSnapshot || row.isSubkontrak || 0) === 1;
         const symbols = [];
         if (isInsitu)
             symbols.push('√');
@@ -377,11 +377,11 @@ findExistingFile = (paths = []) => {
     };
     drawDetailTable = (doc, details, isFinal, lhu = {}, accreditationStats = {}) => {
         const sampleNos = (Array.isArray(lhu.sampleRows) && lhu.sampleRows.length)
-            ? this.dedupeSampleKeys(sortRowsBySampleOrder(lhu.sampleRows).map((row) => row.no_sampel))
+            ? this.dedupeSampleKeys(sortRowsBySampleOrder(lhu.sampleRows).map((row) => row.noSampel))
             : this.dedupeSampleKeys([...details]
-                    .sort((a, b) => Number(a.urutan_sampel || 0) - Number(b.urutan_sampel || 0) ||
-                    String(a.no_sampel || '').localeCompare(String(b.no_sampel || '')))
-                    .map((row) => row.no_sampel));
+                    .sort((a, b) => Number(a.urutanSampel || 0) - Number(b.urutanSampel || 0) ||
+                    String(a.noSampel || '').localeCompare(String(b.noSampel || '')))
+                    .map((row) => row.noSampel));
         const sampleChunks = this.chunkArray(sampleNos, 4);
         const parameterGroups = this.buildParameterGroups(details);
         sampleChunks.forEach((sampleChunk, chunkIndex) => {
@@ -410,10 +410,10 @@ findExistingFile = (paths = []) => {
                     if (col.type === 'hasil')
                         return { ...col, text: valueOrDash(this.getHasilBySampleNo(row, col.sampleNo)) };
                     if (col.type === 'satuan')
-                        return { ...col, text: valueOrDash(row.satuan_bm_snapshot) };
+                        return { ...col, text: valueOrDash(row.satuanBmSnapshot) };
                     if (col.type === 'bakuMutu')
-                        return { ...col, text: normalizeBakuMutuForLhu(row.bm_snapshot) };
-                    return { ...col, text: valueOrDash(row.acuan_metode_snapshot || row.metode_snapshot), align: 'left' };
+                        return { ...col, text: normalizeBakuMutuForLhu(row.bmSnapshot) };
+                    return { ...col, text: valueOrDash(row.acuanMetodeSnapshot || row.metodeSnapshot), align: 'left' };
                 });
                 doc.lineWidth(TABLE_LINE_WIDTH).rect(TABLE_LEFT, y, TABLE_WIDTH, rowHeight).stroke('#111111');
                 values.forEach((col) => {
@@ -432,14 +432,14 @@ findExistingFile = (paths = []) => {
         });
     };
     buildLhuNotes = (lhu, details = [], isFinal, totalPages) => {
-        const bakuMutuText = lhu.standar_lhu ||
-            lhu.teks_lhu ||
-            [lhu.reg_bm_instansi, lhu.ref_reg].filter(Boolean).join(' - ') ||
+        const bakuMutuText = lhu.standarLhu ||
+            lhu.teksLhu ||
+            [lhu.regBmInstansi, lhu.refReg].filter(Boolean).join(' - ') ||
             'paket baku mutu yang dipilih pada sistem';
-        const hasNotRequiredBakuMutu = details.some((row) => isBakuMutuNotRequired(row.bm_snapshot));
-        const hasBelumTerakreditasi = details.some((row) => Number(row.is_terakreditasi || row.isTerakreditasi || 0) !== 1);
-        const hasInsitu = details.some((row) => Number(row.is_insitu_snapshot || row.isInsituSnapshot || row.is_insitu || row.isInsitu || 0) === 1);
-        const hasSubkontrak = details.some((row) => Number(row.is_subkontrak_snapshot || row.isSubkontrakSnapshot || row.is_subkontrak || row.isSubkontrak || 0) === 1);
+        const hasNotRequiredBakuMutu = details.some((row) => isBakuMutuNotRequired(row.bmSnapshot));
+        const hasBelumTerakreditasi = details.some((row) => Number(row.isTerakreditasi || 0) !== 1);
+        const hasInsitu = details.some((row) => Number(row.isInsituSnapshot || row.isInsitu || 0) === 1);
+        const hasSubkontrak = details.some((row) => Number(row.isSubkontrakSnapshot || row.isSubkontrak || 0) === 1);
         const notes = [
             `Baku Mutu berdasarkan ${bakuMutuText}.`,
             `LHU ini terdiri dari ${totalPages} (${this.numberToIndonesianText(totalPages)}) halaman;`,
@@ -460,8 +460,8 @@ findExistingFile = (paths = []) => {
         if (!isFinal) {
             notes.push('Dokumen ini adalah draft dan belum disahkan Kepala Lab.');
         }
-        if (lhu.catatan_tambahan_lhu) {
-            notes.push(lhu.catatan_tambahan_lhu);
+        if (lhu.catatanTambahanLhu) {
+            notes.push(lhu.catatanTambahanLhu);
         }
         return notes;
     };
@@ -551,7 +551,7 @@ findExistingFile = (paths = []) => {
     drawSignature = (doc, lhu, isFinal, y) => {
         const x = 360;
         doc.font(PDF_FONT.regular).fontSize(8).fillColor('#111111');
-        doc.text(`Padang, ${isFinal ? formatDateId(lhu.tanggal_penerbitan || lhu.kalab_at) : '-'}`, x, y, {
+        doc.text(`Padang, ${isFinal ? formatDateId(lhu.tanggalPenerbitan || lhu.kalabAt) : '-'}`, x, y, {
             width: 180,
             align: 'center',
         });
@@ -566,12 +566,12 @@ findExistingFile = (paths = []) => {
         });
         doc.fillColor('#111111');
         doc.font(PDF_FONT.bold).fontSize(8);
-        doc.text(valueOrDash(lhu.kalab_nama || '-'), x, y + 75, {
+        doc.text(valueOrDash(lhu.kalabNama || '-'), x, y + 75, {
             width: 180,
             align: 'center',
         });
         doc.font(PDF_FONT.regular).fontSize(7.5);
-        doc.text(`NIP.${valueOrDash(lhu.kalab_nip)}`, x, y + 87, {
+        doc.text(`NIP.${valueOrDash(lhu.kalabNip)}`, x, y + 87, {
             width: 180,
             align: 'center',
         });
@@ -602,19 +602,19 @@ findExistingFile = (paths = []) => {
     };
     drawInfoSection = (doc, lhu) => {
         const rows = [
-            { label: 'Nama Pelanggan', value: lhu.nama_pelanggan },
-            { label: 'Alamat', value: lhu.alamat_pelanggan },
-            { label: 'Tlp/Fax', value: lhu.telp_pelanggan },
-            { label: 'Personal yang dihubungi', value: lhu.pic_pelanggan },
-            { label: 'Jenis Sampel', value: normalizeSampleTypeForLhu(lhu.jenis_sampel) },
-            { label: 'Pengambil Sampel', value: normalizeSampleCollectorForLhu(lhu.jenis_pengambilan_sampel) },
-            { label: 'No. FPPL', value: lhu.nomor_fppl },
-            { label: 'No. Sampel', value: lhu.no_sampel },
-            { label: 'Tanggal Pengambilan Sampel', value: formatDateId(lhu.tanggal_pengambilan_sampel) },
-            { label: 'Tanggal Penerimaan Sampel', value: formatDateId(lhu.tanggal_penerimaan) },
-            { label: 'Abnormalitas Sampel', value: lhu.abnormalitas_sampel },
-            { label: 'Lokasi Pengambilan Sampel', value: lhu.lokasi_pengambilan_sampel },
-            { label: 'Acuan SNI Sampel', value: lhu.acuan_pengambilan_sampel },
+            { label: 'Nama Pelanggan', value: lhu.namaPelanggan },
+            { label: 'Alamat', value: lhu.alamatPelanggan },
+            { label: 'Tlp/Fax', value: lhu.telpPelanggan },
+            { label: 'Personal yang dihubungi', value: lhu.picPelanggan },
+            { label: 'Jenis Sampel', value: normalizeSampleTypeForLhu(lhu.jenisSampel) },
+            { label: 'Pengambil Sampel', value: normalizeSampleCollectorForLhu(lhu.jenisPengambilanSampel) },
+            { label: 'No. FPPL', value: lhu.nomorFppl },
+            { label: 'No. Sampel', value: lhu.noSampel },
+            { label: 'Tanggal Pengambilan Sampel', value: formatDateId(lhu.tanggalPengambilanSampel) },
+            { label: 'Tanggal Penerimaan Sampel', value: formatDateId(lhu.tanggalPenerimaan) },
+            { label: 'Abnormalitas Sampel', value: lhu.abnormalitasSampel },
+            { label: 'Lokasi Pengambilan Sampel', value: lhu.lokasiPengambilanSampel },
+            { label: 'Acuan SNI Sampel', value: lhu.acuanPengambilanSampel },
         ];
         let y = doc.y;
         const startX = PAGE_LEFT;
@@ -686,14 +686,14 @@ findExistingFile = (paths = []) => {
         return this.generateLhuPdf(nomorLhu, {
             mode: 'draft',
             transaction,
-            detailOrder: options.detailOrder || options.detail_order || [],
+            detailOrder: options.detailOrder || [],
         });
     };
     generateFinalLhuPdf = async (nomorLhu, transaction = null, options = {}) => {
         return this.generateLhuPdf(nomorLhu, {
             mode: 'final',
             transaction,
-            detailOrder: options.detailOrder || options.detail_order || [],
+            detailOrder: options.detailOrder || [],
         });
     };
 }

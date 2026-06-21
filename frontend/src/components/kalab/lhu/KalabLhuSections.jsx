@@ -313,7 +313,7 @@ export function KalabLhuDetailModal({
   ]);
   const detailSampleNos = selectedSampleNoItems.length
     ? selectedSampleNoItems
-    : Array.from(new Set((detailRows || []).flatMap((row) => row.samples || row.sampels || Object.keys(row.hasil_by_sample || row.hasilBySample || {})))).filter(Boolean);
+    : Array.from(new Set((detailRows || []).flatMap((row) => row.samples || row.sampels || Object.keys(row.resultsBySample || {})))).filter(Boolean);
   const selectedSampleDisplayText = formatSampleNoList(detailSampleNos);
   const selectedJenisLabels = Array.from(
     new Set(normalizedSampleRows.map((sample) => sample.jenisSampel || sample.jenis_sampel).filter(Boolean))

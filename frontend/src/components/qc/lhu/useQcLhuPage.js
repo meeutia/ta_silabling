@@ -48,13 +48,18 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
   });
 
 
-  function isQueueReadyForQc(item = {}) {
-    const totalSampel = Number(item.totalSampel || item.total_sampel || 0);
-    const totalSampelSiap = Number(item.totalSampelSiap || item.total_sampel_siap || 0);
-    const totalParameter = Number(item.totalParameter || item.total_parameter || 0);
-    const totalSelesai = Number(item.totalSelesai || item.total_selesai || 0);
-
-    return totalSampel > 0 && totalSampelSiap === totalSampel && totalParameter > 0 && totalSelesai === totalParameter;
+  function normalizeQcQueueResponse(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.rows)) return data.rows;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.queue)) return data.queue;
+    if (Array.isArray(data?.finalizationQueue)) return data.finalizationQueue;
+    if (Array.isArray(data?.finalization_queue)) return data.finalization_queue;
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.data?.rows)) return data.data.rows;
+    if (Array.isArray(data?.data?.items)) return data.data.items;
+    if (Array.isArray(data?.data?.queue)) return data.data.queue;
+    return [];
   }
 
   const getRequestId = (item = {}) => item.idRegistrasi || item.id_registrasi || getNoSampel(item);
@@ -129,7 +134,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
 
     try {
       const data = await lhuReviewApi.getQcFinalizationQueue();
-      setQueue((data || []).filter(isQueueReadyForQc));
+      setQueue(normalizeQcQueueResponse(data));
     } catch (error) {
       showError(getErrorMessage(error, 'Gagal memuat antrean finalisasi LHU.'));
     } finally {
@@ -304,7 +309,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     });
 
     try {
-      const detail = await lhuReviewApi.getLhuFinalizationDetail(requestId) || {};
+      const detail = await lhuReviewApi.getLhuFinalizationDetail(requestId, initialSampleNos) || {};
       const detailSamples = detail.samples || detail.sampels || item.samples || item.sampels || [];
       const compatibleSampleNos = getInitialCompatibleSampleNos(detailSamples, initialSampleNos);
 
@@ -505,12 +510,12 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
       if (!key) return;
 
       if (!map.has(key)) {
+        const resultsBySample = row.resultsBySample || row.hasil_by_sample || row.hasilBySample || {};
         map.set(key, {
           ...row,
           samples: Array.isArray(row.samples || row.sampels) ? [...(row.samples || row.sampels)] : [],
           sampels: Array.isArray(row.sampels || row.samples) ? [...(row.sampels || row.samples)] : [],
-          hasil_by_sample: { ...(row.hasil_by_sample || row.hasilBySample || {}) },
-          hasilBySample: { ...(row.hasilBySample || row.hasil_by_sample || {}) },
+          resultsBySample: { ...resultsBySample },
         });
       }
 
@@ -519,11 +524,10 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
       const hasil = row.hasil || row.hasil_snapshot || row.hasilSnapshot || '';
 
       if (noSampel) {
-        current.hasil_by_sample[noSampel] = hasil;
-        current.hasilBySample[noSampel] = hasil;
+        current.resultsBySample[noSampel] = hasil;
         if (!current.samples.includes(noSampel)) current.samples.push(noSampel);
         if (!current.sampels.includes(noSampel)) current.sampels.push(noSampel);
-        current.hasil = current.samples.map((sampleNo) => `${sampleNo}: ${current.hasil_by_sample[sampleNo] || '-'}`).join('\n');
+        current.hasil = current.samples.map((sampleNo) => `${sampleNo}: ${current.resultsBySample[sampleNo] || '-'}`).join('\n');
         current.hasil_snapshot = current.hasil;
         current.hasilSnapshot = current.hasil;
       }

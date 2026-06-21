@@ -12,7 +12,6 @@ import {
   getKoordinatSampel,
   getLkaHasilTarget,
   getLkaHasilTargetKey,
-  getSatuanHasil,
   getStatusBadgeClass,
   getSubkontrakLabel,
   getTanggalPenerimaanSampel,
@@ -42,6 +41,32 @@ function InfoRow({ label, value, children }) {
         {children || value || '-'}
       </span>
     </div>
+  );
+}
+
+
+function getShortLkaHasilStatus(status) {
+  const value = String(status || '').trim();
+  if (!value || value === '-') return '-';
+
+  const normalized = value.toLowerCase();
+  if (normalized.includes('menunggu') && normalized.includes('penyelia')) return 'Menunggu Penyelia';
+  if (normalized.includes('menunggu') && normalized.includes('kasi')) return 'Menunggu Kasi';
+  if (normalized.includes('disetujui') && normalized.includes('penyelia')) return 'Disetujui Penyelia';
+  if (normalized.includes('disetujui') && normalized.includes('kasi')) return 'Disetujui Kasi';
+  if (normalized.includes('perbaikan') || normalized.includes('revisi')) return 'Revisi';
+  if (normalized.includes('draft')) return 'Draft';
+
+  return value;
+}
+
+function getHasilSebelumnya(row = {}) {
+  return (
+    row.hasilSebelumRevisi ||
+    row.hasil_sebelum_revisi ||
+    row.revisionComparison?.hasilSebelumRevisi ||
+    row.revision_comparison?.hasil_sebelum_revisi ||
+    '-'
   );
 }
 
@@ -113,7 +138,7 @@ function ResultTable({
                 Hasil
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
-                Satuan
+                Hasil Sebelumnya
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                 Subkontrak
@@ -122,7 +147,7 @@ function ResultTable({
                 Insitu
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
-                Status LKA
+                Status Hasil
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                 Akreditasi
@@ -140,11 +165,17 @@ function ResultTable({
               const metode = row.namaMetode || row.nama_metode || '-';
               const acuanMetode = row.acuanMetode || row.acuan_metode || '-';
               const hasil = row.hasil || '-';
-              const satuan = getSatuanHasil(row);
+              const hasilSebelumnya = getHasilSebelumnya(row);
               const subkontrakLabel = getSubkontrakLabel(row);
               const insituLabel = getInsituLabel(row);
               const isSubkontrak = isSubkontrakResult(row);
-              const statusLka = row.statusLka || row.status_lka || '-';
+              const statusLka = getShortLkaHasilStatus(
+                row.statusReviewHasil ||
+                row.status_review_hasil ||
+                row.statusLka ||
+                row.status_lka ||
+                '-'
+              );
               const hasilKey = getLkaHasilTargetKey(row);
               const hasilTarget = getLkaHasilTarget(row);
               const checked = hasilKey ? selectedSet.has(String(hasilKey)) : false;
@@ -201,7 +232,7 @@ function ResultTable({
                   </td>
 
                   <td className="px-4 py-3 text-gray-700">
-                    {satuan}
+                    {hasilSebelumnya}
                   </td>
 
                   <td className="px-4 py-3">

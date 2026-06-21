@@ -104,7 +104,7 @@ normalizeText = (value) => {
         }
         throw new Error('Role petugas tidak valid.');
     };
-    buildPasswordFromPayload = (data = {}) => {
+    buildPasswordFromRequestData = (data = {}) => {
         const passwordMode = this.normalizeText(data.passwordMode || data.password_mode || 'generate');
         if (passwordMode === 'manual') {
             const password = assertPasswordPolicy(data.password);
@@ -152,21 +152,20 @@ normalizeText = (value) => {
         return {
             id: row.id_pegawai || row.nik,
             nik: row.nik,
-            id_pegawai: row.id_pegawai,
+            idPegawai: row.id_pegawai,
             name: row.nama_pegawai || row.username,
-            nama_pegawai: row.nama_pegawai,
+            namaPegawai: row.nama_pegawai,
             username: row.username || null,
             role: roleLabel,
-            id_role: row.id_role || null,
+            idRole: row.id_role || null,
             email: row.email || null,
             phone: row.no_wa,
-            no_wa: row.no_wa,
+            noWa: row.no_wa,
             status: hasAccount ? this.statusLabel(row.is_active) : 'Tanpa Akun',
-            is_active: hasAccount ? Number(row.is_active || 0) : null,
+            isActive: hasAccount ? Number(row.is_active || 0) : null,
             lastLogin: row.last_login_at || null,
             nip: row.nip,
-            is_pcc: Number(row.is_pcc || 0),
-            has_account: hasAccount,
+            isPcc: Number(row.is_pcc || 0),
             hasAccount,
         };
     };
@@ -175,21 +174,19 @@ normalizeText = (value) => {
         const portalIsActive = hasPortalAccount ? Number(row.user_is_active ?? row.is_active ?? 0) : 0;
         return {
             id: row.id_pelanggan,
-            id_pelanggan: row.id_pelanggan,
+            idPelanggan: row.id_pelanggan,
             nik: row.nik,
             name: row.pic || row.nama_instansi,
             company: row.nama_instansi,
-            nama_instansi: row.nama_instansi,
+            namaInstansi: row.nama_instansi,
             pic: row.pic,
-            // Kontak pelanggan/instansi. Ini bukan selalu email login portal.
             email: row.email_kontak,
-            email_kontak: row.email_kontak,
+            emailKontak: row.email_kontak,
             contactEmail: row.email_kontak,
             phone: row.no_telp,
-            no_telp: row.no_telp,
-            // Status di halaman admin adalah status akun portal user yang terhubung ke NIK pelanggan.
+            noTelp: row.no_telp,
             status: hasPortalAccount ? this.statusLabel(portalIsActive) : 'Belum aktif',
-            is_active: portalIsActive,
+            isActive: portalIsActive,
             portalStatus: hasPortalAccount ? this.statusLabel(portalIsActive) : 'Belum aktif',
             hasPortalAccount,
             hasPortalAccess: hasPortalAccount,
@@ -203,9 +200,7 @@ normalizeText = (value) => {
             portalUsername: row.username || null,
             username: row.username || null,
             portalEmail: row.user_email || null,
-            user_email: row.user_email || null,
             userNik: row.user_nik || row.nik || null,
-            user_nik: row.user_nik || row.nik || null,
             lastLogin: row.last_login_at || null,
         };
     };
@@ -280,26 +275,26 @@ normalizeText = (value) => {
         let rows = pegawaiRows.map(this.flattenStaffPegawai);
         if (role && role !== 'Semua') {
             if (role === 'PCC') {
-                rows = rows.filter((row) => Number(row.is_pcc || 0) === 1);
+                rows = rows.filter((row) => Number(row.isPcc || 0) === 1);
             }
             else {
                 const roleId = this.getStaffRoleId(role);
-                rows = rows.filter((row) => row.id_role === roleId);
+                rows = rows.filter((row) => row.idRole === roleId);
             }
         }
         if (status && status !== 'Semua') {
             rows = rows.filter((row) => row.status === status);
         }
         if (search) {
-            rows = rows.filter((row) => [row.nik, row.username, row.email, row.nama_pegawai, row.nip, row.no_wa, row.role]
+            rows = rows.filter((row) => [row.nik, row.username, row.email, row.namaPegawai, row.nip, row.noWa, row.role]
                 .filter(Boolean)
                 .some((value) => String(value).toLowerCase().includes(search)));
         }
         return rows.sort((a, b) => {
-            const roleDiff = STAFF_ROLE_ORDER.indexOf(a.id_role) - STAFF_ROLE_ORDER.indexOf(b.id_role);
+            const roleDiff = STAFF_ROLE_ORDER.indexOf(a.idRole) - STAFF_ROLE_ORDER.indexOf(b.idRole);
             if (roleDiff !== 0)
                 return roleDiff;
-            return String(a.nama_pegawai || a.username || '').localeCompare(String(b.nama_pegawai || b.username || ''));
+            return String(a.namaPegawai || a.username || '').localeCompare(String(b.namaPegawai || b.username || ''));
         });
     };
     getStaffByNik = async (identifier, transaction = null) => {
@@ -378,7 +373,7 @@ normalizeText = (value) => {
             const email = this.validateEmail(data.email);
             const roleId = this.getStaffRoleId(data.role || data.id_role);
             await this.ensureUniqueUser({ nik, username, email }, transaction);
-            const { password, isGenerated } = this.buildPasswordFromPayload(data);
+            const { password, isGenerated } = this.buildPasswordFromRequestData(data);
             const hashedPassword = await this.hashPassword(password);
             await User.create({
                 nik,
@@ -407,11 +402,11 @@ normalizeText = (value) => {
     };
     setStaffStatus = async (nik, isActive) => {
         const staff = await this.getStaffByNik(nik);
-        if (!staff.has_account && !staff.hasAccount)
+        if (!!staff.hasAccount)
             throw new Error('Petugas ini tidak memiliki akun login.');
         const userNik = this.validateNik(staff.nik);
         const nextActive = Number(isActive) === 1 ? 1 : 0;
-        if (nextActive === 0 && staff.id_role === Roles.ADMIN) {
+        if (nextActive === 0 && staff.idRole === Roles.ADMIN) {
             const activeAdminCount = await User.count({
                 where: {
                     id_role: Roles.ADMIN,
@@ -433,7 +428,7 @@ normalizeText = (value) => {
     };
     resetStaffPassword = async (nik, data = {}) => {
         const staff = await this.getStaffByNik(nik);
-        if (!staff.has_account && !staff.hasAccount)
+        if (!!staff.hasAccount)
             throw new Error('Petugas ini tidak memiliki akun login.');
         const userNik = this.validateNik(staff.nik);
         const password = data.password
@@ -464,26 +459,26 @@ normalizeText = (value) => {
         });
         let rows = customers.map(this.flattenCustomer);
         const customerCountByNik = rows.reduce((acc, row) => {
-            const key = row.nik || row.user_nik || '';
+            const key = row.nik || row.userNik || '';
             if (key)
                 acc[key] = (acc[key] || 0) + 1;
             return acc;
         }, {});
         rows = rows.map((row) => ({
             ...row,
-            linkedCustomerCount: customerCountByNik[row.nik || row.user_nik || ''] || 1,
+            linkedCustomerCount: customerCountByNik[row.nik || row.userNik || ''] || 1,
         }));
         if (status && status !== 'Semua') {
             rows = rows.filter((row) => row.status === status);
         }
         if (search) {
             rows = rows.filter((row) => [
-                row.id_pelanggan,
+                row.idPelanggan,
                 row.nik,
-                row.nama_instansi,
+                row.namaInstansi,
                 row.pic,
-                row.no_telp,
-                row.email_kontak,
+                row.noTelp,
+                row.emailKontak,
                 row.username,
                 row.email,
             ]
@@ -539,10 +534,90 @@ normalizeText = (value) => {
             where: { nik: customer.nik },
         });
         return {
-            id_pelanggan: customer.id_pelanggan,
+            idPelanggan: customer.idPelanggan,
             nik: customer.nik,
             temporaryPassword: password,
         };
+    };
+    normalizeIndonesianWhatsAppNumber = (value) => {
+        const digits = String(value || '').replace(/\D/g, '');
+        if (!digits)
+            return '';
+        if (digits.startsWith('62'))
+            return digits;
+        if (digits.startsWith('0'))
+            return `62${digits.slice(1)}`;
+        if (digits.startsWith('8'))
+            return `62${digits}`;
+        return digits;
+    };
+
+    getAdminContact = async () => {
+        const adminRole = await Role.findOne({
+            where: sequelize.where(sequelize.fn('LOWER', sequelize.col('nama_role')), 'admin'),
+        });
+        const emptyResponse = {
+            found: false,
+            idPegawai: null,
+            namaPegawai: null,
+            noWa: null,
+            whatsappNumber: null,
+            whatsappUrl: null,
+        };
+        if (!adminRole) {
+            return emptyResponse;
+        }
+        const adminUser = await User.findOne({
+            where: {
+                id_role: adminRole.id_role,
+                is_active: 1,
+            },
+            include: [
+                {
+                    model: Pegawai,
+                    required: true,
+                    where: {
+                        [Op.and]: [
+                            { no_wa: { [Op.ne]: null } },
+                            sequelize.where(sequelize.fn('TRIM', sequelize.col('pegawai.no_wa')), { [Op.ne]: '' }),
+                        ],
+                    },
+                },
+            ],
+            order: [[Pegawai, 'nama_pegawai', 'ASC']],
+        });
+        const userJson = this.getPlain(adminUser) || null;
+        const pegawai = userJson?.pegawai || userJson?.Pegawai || null;
+        if (!adminUser || !pegawai) {
+            return emptyResponse;
+        }
+        const whatsappNumber = this.normalizeIndonesianWhatsAppNumber(pegawai.no_wa);
+        return {
+            found: Boolean(whatsappNumber),
+            idPegawai: pegawai.id_pegawai,
+            namaPegawai: pegawai.nama_pegawai,
+            noWa: pegawai.no_wa,
+            nik: userJson.nik,
+            email: userJson.email,
+            whatsappNumber: whatsappNumber || null,
+            whatsappUrl: whatsappNumber ? `https://wa.me/${whatsappNumber}` : null,
+        };
+    };
+
+    getPccPegawai = async () => {
+        const rows = await Pegawai.findAll({
+            where: { is_pcc: 1 },
+            order: [['nama_pegawai', 'ASC']],
+        });
+        return rows.map((row) => {
+            const data = this.getPlain(row) || {};
+            return {
+                idPegawai: data.id_pegawai,
+                namaPegawai: data.nama_pegawai,
+                noWa: data.no_wa,
+                isPcc: Boolean(data.is_pcc),
+            };
+        });
     };
 }
 module.exports = new AdminAccountService();

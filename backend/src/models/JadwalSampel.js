@@ -1,7 +1,40 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const JadwalSampel = sequelize.define('jadwal_sampel', {
+class JadwalSampel extends Model {
+  static associate(models) {
+    JadwalSampel.belongsTo(models.Fppl, { foreignKey: 'id_registrasi' });
+    JadwalSampel.belongsTo(models.Pegawai, { foreignKey: 'id_pegawai_pcc', as: 'pegawai_pcc' });
+    JadwalSampel.hasMany(models.PengajuanPerubahanJadwal, {
+  foreignKey: 'id_jadwal_sampel',
+  sourceKey: 'id_jadwal',
+  as: 'pengajuan_perubahan',
+});
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_jadwal === status;
+  }
+
+  isScheduled() {
+    return this.isStatus('Terjadwal');
+  }
+
+  isCompleted() {
+    return this.isStatus('Selesai');
+  }
+}
+
+JadwalSampel.init({
     id_jadwal: {
         type: DataTypes.STRING(10),
         primaryKey: true
@@ -39,7 +72,9 @@ const JadwalSampel = sequelize.define('jadwal_sampel', {
         defaultValue: 'Terjadwal'
     },
 }, {
-    timestamps: false
+  sequelize,
+  modelName: 'jadwal_sampel',
+timestamps: false
 });
 
 module.exports = JadwalSampel;

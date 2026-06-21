@@ -2,21 +2,26 @@ import { asTrimmedText, isBlank } from '../../utils/formValidation';
 import { getNomorLhu, getNoSampel } from './lhuReviewUtils';
 
 function getResultValue(row = {}) {
-  return row.hasil || row.hasil || row.hasil || '';
+  return row.hasil || row.hasilSnapshot || row.hasil_snapshot || '';
 }
 
 function getNoSampelListFromSelection(selectedSample = {}, form = {}) {
   const raw =
-    form?.noSampelList ||
-    form?.no_sampel_list ||
     form?.sampleNos ||
     form?.sample_nos ||
-    selectedSample?.selectedNoSampelList ||
+    form?.no_sampel_list ||
+    form?.noSampelList ||
     selectedSample?.selected_no_sampel_list ||
-    selectedSample?.noSampelList ||
-    selectedSample?.no_sampel_list;
+    selectedSample?.selectedNoSampelList ||
+    selectedSample?.sampleNos ||
+    selectedSample?.sample_nos ||
+    selectedSample?.no_sampel_list ||
+    selectedSample?.noSampelList;
 
-  const values = Array.isArray(raw) ? raw : String(raw || getNoSampel(selectedSample) || '').split(',');
+  const values = Array.isArray(raw)
+    ? raw
+    : String(raw || getNoSampel(selectedSample) || '').split(/[\n,]+/);
+
   return [...new Set(values.map((item) => String(item || '').trim()).filter(Boolean))];
 }
 
@@ -71,16 +76,10 @@ export function buildQcFinalizePayload({ selectedSample, form } = {}) {
 
   return {
     idRegistrasi: selectedSample?.idRegistrasi || selectedSample?.id_registrasi || null,
-    id_registrasi: selectedSample?.idRegistrasi || selectedSample?.id_registrasi || null,
-    noSampel: noSampelList[0] || getNoSampel(selectedSample),
     sampleNos: noSampelList,
-    sample_nos: noSampelList,
-    noSampelList,
-    no_sampel_list: noSampelList,
     detailOrder: Array.isArray(form?.detailOrder) ? form.detailOrder : [],
-    detail_order: Array.isArray(form?.detailOrder) ? form.detailOrder : [],
-    idPktBm: form?.idPktBm,
-    keteranganSampel: asTrimmedText(form?.keteranganSampel) || null,
+    idPktBm: form?.idPktBm || null,
+    keteranganSampel: (form?.keteranganSampel || '').trim() || null,
   };
 }
 

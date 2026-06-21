@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
-const referenceRoutes = require('./routes/reference');
+const catalogRoutes = require('./routes/catalog');
 const requestRoutes = require('./routes/request');
 const meRoutes = require('./routes/me');
 const assignmentRoutes = require('./routes/assignment');
@@ -11,6 +11,7 @@ const lhuRoutes = require('./routes/lhu');
 const lkaRevisionRoutes = require('./routes/lka-revision');
 const adminParameterRoutes = require('./routes/admin-parameter');
 const adminAccountRoutes = require('./routes/admin-account');
+const notificationEmailRoutes = require('./routes/notification-email');
 const fileRoutes = require('./routes/file');
 const PaymentService = require('./services/payment/payment.service');
 const { createRateLimit } = require('./middlewares/rate-limit');
@@ -79,7 +80,7 @@ class SilablingApplication {
     };
     registerRoutes = () => {
         this.app.use('/auth', authRoutes);
-        this.app.use('/references', referenceRoutes);
+        this.app.use('/catalog', catalogRoutes);
         this.app.use('/requests', requestRoutes);
         this.app.use('/me', meRoutes);
         this.app.use('/assignments', assignmentRoutes);
@@ -87,6 +88,7 @@ class SilablingApplication {
         this.app.use('/lka-revisions', lkaRevisionRoutes);
         this.app.use('/admin/parameters', adminParameterRoutes);
         this.app.use('/admin/accounts', adminAccountRoutes);
+        this.app.use('/admin/email-notifications', notificationEmailRoutes);
     };
     registerProtectedFileRoutes = () => {
         const fileAccessLimiter = createRateLimit({
@@ -201,7 +203,7 @@ class SilablingApplication {
         if (err?.type === 'entity.too.large') {
             return res.status(413).json({
                 success: false,
-                message: 'Ukuran payload request terlalu besar.',
+                message: 'Ukuran requestData request terlalu besar.',
             });
         }
         if (err?.message === 'Origin tidak diizinkan oleh CORS.') {

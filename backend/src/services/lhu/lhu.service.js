@@ -1,10 +1,10 @@
+const fs = require('fs');
+const path = require('path');
 const { Op } = require('sequelize');
 const sequelize = require('../../config/database');
 const lhuPdfService = require('./lhu-pdf.service');
-const { ensureLhuPdfFile } = require('./lhu-file.service');
-const { calculateAccreditationStats, getPlain, getPersonelOptions, getSampleInfosForLhu, getPktBmHeaderById, getDetailLhuRows, getPegawaiDisplayName, mapLhuHeaderPayload, mapSamplePayload, mapPelangganPayload, buildLhuListRow, } = require('./lhu-data.service');
-const { getFinalizationQueue, getFinalizationDetail, getPaketBmOptions, previewFinalization, finalizeLhu, } = require('./lhu-finalization.service');
-const assignmentService = require('../assignment.service');
+const { calculateAccreditationStats, getPlain, getSampleInfosForLhu, getPktBmHeaderById, getDetailLhuRows, getPegawaiDisplayName, mapLhuHeaderRequestData, mapSampleRequestData, mapPelangganRequestData, buildLhuListRow, } = require('./lhu-data.service');
+const lhuDetailRowMapper = require('./lhu-detail-row.mapper');
 const notificationService = require('../notification/notification.service');
 const WorkflowLogService = require('../workflow/workflow-log.service');
 const { generateNomorLhu } = require('../../utils/id-generator');
@@ -12,6 +12,7 @@ const { User, Pegawai, Role, Pelanggan, Fppl, JadwalSampel, FpplSampel, JenisSam
 const { LHU_STATUS, LHU_EDITABLE_BY_QC_STATUSES, LHU_NEXT_STATUS, isLhuEditableByQc, } = require('../../constants/lhu-status.constant');
 const { buildLkaHasilRevisionResponse } = require('../assignment/assignment-revision.helper');
 const RequestStatus = require('../../constants/request-status');
+const PUBLIC_LHU_DIR = path.join(__dirname, '../../../public', 'lhu');
 
 const normalizeSampleNoKey = (value) => String(value || '').trim().replace(/\s*\/\s*/g, '/').toLowerCase();
 const dedupeSampleInfos = (sampleInfos = []) => {
@@ -27,9 +28,72 @@ const dedupeSampleInfos = (sampleInfos = []) => {
 };
 const dedupeSampleNos = (values = []) => dedupeSampleInfos((Array.isArray(values) ? values : []).map((noSampel) => ({ no_sampel: noSampel }))).map((sample) => sample.no_sampel);
 class LhuService {
+    normalizeStoredLhuPath = (rawPath = '') => {
+        const value = String(rawPath || '').trim();
+        if (!value)
+            return '';
+        try {
+            if (/^https?:\/\//i.test(value)) {
+                return new URL(value).pathname;
+            }
+        }
+        catch {
+            return value;
+        }
+        return value;
+    };
+
+    resolveStoredLhuAbsolutePath = (rawPath = '') => {
+        let relativePath = this.normalizeStoredLhuPath(rawPath)
+            .replace(/\\/g, '/')
+            .replace(/^\/+/, '');
+        if (!relativePath)
+            return null;
+        if (relativePath.startsWith('lhu/')) {
+            relativePath = relativePath.slice('lhu/'.length);
+        }
+        const parts = relativePath.split('/').filter(Boolean);
+        if (!parts.length || parts.some((part) => part === '..' || part === '.')) {
+            return null;
+        }
+        const root = path.resolve(PUBLIC_LHU_DIR);
+        const candidate = path.resolve(root, parts.join('/'));
+        const rel = path.relative(root, candidate);
+        if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
+            return null;
+        }
+        return candidate;
+    };
+
+    isStoredLhuFileAvailable = (rawPath = '') => {
+        const absolutePath = this.resolveStoredLhuAbsolutePath(rawPath);
+        return Boolean(absolutePath && fs.existsSync(absolutePath) && fs.statSync(absolutePath).isFile());
+    };
+
+    ensureLhuPdfFile = async (lhuRow = {}, transaction = null) => {
+        const lhu = { ...(lhuRow || {}) };
+        const nomorLhu = lhu.nomor_lhu || lhu.nomorLhu;
+        if (!nomorLhu)
+            return lhu;
+        if (lhu.file_lhu_path && this.isStoredLhuFileAvailable(lhu.file_lhu_path)) {
+            return lhu;
+        }
+        const status = String(lhu.status_lhu || lhu.statusLhu || '').toLowerCase();
+        const generator = status.includes('disahkan')
+            ? lhuPdfService.generateFinalLhuPdf
+            : lhuPdfService.generateDraftLhuPdf;
+        const pdfResult = await generator(nomorLhu, transaction);
+        if (pdfResult?.filePath && pdfResult.filePath !== lhu.file_lhu_path) {
+            await Lhu.update({ file_lhu_path: pdfResult.filePath }, { where: { nomor_lhu: nomorLhu }, transaction });
+            lhu.file_lhu_path = pdfResult.filePath;
+            lhu.fileLhuPath = pdfResult.filePath;
+        }
+        return lhu;
+    };
+
 getLhuDetail = async (nomorLhu) => {
         const lhuNo = String(nomorLhu || '').trim();
-        if (!lhuNo) {
+        if (!lhuNo || ['undefined', 'null', '-'].includes(lhuNo.toLowerCase())) {
             throw new Error('Nomor LHU wajib dikirim.');
         }
         const lhuInstance = await Lhu.findOne({
@@ -39,23 +103,31 @@ getLhuDetail = async (nomorLhu) => {
             throw new Error('LHU tidak ditemukan.');
         }
         let lhuPlain = getPlain(lhuInstance);
-        lhuPlain = await ensureLhuPdfFile(lhuPlain);
-        const sampleInfos = dedupeSampleInfos(await getSampleInfosForLhu(lhuPlain.nomor_lhu));
+        lhuPlain = await this.ensureLhuPdfFile(lhuPlain);
+
+        const nomorLhuValue = lhuPlain.nomorLhu || lhuPlain.nomor_lhu || lhuNo;
+        const idPktBmValue = lhuPlain.idPktBm || lhuPlain.id_pkt_bm;
+        const qcByValue = lhuPlain.qcBy || lhuPlain.qc_by;
+        const kalabByValue = lhuPlain.kalabBy || lhuPlain.kalab_by;
+
+        const sampleInfos = dedupeSampleInfos(await getSampleInfosForLhu(nomorLhuValue));
         const sampleInfo = sampleInfos[0] || {};
-        const pktBm = await getPktBmHeaderById(lhuPlain.id_pkt_bm);
-        const details = await getDetailLhuRows(lhuNo);
+        const pktBm = await getPktBmHeaderById(idPktBmValue);
+        const details = await getDetailLhuRows(nomorLhuValue);
         const [qcNama, kalabNama] = await Promise.all([
-            getPegawaiDisplayName(lhuPlain.qc_by),
-            getPegawaiDisplayName(lhuPlain.kalab_by),
+            getPegawaiDisplayName(qcByValue),
+            getPegawaiDisplayName(kalabByValue),
         ]);
-        const samplePayloads = sampleInfos.map(mapSamplePayload);
-        const sampleNos = dedupeSampleNos(sampleInfos.map((info) => info.no_sampel).filter(Boolean));
+        const sampleRequestDatas = sampleInfos.map(mapSampleRequestData);
+        const sampleNos = dedupeSampleNos(sampleInfos.map((info) => info.noSampel || info.no_sampel).filter(Boolean));
         const noSampelText = sampleNos.join('\n') || null;
         const lhu = {
-            ...mapLhuHeaderPayload(lhuPlain, sampleInfo, pktBm, {
+            ...mapLhuHeaderRequestData(lhuPlain, sampleInfo, pktBm, {
                 qcNama,
                 kalabNama,
             }),
+            nomorLhu: nomorLhuValue,
+            nomor_lhu: nomorLhuValue,
             noSampel: noSampelText,
             no_sampel: noSampelText,
             sampleNos,
@@ -63,18 +135,18 @@ getLhuDetail = async (nomorLhu) => {
             daftarSampelFinalisasiQc: noSampelText,
             daftar_sampel_finalisasi_qc: noSampelText,
         };
+        const groupedDetails = lhuDetailRowMapper.groupLhuDetailRowsByParameter(details);
         return {
             lhu,
-            sample: mapSamplePayload(sampleInfo),
-            samples: samplePayloads,
-            sampels: samplePayloads,
+            sample: mapSampleRequestData(sampleInfo),
+            samples: sampleRequestDatas,
             sampleNos,
             sample_nos: sampleNos,
             daftarSampelFinalisasiQc: noSampelText,
             daftar_sampel_finalisasi_qc: noSampelText,
-            pelanggan: mapPelangganPayload(sampleInfo),
-            details,
-            akreditasi: calculateAccreditationStats(details),
+            pelanggan: mapPelangganRequestData(sampleInfo),
+            details: groupedDetails,
+            akreditasi: calculateAccreditationStats(groupedDetails),
         };
     };
     getKasiPengujianQueue = async () => {
@@ -260,22 +332,12 @@ getLhuDetail = async (nomorLhu) => {
             });
             return {
                 nomorLhu: officialNomorLhu,
-                nomor_lhu: officialNomorLhu,
                 nomorDraftLhu: lhuNo,
-                nomor_draft_lhu: lhuNo,
                 statusLhu: LHU_STATUS.APPROVED_FINAL,
-                status_lhu: LHU_STATUS.APPROVED_FINAL,
                 fileLhuPath: pdfResult.filePath,
-                file_lhu_path: pdfResult.filePath,
             };
         });
     };
-    getFinalizationQueue = async (...args) => { return getFinalizationQueue(...args); };
-    getFinalizationDetail = async (...args) => { return getFinalizationDetail(...args); };
-    getPaketBmOptions = async (...args) => { return getPaketBmOptions(...args); };
-    previewFinalization = async (...args) => { return previewFinalization(...args); };
-    finalizeLhu = async (...args) => { return finalizeLhu(...args); };
-    getPersonelOptions = async (...args) => { return getPersonelOptions(...args); };
 }
 module.exports = new LhuService();
 module.exports.LhuService = LhuService;

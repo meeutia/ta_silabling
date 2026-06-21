@@ -1,9 +1,29 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const AktivitasSistemLog = sequelize.define(
-  'aktivitas_sistem_log',
-  {
+class AktivitasSistemLog extends Model {
+  static associate(models) {
+    AktivitasSistemLog.belongsTo(models.User, {
+  foreignKey: 'dibuat_oleh',
+  as: 'pembuat_aktivitas',
+});
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  hasStatusChange() {
+    return this.status_sebelumnya !== this.status_baru;
+  }
+}
+
+AktivitasSistemLog.init({
     id_aktivitas_log: {
       type: DataTypes.STRING(13),
       primaryKey: true,
@@ -47,11 +67,11 @@ const AktivitasSistemLog = sequelize.define(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-  },
-  {
-    tableName: 'aktivitas_sistem_log',
+  }, {
+  sequelize,
+  modelName: 'aktivitas_sistem_log',
+tableName: 'aktivitas_sistem_log',
     timestamps: false,
-  }
-);
+});
 
 module.exports = AktivitasSistemLog;

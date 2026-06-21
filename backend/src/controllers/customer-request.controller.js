@@ -1,18 +1,16 @@
-const fs = require('fs');
-const path = require('path');
-const { Invoice, Fppl, Pelanggan, } = require('../models/Associations');
-const Roles = require('../constants/roles');
 const RequestService = require('../services/request/request.service');
+const RequestListService = require('../services/request/request-list.service');
+const AdminAccountService = require('../services/admin-account.service');
 const PaymentService = require('../services/payment/payment.service');
 const { successResponse, errorResponse } = require('../utils/response');
 const InvoicePdfService = require('../services/invoice-pdf.service');
 const notificationService = require('../services/notification/notification.service');
 const { secureKnownFileFields } = require('../utils/file-url.util');
-const PUBLIC_DIR = path.join(__dirname, '../../public');
-const INVOICE_DIR = path.join(PUBLIC_DIR, 'invoices');
 class CustomerRequestController {
-    constructor({ requestService, paymentService, invoicePdfService, notificationService }) {
+    constructor({ requestService, requestListService, adminAccountService, paymentService, invoicePdfService, notificationService }) {
         this.requestService = requestService;
+        this.requestListService = requestListService;
+        this.adminAccountService = adminAccountService;
         this.paymentService = paymentService;
         this.invoicePdfService = invoicePdfService;
         this.notificationService = notificationService;
@@ -42,7 +40,7 @@ class CustomerRequestController {
     listRequests = async (req, res) => {
         try {
             const { status } = req.query;
-            const data = await this.requestService.listRequests(req.user.nik, req.user.id_role, status);
+            const data = await this.requestListService.listRequests(req.user.nik, req.user.id_role, status);
             return successResponse(res, 'Berhasil mengambil daftar permohonan.', data);
         }
         catch (error) {
@@ -127,85 +125,24 @@ class CustomerRequestController {
             return errorResponse(res, 'Terjadi kesalahan pada server.');
         }
     };
-    ensureInvoiceDir = () => {
-        if (!fs.existsSync(INVOICE_DIR)) {
-            fs.mkdirSync(INVOICE_DIR, { recursive: true });
+    getAdminContact = async (req, res) => {
+        try {
+            const data = await this.adminAccountService.getAdminContact();
+            return successResponse(res, 'Berhasil mengambil kontak admin', data);
+        }
+        catch (error) {
+            console.error('this.getAdminContact error:', error);
+            return errorResponse(res, error.message || 'Gagal mengambil kontak admin.');
         }
     };
-    resolvePublicFilePath = (relativePath) => {
-        if (!relativePath)
-            return null;
-        const normalized = String(relativePath).replace(/^\/+/, '');
-        const cleanPath = normalized.replace(/^public[\\/]/, '');
-        return path.join(PUBLIC_DIR, cleanPath);
-    };
-    safeInvoiceFileName = (value) => {
-        return String(value || 'invoice')
-            .replace(/[\\/:"*?<>|]+/g, '-')
-            .replace(/\s+/g, '-')
-            .trim();
-    };
-    getInvoiceWithAccess = async (idRegistrasi, user) => {
-        const invoice = await Invoice.findOne({
-            where: { id_registrasi: idRegistrasi },
-        });
-        if (!invoice) {
-            const error = new Error('Invoice belum tersedia.');
-            error.statusCode = 404;
-            throw error;
-        }
-        const requestRecord = await Fppl.findByPk(idRegistrasi, {
-            include: [
-                {
-                    model: Pelanggan,
-                    as: 'pelanggan',
-                    attributes: ['id_pelanggan', 'nik'],
-                },
-            ],
-        });
-        if (!requestRecord) {
-            const error = new Error('Permohonan tidak ditemukan.');
-            error.statusCode = 404;
-            throw error;
-        }
-        const requestJson = requestRecord.toJSON();
-        const pelanggan = requestJson.pelanggan || requestJson.Pelanggan || null;
-        if (user?.id_role === Roles.CUSTOMER && pelanggan?.nik !== user?.nik) {
-            const error = new Error('Anda tidak memiliki akses ke invoice ini.');
-            error.statusCode = 403;
-            throw error;
-        }
-        return invoice;
-    };
+
     downloadInvoicePdf = async (req, res) => {
         try {
             const { id } = req.params;
-            const invoice = await this.getInvoiceWithAccess(id, req.user);
             const disposition = req.query.download === '1' ? 'attachment' : 'inline';
-            const savedPath = invoice.file_invoice_path;
-            const absoluteSavedPath = this.resolvePublicFilePath(savedPath);
-            if (absoluteSavedPath && fs.existsSync(absoluteSavedPath)) {
-                const filename = path.basename(absoluteSavedPath);
-                const buffer = fs.readFileSync(absoluteSavedPath);
-                res.setHeader('Content-Type', 'application/pdf');
-                res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
-                res.setHeader('Content-Length', buffer.length);
-                return res.send(buffer);
-            }
-            const { buffer, filename } = await this.invoicePdfService.generateInvoicePdf(id, req.user);
-            this.ensureInvoiceDir();
-            const safeName = this.safeInvoiceFileName(filename || `invoice-${id}.pdf`);
-            const finalFilename = safeName.toLowerCase().endsWith('.pdf')
-                ? safeName
-                : `${safeName}.pdf`;
-            const absolutePath = path.join(INVOICE_DIR, finalFilename);
-            const relativePath = `/invoices/${finalFilename}`;
-            fs.writeFileSync(absolutePath, buffer);
-            await invoice.update({
-                file_invoice_path: relativePath,
-            });
+            const { buffer, filename } = await this.invoicePdfService.getOrCreateInvoicePdf(id, req.user);
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `${disposition}; filename="${finalFilename}"`);
+            res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
             res.setHeader('Content-Length', buffer.length);
             return res.send(buffer);
         }
@@ -217,6 +154,8 @@ class CustomerRequestController {
 }
 module.exports = new CustomerRequestController({
     requestService: RequestService,
+    requestListService: RequestListService,
+    adminAccountService: AdminAccountService,
     paymentService: PaymentService,
     invoicePdfService: InvoicePdfService,
     notificationService,

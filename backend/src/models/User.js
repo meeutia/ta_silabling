@@ -1,7 +1,51 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const User = sequelize.define('user', {
+class User extends Model {
+  static associate(models) {
+    User.belongsTo(models.Role, { foreignKey: 'id_role' });
+    User.hasOne(models.Pegawai, { foreignKey: 'nik' });
+    User.hasMany(models.Pelanggan, { foreignKey: 'nik' });
+    User.hasMany(models.Sampel, { foreignKey: 'diterima_oleh', as: 'SampelDiterima' });
+    User.hasMany(models.FpplParameterMetode, { foreignKey: 'dipilih_oleh', as: 'PilihFpplParameterMetode' });
+    User.hasMany(models.Penugasan, { foreignKey: 'id_user_analis', as: 'PenugasanAnalis' });
+    User.hasMany(models.Lka, { foreignKey: 'dilaporkan_oleh', as: 'LkaDilaporkan' });
+    User.hasMany(models.Lka, { foreignKey: 'diperiksa_oleh', as: 'LkaDiperiksa' });
+    User.hasMany(models.LkaRevisi, { foreignKey: 'diajukan_oleh', as: 'RevisiLkaDiajukan' });
+    User.hasMany(models.LkaRevisi, { foreignKey: 'ditinjau_oleh', as: 'RevisiLkaDitinjau' });
+    User.hasMany(models.NotifikasiEmail, {
+  foreignKey: 'nik_penerima',
+  as: 'notifikasi_email',
+});
+    User.hasMany(models.AktivitasSistemLog, {
+  foreignKey: 'dibuat_oleh',
+  as: 'aktivitas_sistem_log',
+});
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isActiveUser() {
+    return this.is_active === true || this.is_active === 1;
+  }
+
+  hasRole(roleId) {
+    return this.id_role === roleId;
+  }
+
+  canLogin() {
+    return this.isActiveUser();
+  }
+}
+
+User.init({
   nik: {
     type: DataTypes.STRING(16),
     primaryKey: true,
@@ -52,7 +96,9 @@ const User = sequelize.define('user', {
     allowNull: true,
   },
 }, {
-  tableName: 'user',
+  sequelize,
+  modelName: 'user',
+tableName: 'user',
   timestamps: false,
 });
 

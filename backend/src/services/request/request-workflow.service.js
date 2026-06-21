@@ -1,7 +1,7 @@
 const { sequelize, Fppl, FpplParameterMetode, ParameterMetode, TarifPengambilan, JadwalSampel, Pegawai, FpplSampel, Sampel, SampelParameter, JenisSampel, RegBm, Invoice, Payment } = require('../../models/Associations');
 const RequestStatus = require('../../constants/request-status');
 const { generateId, generateNomorFppl } = require('../../utils/id-generator');
-const ReferenceService = require('../reference.service');
+const { getHariLibur } = require('../../utils/holiday-calendar.util');
 const { Op } = require('sequelize');
 const WorkflowLogService = require('../workflow/workflow-log.service');
 const { assertBusinessDateOrThrow: assertScheduleBusinessDateOrThrow, normalizeDateOnly: normalizeScheduleDateOnly, normalizeTimeForDb: normalizeScheduleTimeForDb, } = require('../../utils/schedule-policy.util');
@@ -13,8 +13,8 @@ const sameFpplSampelComposite = (a = {}, b = {}) => {
         pick(a, 'id_jenis_sampel', 'idJenisSampel') === pick(b, 'id_jenis_sampel', 'idJenisSampel') &&
         pick(a, 'id_reg_bm', 'idRegBm') === pick(b, 'id_reg_bm', 'idRegBm');
 };
-const normalizeFpplSampelCompositePayload = (payload = {}) => {
-    const pick = (snake, camel) => String(payload?.[snake] ?? payload?.[camel] ?? '').trim();
+const normalizeFpplSampelCompositeRequestData = (requestData = {}) => {
+    const pick = (snake, camel) => String(requestData?.[snake] ?? requestData?.[camel] ?? '').trim();
     const idRegistrasi = pick('id_registrasi', 'idRegistrasi');
     const idJenisSampel = pick('id_jenis_sampel', 'idJenisSampel');
     const idRegBm = pick('id_reg_bm', 'idRegBm');
@@ -50,6 +50,53 @@ const compactBusinessKeyLabel = (key = '') => {
     return [idJenisSampel, idRegBm, idParameter].filter(Boolean).join(' / ');
 };
 
+const pickFirstFilledValue = (...values) => {
+    for (const value of values) {
+        if (value === undefined || value === null) continue;
+        const normalized = String(value).trim();
+        if (normalized !== '') return value;
+    }
+    return null;
+};
+
+const normalizeAssignMethodSelection = (selection = {}) => {
+    const fpmId = pickFirstFilledValue(
+        selection.fpmId,
+        selection.idFpplParameterMetode,
+        selection.id_fppl_parameter_metode,
+        selection.idFpm,
+        selection.id_fpm
+    );
+    const methodId = pickFirstFilledValue(
+        selection.methodId,
+        selection.idMetodeParameter,
+        selection.id_metode_parameter
+    );
+    const capabilityStatus = pickFirstFilledValue(
+        selection.capabilityStatus,
+        selection.statusKemampuanLab,
+        selection.status_kemampuan_lab
+    );
+    const isInsitu = pickFirstFilledValue(selection.isInsitu, selection.is_insitu);
+    const capabilityNote = pickFirstFilledValue(
+        selection.capabilityNote,
+        selection.catatanKemampuan,
+        selection.catatan_kemampuan
+    );
+
+    return {
+        ...selection,
+        fpmId: fpmId == null ? '' : String(fpmId).trim(),
+        idFpplParameterMetode: fpmId == null ? '' : String(fpmId).trim(),
+        methodId: methodId == null ? '' : String(methodId).trim(),
+        idMetodeParameter: methodId == null ? '' : String(methodId).trim(),
+        capabilityStatus: capabilityStatus == null ? '' : String(capabilityStatus).trim().toUpperCase(),
+        statusKemampuanLab: capabilityStatus == null ? '' : String(capabilityStatus).trim().toUpperCase(),
+        isInsitu,
+        catatanKemampuan: capabilityNote == null ? null : String(capabilityNote).trim(),
+    };
+};
+
 const filterFpplSampelCompositeChildren = (row = {}) => {
     if (!row || typeof row !== 'object') {
         return row;
@@ -69,9 +116,6 @@ const SAMPLE_SCHEDULE_EDITABLE_REQUEST_STATUSES = [
     RequestStatus.WAITING_SAMPLE_DELIVERY,
 ];
 class RequestWorkflowService {
-    constructor({ referenceService = ReferenceService } = {}) {
-        this.referenceService = referenceService;
-    }
     verifyRequest = async (requestId, action, rejectionNote, selectedSamplingTariffId, verifiedBy = null) => {
         if (!['approve', 'reject'].includes(action))
             throw new Error('Action harus "approve" atau "reject".');
@@ -109,7 +153,7 @@ class RequestWorkflowService {
                 note: 'Permohonan disetujui admin dan dilanjutkan ke penentuan metode.',
                 actorNik: verifiedBy || null,
             });
-            return { id_registrasi: requestRecord.id_registrasi, status: RequestStatus.WAITING_PARAMETER, id_tarif_pengambilan: samplingTariffId };
+            return { idRegistrasi: requestRecord.id_registrasi, status: RequestStatus.WAITING_PARAMETER, idTarifPengambilan: samplingTariffId };
         }
         const previousStatus = requestRecord.status_fppl;
         await requestRecord.update({
@@ -128,7 +172,7 @@ class RequestWorkflowService {
             note: rejectionNote || null,
             actorNik: verifiedBy || null,
         });
-        return { id_registrasi: requestRecord.id_registrasi, status: RequestStatus.REJECTED_BY_ADMIN, catatan: rejectionNote || '', catatan_penolakan: rejectionNote || '' };
+        return { idRegistrasi: requestRecord.id_registrasi, status: RequestStatus.REJECTED_BY_ADMIN, catatan: rejectionNote || '' };
     };
     normalizeBoolean01 = (value) => {
         if (value === true || value === 1 || value === '1')
@@ -191,8 +235,9 @@ class RequestWorkflowService {
             }
 
             const selectionByGroupKey = new Map();
-            for (const sel of selections) {
-                const fpmId = String(sel.fpmId || sel.id_fppl_parameter_metode || sel.idFpplParameterMetode || '').trim();
+            for (const rawSelection of selections) {
+                const sel = normalizeAssignMethodSelection(rawSelection);
+                const fpmId = sel.fpmId;
                 if (!fpmId)
                     throw new Error('fpmId wajib diisi.');
                 const matchedFpm = rowByFpmId.get(fpmId);
@@ -201,10 +246,10 @@ class RequestWorkflowService {
                 const groupKey = buildFpplParameterBusinessKey(matchedFpm);
                 const existingSelection = selectionByGroupKey.get(groupKey);
                 if (existingSelection) {
-                    const existingMethod = String(existingSelection.methodId || existingSelection.id_metode_parameter || existingSelection.idMetodeParameter || '').trim();
-                    const nextMethod = String(sel.methodId || sel.id_metode_parameter || sel.idMetodeParameter || '').trim();
-                    const existingCapability = String(existingSelection.capabilityStatus || existingSelection.status_kemampuan_lab || existingSelection.statusKemampuanLab || '').toUpperCase();
-                    const nextCapability = String(sel.capabilityStatus || sel.status_kemampuan_lab || sel.statusKemampuanLab || '').toUpperCase();
+                    const existingMethod = String(existingSelection.idMetodeParameter || '').trim();
+                    const nextMethod = String(sel.idMetodeParameter || '').trim();
+                    const existingCapability = String(existingSelection.statusKemampuanLab || '').toUpperCase();
+                    const nextCapability = String(sel.statusKemampuanLab || '').toUpperCase();
                     if (existingMethod !== nextMethod || existingCapability !== nextCapability) {
                         throw new Error(`Pilihan metode untuk parameter ${compactBusinessKeyLabel(groupKey)} dikirim lebih dari satu kali dengan nilai berbeda.`);
                     }
@@ -224,13 +269,13 @@ class RequestWorkflowService {
             for (const group of requiredGroupByKey.values()) {
                 const fpm = group.representative;
                 const sel = selectionByGroupKey.get(group.key);
-                const capabilityStatus = String(sel.capabilityStatus || sel.status_kemampuan_lab || sel.statusKemampuanLab || '').toUpperCase();
+                const capabilityStatus = String(sel.statusKemampuanLab || '').toUpperCase();
                 if (!['MAMPU', 'TIDAK_MAMPU'].includes(capabilityStatus))
                     throw new Error(`Status kemampuan laboratorium untuk parameter ${compactBusinessKeyLabel(group.key)} harus MAMPU atau TIDAK_MAMPU.`);
-                const isInsitu = this.normalizeBoolean01(sel.isInsitu ?? sel.is_insitu ?? sel.insitu);
+                const isInsitu = this.normalizeBoolean01(sel.isInsitu);
                 if (![0, 1].includes(isInsitu))
                     throw new Error(`Status insitu wajib dipilih untuk parameter ${compactBusinessKeyLabel(group.key)}.`);
-                const selectedMethodId = sel.methodId || sel.id_metode_parameter || sel.idMetodeParameter;
+                const selectedMethodId = sel.idMetodeParameter;
                 if (!selectedMethodId)
                     throw new Error(`Metode wajib dipilih untuk parameter ${compactBusinessKeyLabel(group.key)}.`);
                 const pm = await ParameterMetode.findOne({ where: { id_metode_parameter: selectedMethodId, id_parameter: fpm.id_parameter }, transaction: t });
@@ -248,7 +293,7 @@ class RequestWorkflowService {
                     id_metode_parameter: selectedMethodId,
                     status_kemampuan_lab: capabilityStatus,
                     is_insitu: isInsitu,
-                    catatan_kemampuan: sel.capabilityNote || sel.catatan_kemampuan || sel.catatanKemampuan || null,
+                    catatan_kemampuan: sel.catatanKemampuan || null,
                     dipilih_oleh: kasiNik || null,
                     dipilih_pada: new Date()
                 }, { transaction: t })));
@@ -266,13 +311,12 @@ class RequestWorkflowService {
                 actorNik: kasiNik || null,
                 transaction: t,
             });
-            const { createOrRefreshInvoiceForRequest } = require('../payment/payment.service');
+            const { createOrRefreshInvoiceForRequest } = require('../payment/payment-billing.service');
             const invoice = await createOrRefreshInvoiceForRequest(requestId, t);
             await t.commit();
             return {
-                id_registrasi: request.id_registrasi,
+                idRegistrasi: request.id_registrasi,
                 status: RequestStatus.WAITING_PAYMENT,
-                id_invoice: invoice?.id_invoice || null,
                 invoiceId: invoice?.id_invoice || null,
             };
         }
@@ -298,9 +342,9 @@ class RequestWorkflowService {
             actorNik: kasiNik || null,
         });
         return {
-            id_registrasi: request.id_registrasi,
+            idRegistrasi: request.id_registrasi,
             status: RequestStatus.REJECTED_BY_KASI,
-            catatan_penolakan: request.catatan_penolakan,
+            catatanPenolakan: request.catatan_penolakan,
         };
     };
     saveSamplingSchedule = async (requestId, scheduleDate, scheduleTime) => {
@@ -333,15 +377,15 @@ class RequestWorkflowService {
                 await existingSchedule.update({ tanggal_jadwal: normalizedDate, jam_jadwal: normalizedTime, status_jadwal: 'Terjadwal' }, { transaction: t });
                 savedSchedule = existingSchedule;
             }
-            const requestPayload = { catatan_penolakan: null };
+            const requestRequestData = { catatan_penolakan: null };
             if (requestRecord.jenis_pengambilan_sampel === 'Petugas') {
-                requestPayload.tanggal_rencana_pengambilan_sampel = normalizedDate;
-                requestPayload.jam_rencana_pengambilan_sampel = normalizedTime;
+                requestRequestData.tanggal_rencana_pengambilan_sampel = normalizedDate;
+                requestRequestData.jam_rencana_pengambilan_sampel = normalizedTime;
             }
             else {
-                requestPayload.tanggal_rencana_pengantaran_sampel = normalizedDate;
+                requestRequestData.tanggal_rencana_pengantaran_sampel = normalizedDate;
             }
-            await requestRecord.update(requestPayload, { transaction: t });
+            await requestRecord.update(requestRequestData, { transaction: t });
             await WorkflowLogService.logStatusTransition({
                 entityType: 'JADWAL_SAMPEL',
                 entityId: savedSchedule.id_jadwal,
@@ -408,7 +452,7 @@ class RequestWorkflowService {
         return weekday === 0 || weekday === 6;
     };
     getHolidayLookup = async () => {
-        const holidays = await this.referenceService.getHariLibur();
+        const holidays = await getHariLibur();
         const holidayDateSet = new Set();
         const holidayNameByDate = {};
         for (const item of holidays || []) {
@@ -422,7 +466,7 @@ class RequestWorkflowService {
     assertBusinessDateOrThrow = async (dateValue, label = 'Tanggal') => {
         let holidays = [];
         try {
-            holidays = await this.referenceService.getHariLibur();
+            holidays = await getHariLibur();
         }
         catch (error) {
             throw new Error(`Gagal memvalidasi tanggal merah: ${error.message || 'referensi hari libur tidak tersedia'}.`);
@@ -467,14 +511,14 @@ class RequestWorkflowService {
             const isSelfDelivery = request.jenis_pengambilan_sampel === 'Mandiri';
             if (!isOfficerSampling && !isSelfDelivery)
                 throw new Error('Jenis pengambilan sampel tidak valid.');
-            let pccPayload = { id_pegawai_pcc: null };
+            let pccRequestData = { id_pegawai_pcc: null };
             if (isOfficerSampling) {
                 if (!idPegawaiPcc)
                     throw new Error('PCC wajib dipilih.');
                 const pegawaiPcc = await Pegawai.findOne({ where: { id_pegawai: idPegawaiPcc, is_pcc: 1 }, transaction: t });
                 if (!pegawaiPcc)
                     throw new Error('PCC tidak valid.');
-                pccPayload = { id_pegawai_pcc: idPegawaiPcc };
+                pccRequestData = { id_pegawai_pcc: idPegawaiPcc };
             }
             const existingSchedule = await JadwalSampel.findOne({
                 where: { id_registrasi: idRegistrasi, status_jadwal: { [Op.ne]: 'Dibatalkan' } },
@@ -482,19 +526,19 @@ class RequestWorkflowService {
                 transaction: t,
                 lock: t.LOCK.UPDATE
             });
-            const schedulePayload = {
+            const scheduleRequestData = {
                 tanggal_jadwal: normalizedScheduleDate,
                 jam_jadwal: normalizedScheduleTime,
                 status_jadwal: 'Terjadwal',
-                ...pccPayload
+                ...pccRequestData
             };
             let jadwal;
             let actionType = 'updated';
             if (existingSchedule) {
-                jadwal = await existingSchedule.update(schedulePayload, { transaction: t });
+                jadwal = await existingSchedule.update(scheduleRequestData, { transaction: t });
             }
             else {
-                jadwal = await JadwalSampel.create({ id_jadwal: await this.generateNextJadwalId(), id_registrasi: idRegistrasi, ...schedulePayload }, { transaction: t });
+                jadwal = await JadwalSampel.create({ id_jadwal: await this.generateNextJadwalId(), id_registrasi: idRegistrasi, ...scheduleRequestData }, { transaction: t });
                 actionType = 'created';
             }
             await t.commit();
@@ -516,10 +560,10 @@ class RequestWorkflowService {
             throw error;
         }
     };
-    receiveSamplesAndGenerateCodes = async (idRegistrasi, payload = {}, currentNik = null) => {
+    receiveSamplesAndGenerateCodes = async (idRegistrasi, requestData = {}, currentNik = null) => {
         const transaction = await sequelize.transaction();
         try {
-            const sampelsPayload = Array.isArray(payload) ? payload : Array.isArray(payload.sampels) ? payload.sampels : [];
+            const sampelsRequestData = Array.isArray(requestData) ? requestData : Array.isArray(requestData.sampels) ? requestData.sampels : [];
             const request = await Fppl.findByPk(idRegistrasi, { transaction, lock: transaction.LOCK.UPDATE });
             if (!request)
                 throw new Error('Permohonan tidak ditemukan.');
@@ -567,39 +611,39 @@ class RequestWorkflowService {
                     fpplSampelJson.FpplParameterMetodes ||
                     fpplSampelJson.fpplParameterMetodes ||
                     [];
-                let payloadForThisGroup = sampelsPayload.filter((item) => {
-                    const itemKey = normalizeFpplSampelCompositePayload({ ...item, id_registrasi: item.id_registrasi || item.idRegistrasi || idRegistrasi });
+                let requestDataForThisGroup = sampelsRequestData.filter((item) => {
+                    const itemKey = normalizeFpplSampelCompositeRequestData({ ...item, id_registrasi: item.id_registrasi || item.idRegistrasi || idRegistrasi });
                     return itemKey ? sameFpplSampelComposite(itemKey, fpplSampelJson) : false;
                 });
-                if (!payloadForThisGroup.length) {
-                    payloadForThisGroup = sampelsPayload.filter((item) => Number(item.sample_group_index) === groupIndex);
+                if (!requestDataForThisGroup.length) {
+                    requestDataForThisGroup = sampelsRequestData.filter((item) => Number(item.sample_group_index) === groupIndex);
                 }
                 const jumlahSampelDb = Number(fpplSampelJson.jumlah_sampel || 1);
-                const totalSampel = Number.isFinite(jumlahSampelDb) && jumlahSampelDb > 0 ? jumlahSampelDb : Math.max(payloadForThisGroup.length, 1);
-                if (sampelsPayload.length > 1 && payloadForThisGroup.length < totalSampel) {
+                const totalSampel = Number.isFinite(jumlahSampelDb) && jumlahSampelDb > 0 ? jumlahSampelDb : Math.max(requestDataForThisGroup.length, 1);
+                if (sampelsRequestData.length > 1 && requestDataForThisGroup.length < totalSampel) {
                     throw new Error(`Data penerimaan sampel untuk ${jenisSampel} belum lengkap atau tidak sesuai kelompok sampel.`);
                 }
                 for (let i = 0; i < totalSampel; i += 1) {
-                    const itemPayload = payloadForThisGroup.find((item) => Number(item.sample_unit_index) === i + 1) ||
-                        payloadForThisGroup[i] ||
+                    const itemRequestData = requestDataForThisGroup.find((item) => Number(item.sample_unit_index) === i + 1) ||
+                        requestDataForThisGroup[i] ||
                         {};
-                    const useLegacyTopLevelFallback = sampelsPayload.length <= 1;
+                    const useLegacyTopLevelFallback = sampelsRequestData.length <= 1;
                     const pickItemValue = (snakeKey, camelKey, fallbackValue = null) => {
-                        const itemValue = itemPayload[snakeKey] ?? itemPayload[camelKey];
+                        const itemValue = itemRequestData[snakeKey] ?? itemRequestData[camelKey];
                         if (itemValue !== undefined && itemValue !== null && String(itemValue).trim() !== '') {
                             return itemValue;
                         }
                         if (!useLegacyTopLevelFallback) {
                             return fallbackValue;
                         }
-                        const legacyValue = payload[snakeKey] ?? payload[camelKey];
+                        const legacyValue = requestData[snakeKey] ?? requestData[camelKey];
                         return legacyValue !== undefined && legacyValue !== null && String(legacyValue).trim() !== '' ? legacyValue : fallbackValue;
                     };
                     const noSampel = buildNoSampel(nextSequence, jenisSampel, receivedAt, fpplSampelJson.id_jenis_sampel);
                     nextSequence += 1;
                     const tanggalPengambilanSampel = resolveTanggalPengambilanSampel({
-                        itemPayload,
-                        payload,
+                        itemRequestData,
+                        requestData,
                         request,
                         jadwal: jadwalAktif,
                     });
@@ -613,12 +657,12 @@ class RequestWorkflowService {
                         id_reg_bm: fpplSampelJson.id_reg_bm,
                         tanggal_pengambilan_sampel: tanggalPengambilanSampel,
                         diterima_pada: diterimaPada,
-                        kondisi_sampel: normalizeSampleCondition(pickItemValue('kondisi_sampel', 'kondisiSampel', itemPayload.kondisi || 'Sesuai')),
-                        abnormalitas_sampel: pickItemValue('abnormalitas_sampel', 'abnormalitasSampel', itemPayload.catatan || null),
+                        kondisi_sampel: normalizeSampleCondition(pickItemValue('kondisi_sampel', 'kondisiSampel', itemRequestData.kondisi || 'Sesuai')),
+                        abnormalitas_sampel: pickItemValue('abnormalitas_sampel', 'abnormalitasSampel', itemRequestData.catatan || null),
                         acuan_pengambilan_sampel: pickItemValue('acuan_pengambilan_sampel', 'acuanPengambilanSampel'),
                         lokasi_spesifik: pickItemValue('lokasi_spesifik', 'lokasiSpesifik'),
                         koordinat: pickItemValue('koordinat', 'koordinat'),
-                        diterima_oleh: currentNik || payload.diterima_oleh || payload.diterimaOleh || null,
+                        diterima_oleh: currentNik || requestData.diterimaOleh || null,
                         status_sample: 'Diterima',
                     }, { transaction });
                     await WorkflowLogService.logStatusTransition({
@@ -629,7 +673,7 @@ class RequestWorkflowService {
                         statusAfter: sampleInstance.status_sample || 'Diterima',
                         source: 'Admin',
                         note: 'Sampel diterima oleh laboratorium.',
-                        actorNik: currentNik || payload.diterima_oleh || payload.diterimaOleh || null,
+                        actorNik: currentNik || requestData.diterimaOleh || null,
                         createdAt: receivedAt,
                         transaction,
                     });

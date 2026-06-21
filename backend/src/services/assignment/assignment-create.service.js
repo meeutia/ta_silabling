@@ -13,7 +13,7 @@ class AssignmentCreateService {
     constructor({ notificationService: injectedNotificationService = notificationService } = {}) {
         this.notificationService = injectedNotificationService;
     }
-    normalizeAssignmentPayload = (assignments = []) => {
+    normalizeAssignmentRequestData = (assignments = []) => {
         return assignments
             .map((item) => {
             const rawNoSampel = Array.isArray(item.no_sampel || item.noSampel)
@@ -56,15 +56,15 @@ class AssignmentCreateService {
             item.no_sampel.length > 0 &&
             item.pairs.length > 0);
     };
-    createAssignment = async (payload, currentUserNik) => {
-        const { idUserAnalis, catatanPenugasan = null, assignments = [], } = payload || {};
+    createAssignment = async (requestData, currentUserNik) => {
+        const { idUserAnalis, catatanPenugasan = null, assignments = [], } = requestData || {};
         if (!idUserAnalis) {
             throw new Error('Analis wajib dipilih.');
         }
         if (!Array.isArray(assignments) || assignments.length === 0) {
             throw new Error('Minimal harus ada satu item yang ditugaskan.');
         }
-        const normalizedAssignments = this.normalizeAssignmentPayload(assignments);
+        const normalizedAssignments = this.normalizeAssignmentRequestData(assignments);
         if (!normalizedAssignments.length) {
             throw new Error('Tidak ada pasangan parameter-sampel yang dipilih.');
         }

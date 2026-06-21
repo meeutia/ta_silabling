@@ -2,7 +2,7 @@ const { Fppl, Pelanggan, FpplSampel, FpplParameterMetode, JenisSampel, RegBm, Pa
 const { generateId } = require('../../utils/id-generator');
 const WorkflowLogService = require('../workflow/workflow-log.service');
 const { INTERNAL_PAYMENT_METHOD, deriveCustomerDecisionStatus, getLatestPaymentRow, normalizeAmount, resolvePaymentMethod, } = require('./payment-policy.util');
-const { buildPaymentGatewayPayload, } = require('./payment-session-payload.util');
+const { buildPaymentGatewayRequestData, } = require('./payment-session-request.util');
 
 const sameFpplSampelComposite = (a = {}, b = {}) => {
     const pick = (row, snake, camel) => String(row?.[snake] ?? row?.[camel] ?? '').trim();
@@ -264,7 +264,6 @@ toDateOnlyString = (value) => {
                     fpm.ParameterMetode?.metode?.nama_metode ||
                     fpm.ParameterMetode?.Metode?.nama_metode ||
                     '-';
-                const legacyApprovalStatus = fpm.status_keputusan_permohonan || 'Menunggu';
                 const approvalStatus = requestDecisionStatus;
                 const parameterMetode = fpm.parameter_metode || fpm.ParameterMetode || null;
                 const isSubkontrak = Number(parameterMetode?.is_subkontrak) === 1 ||
@@ -273,7 +272,6 @@ toDateOnlyString = (value) => {
                 const harga = normalizeAmount(parameterMetode?.tarif ?? 0);
                 parameterItems.push({
                     idFpplParameterMetode: fpm.id_fppl_parameter_metode,
-                    id_fppl_parameter_metode: fpm.id_fppl_parameter_metode,
                     sampleType,
                     nama: parameterName,
                     parameterName,
@@ -285,20 +283,12 @@ toDateOnlyString = (value) => {
                     jumlahSampel,
                     subtotal: harga * jumlahSampel,
                     statusPersetujuanPelanggan: approvalStatus,
-                    status_keputusan_permohonan: approvalStatus,
-                    legacyStatusPersetujuanPelanggan: legacyApprovalStatus,
-                    legacy_status_persetujuan_pelanggan: legacyApprovalStatus,
                     statusKemampuanLab: fpm.status_kemampuan_lab || null,
                     catatanKemampuan: fpm.catatan_kemampuan || null,
-                    catatan_kemampuan: fpm.catatan_kemampuan || null,
                     catatanSubkontrak: isSubkontrak
                         ? (fpm.catatan_kemampuan || 'Parameter ini diproses sebagai subkontrak.')
                         : null,
-                    catatan_subkontrak: isSubkontrak
-                        ? (fpm.catatan_kemampuan || 'Parameter ini diproses sebagai subkontrak.')
-                        : null,
                     isSubkontrak,
-                    is_subkontrak: isSubkontrak ? 1 : 0
                 });
             }
         }
@@ -322,18 +312,11 @@ toDateOnlyString = (value) => {
         return {
             nomorInvoice: latestInvoice?.id_invoice || null,
             tanggalTerbit: tanggalInvoiceDateOnly,
-            tanggal_terbit: tanggalInvoiceDateOnly,
             tanggalInvoice: tanggalInvoiceDateOnly,
-            tanggal_invoice: tanggalInvoiceDateOnly,
-            // Alias defensif untuk typo lama yang pernah muncul di beberapa payload/UI.
-            tanggal_invoce: tanggalInvoiceDateOnly,
             status: latestInvoice?.status_invoice || 'Belum Dibayar',
             paidAt: latestPayment?.paid_at || null,
-            paid_at: latestPayment?.paid_at || null,
             paymentPaidAt: latestPayment?.paid_at || null,
-            payment_paid_at: latestPayment?.paid_at || null,
             fileInvoicePath: latestInvoice?.file_invoice_path || null,
-            file_invoice_path: latestInvoice?.file_invoice_path || null,
             subtotalUji,
             subtotalPengambilan,
             totalTagihan,
@@ -341,29 +324,21 @@ toDateOnlyString = (value) => {
             rincian: {
                 parameters: parameterItems,
                 metodeSampling: this.buildSamplingLabel(requestJson),
-                metode_sampling: this.buildSamplingLabel(requestJson),
                 biayaSampling: subtotalPengambilan,
-                biaya_sampling: subtotalPengambilan,
                 tarifPengambilan: requestJson.tarif_pengambilan || requestJson.TarifPengambilan || null,
-                tarif_pengambilan: requestJson.tarif_pengambilan || requestJson.TarifPengambilan || null,
             },
             metodeSampling: this.buildSamplingLabel(requestJson),
-            metode_sampling: this.buildSamplingLabel(requestJson),
             biayaSampling: subtotalPengambilan,
-            biaya_sampling: subtotalPengambilan,
             tarifPengambilan: requestJson.tarif_pengambilan || requestJson.TarifPengambilan || null,
-            tarif_pengambilan: requestJson.tarif_pengambilan || requestJson.TarifPengambilan || null,
             payment: latestPayment
                 ? {
                     idPayment: latestPayment?.id_payment,
-                    id_payment: latestPayment?.id_payment,
                     methodCode: paymentMethod?.code || latestPayment?.metode_bayar || null,
                     methodLabel: paymentMethod?.label || latestPayment?.metode_bayar || '-',
                     amount: totalTagihan,
                     paidAt: latestPayment?.paid_at || null,
-                    paid_at: latestPayment?.paid_at || null,
                     isDeferredByAdmin: (paymentMethod?.code || latestPayment?.metode_bayar) === INTERNAL_PAYMENT_METHOD.code,
-                    gateway: buildPaymentGatewayPayload(latestPayment)
+                    gateway: buildPaymentGatewayRequestData(latestPayment)
                 }
                 : null
         };

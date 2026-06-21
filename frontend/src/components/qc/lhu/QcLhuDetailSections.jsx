@@ -87,7 +87,7 @@ function buildDetailSampleColumns(details = [], sampleNos = []) {
     : (Array.isArray(details) ? details : []).flatMap((row) => [
         ...(Array.isArray(row.samples) ? row.samples : []),
         ...(Array.isArray(row.sampels) ? row.sampels : []),
-        ...Object.keys(row.hasil_by_sample || row.hasilBySample || {}),
+        ...Object.keys(row.resultsBySample || {}),
       ]);
 
   const columns = [];
@@ -125,7 +125,7 @@ function buildDetailSampleColumns(details = [], sampleNos = []) {
     .sort((a, b) => String(a.displayNo).localeCompare(String(b.displayNo), 'id', { numeric: true, sensitivity: 'base' }));
 }
 
-function pickHasilForSampleColumn(hasilBySample = {}, column = {}, hasValue) {
+function pickHasilForSampleColumn(resultsBySample = {}, column = {}, hasValue) {
   const candidates = [
     ...(Array.isArray(column.sampleNos) ? column.sampleNos : []),
     column.displayNo,
@@ -135,7 +135,7 @@ function pickHasilForSampleColumn(hasilBySample = {}, column = {}, hasValue) {
     const key = String(candidate || '').trim();
     if (!key) continue;
 
-    const value = hasilBySample[key];
+    const value = resultsBySample[key];
     if (hasValue(value)) return value;
   }
 
@@ -282,7 +282,7 @@ function DetailLhuTable({
                 row.acuanMetode ||
                 '';
 
-              const hasilBySample = row.hasil_by_sample || row.hasilBySample || {};
+              const resultsBySample = row.resultsBySample || {};
               const nilaiBm = getNilaiBm(row);
               const satuanBm = getSatuanBm(row);
               const insituLabel = getInsituLabel(row);
@@ -310,7 +310,7 @@ function DetailLhuTable({
                     {acuan && <p className="mt-1 text-xs text-gray-500">{acuan}</p>}
                   </td>
                   {displayedSampleColumns.map((column, sampleIndex) => {
-                    const value = column.key === '-' ? null : pickHasilForSampleColumn(hasilBySample, column, hasValue);
+                    const value = column.key === '-' ? null : pickHasilForSampleColumn(resultsBySample, column, hasValue);
                     return (
                       <td key={`${column.key}-${sampleIndex}`} className="border-r border-gray-200 px-3 py-3 text-center font-semibold text-gray-900">
                         {hasValue(value) ? value : <span className="text-gray-400">-</span>}

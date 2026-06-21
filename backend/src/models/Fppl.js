@@ -1,7 +1,71 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Fppl = sequelize.define('fppl', {
+class Fppl extends Model {
+  static associate(models) {
+    Fppl.belongsTo(models.Pelanggan, { foreignKey: 'id_pelanggan', as: 'pelanggan' });
+    Fppl.belongsTo(models.TarifPengambilan, { foreignKey: 'id_tarif_pengambilan' });
+    Fppl.hasMany(models.JadwalSampel, { foreignKey: 'id_registrasi', as: 'jadwal_sampels' });
+    Fppl.hasMany(models.FpplSampel, { foreignKey: 'id_registrasi', as: 'fppl_sampels' });
+    Fppl.hasMany(models.Sampel, { foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'sampels_direct' });
+    Fppl.hasMany(models.FpplParameterMetode, { foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'fppl_parameter_metodes_direct' });
+    Fppl.hasMany(models.Lhu, { foreignKey: 'id_registrasi', as: 'lhus' });
+    Fppl.hasMany(models.Invoice, { foreignKey: 'id_registrasi' });
+    Fppl.hasOne(models.JadwalPengambilanLhu, {
+  foreignKey: 'id_registrasi',
+  sourceKey: 'id_registrasi',
+  as: 'jadwal_pengambilan_lhu',
+});
+    Fppl.hasMany(models.PengajuanPerubahanJadwal, {
+  foreignKey: 'id_registrasi',
+  sourceKey: 'id_registrasi',
+  as: 'pengajuan_perubahan_jadwal',
+});
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isStatus(status) {
+    return this.status_fppl === status;
+  }
+
+  isMenungguVerifikasi() {
+    return this.isStatus('Menunggu Verifikasi');
+  }
+
+  canBeVerified() {
+    return this.isMenungguVerifikasi();
+  }
+
+  canAssignMethods() {
+    return this.isStatus('Menunggu Penentuan Metode');
+  }
+
+  isWaitingPayment() {
+    return this.isStatus('Menunggu Pembayaran');
+  }
+
+  isCompleted() {
+    return this.isStatus('Selesai');
+  }
+
+  usesPetugasSampling() {
+    return this.jenis_pengambilan_sampel === 'Petugas';
+  }
+
+  usesMandiriSampling() {
+    return this.jenis_pengambilan_sampel === 'Mandiri';
+  }
+}
+
+Fppl.init({
   id_registrasi: {
     type: DataTypes.STRING(10),
     primaryKey: true,
@@ -83,7 +147,9 @@ const Fppl = sequelize.define('fppl', {
     allowNull: true,
   },
 }, {
-  tableName: 'fppl',
+  sequelize,
+  modelName: 'fppl',
+tableName: 'fppl',
   timestamps: false,
 });
 

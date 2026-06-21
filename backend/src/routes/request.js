@@ -20,8 +20,12 @@ const {
   validateScheduleConfirmation,
 } = require('../validators/request.validator');
 
+router.get('/schedule/holidays', RequestWorkflowController.getScheduleHolidays);
+
 router.use(verifyToken);
 
+
+router.get('/support/admin-contact', authorizeRoles(Roles.CUSTOMER, Roles.ADMIN, Roles.KASI, Roles.PENYELIA), CustomerRequestController.getAdminContact);
 
 router.get('/schedule-changes', authorizeRoles(Roles.ADMIN), ScheduleChangeController.listScheduleChangeRequests);
 router.post('/schedule-changes', authorizeRoles(Roles.CUSTOMER), validateScheduleChangeRequest, ScheduleChangeController.createScheduleChangeRequest);

@@ -1,7 +1,22 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Klasifikasi = sequelize.define('klasifikasi', {
+class Klasifikasi extends Model {
+  static associate(models) {
+    Klasifikasi.hasMany(models.PktBm, { foreignKey: 'id_klasifikasi' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+}
+
+Klasifikasi.init({
   id_klasifikasi: {
     type: DataTypes.STRING(10),
     primaryKey: true,
@@ -12,7 +27,9 @@ const Klasifikasi = sequelize.define('klasifikasi', {
     allowNull: false,
   },
 }, {
-  tableName: 'klasifikasi',
+  sequelize,
+  modelName: 'klasifikasi',
+tableName: 'klasifikasi',
   timestamps: false,
 });
 

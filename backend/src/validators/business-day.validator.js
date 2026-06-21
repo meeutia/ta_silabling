@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const { Sampel, PenugasanItem, Lhu } = require('../models/Associations');
-const ReferenceService = require('../services/reference.service');
+const { getHariLibur } = require('../utils/holiday-calendar.util');
 const { fail, asTrimmedText } = require('./common.validator');
 const {
   asYmd,
@@ -62,7 +62,7 @@ function getWorkflowCurrentYmd(referenceYmd) {
 
 async function loadHolidayRows() {
   try {
-    return await ReferenceService.getHariLibur();
+    return await getHariLibur();
   } catch (error) {
     const err = new Error(`Gagal memvalidasi tanggal merah: ${error.message || 'referensi hari libur tidak tersedia'}.`);
     err.statusCode = 500;
@@ -136,7 +136,7 @@ async function loadSamplesByPenugasanDetail(idPenugasanDetail) {
   }));
 }
 
-function getWorksheetDatePayload(req) {
+function getWorksheetDateRequestData(req) {
   const body = req.body || {};
   const worksheet = body.worksheet || body;
 
@@ -149,7 +149,7 @@ function getWorksheetDatePayload(req) {
 const validateWorksheetBusinessTimeline = async (req, res, next) => {
   try {
     const idPenugasanDetail = req.params.idPenugasanDetail;
-    const { startDate, endDate } = getWorksheetDatePayload(req);
+    const { startDate, endDate } = getWorksheetDateRequestData(req);
 
     if (!startDate && !endDate) return next();
 

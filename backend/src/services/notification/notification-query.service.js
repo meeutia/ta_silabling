@@ -1,10 +1,11 @@
 const { Op, QueryTypes } = require('sequelize');
 const sequelize = require('../../config/database');
-const { Fppl, FpplSampel, JenisSampel, Lhu, Lka, LkaHasil, Metode, Parameter, ParameterMetode, Pelanggan, Pegawai, Penugasan, PenugasanDetail, PenugasanItem, Sampel, User, } = require('../../models/Associations');
+const { Fppl, FpplSampel, JenisSampel, Lhu, Lka, LkaHasil, Metode, Parameter, ParameterMetode, Pelanggan, Pegawai, Penugasan, PenugasanDetail, PenugasanItem, Sampel, User, Role, } = require('../../models/Associations');
 const { NOTIFICATION_TYPE } = require('../../constants/notification.constant');
 const RequestStatus = require('../../constants/request-status');
 const { LHU_STATUS } = require('../../constants/lhu-status.constant');
 const { safeString } = require('./notification-format.util');
+const { toCamelCaseDeep } = require('../../utils/case-transform.util');
 const { findNotificationTypeById, getPlain, pickArray, pickObject, } = require('./notification-core.service');
 class NotificationQueryService {
 getSampleNotificationContext = async (noSampel) => {
@@ -45,12 +46,12 @@ getSampleNotificationContext = async (noSampel) => {
         const fppl = pickObject(fpplSampel, ['fppl', 'Fppl']) || {};
         const pelanggan = pickObject(fppl, ['pelanggan', 'Pelanggan']) || {};
         const lhu = pickObject(sample, ['lhu', 'Lhu']) || {};
-        return { sample, fpplSampel, jenis, fppl, pelanggan, lhu };
+        return toCamelCaseDeep({ sample, fpplSampel, jenis, fppl, pelanggan, lhu });
     };
 
     getKasiQcRequestNotificationContext = async (noSampel) => {
         const baseContext = await this.getSampleNotificationContext(noSampel);
-        const idRegistrasi = safeString(baseContext.fpplSampel?.id_registrasi || baseContext.fppl?.id_registrasi || baseContext.sample?.id_registrasi).trim();
+        const idRegistrasi = safeString(baseContext.fpplSampel?.idRegistrasi || baseContext.fppl?.idRegistrasi || baseContext.sample?.idRegistrasi).trim();
         if (!idRegistrasi) {
             const err = new Error('ID registrasi permohonan tidak ditemukan dari nomor sampel.');
             err.statusCode = 400;
@@ -126,60 +127,44 @@ getSampleNotificationContext = async (noSampel) => {
             if (!no) continue;
             if (!sampleMap.has(no)) {
                 sampleMap.set(no, {
-                    no_sampel: no,
                     noSampel: no,
-                    id_registrasi: row.id_registrasi || idRegistrasi,
                     idRegistrasi: row.id_registrasi || idRegistrasi,
-                    id_jenis_sampel: row.id_jenis_sampel || null,
                     idJenisSampel: row.id_jenis_sampel || null,
-                    id_reg_bm: row.id_reg_bm || null,
                     idRegBm: row.id_reg_bm || null,
-                    jenis_sampel: row.jenis_sampel || null,
                     jenisSampel: row.jenis_sampel || null,
-                    total_parameter: 0,
                     totalParameter: 0,
-                    total_approved_kasi: 0,
                     totalApprovedKasi: 0,
                 });
             }
             const sample = sampleMap.get(no);
-            sample.total_parameter += 1;
             sample.totalParameter += 1;
             if (Number(row.is_approved_by_kasi) === 1) {
-                sample.total_approved_kasi += 1;
                 sample.totalApprovedKasi += 1;
             } else {
                 incompleteSampleMap.set(no, sample);
             }
         }
 
-        const samples = Array.from(sampleMap.values()).sort((a, b) => safeString(a.no_sampel).localeCompare(safeString(b.no_sampel), 'id', { numeric: true }));
-        const incompleteSamples = Array.from(incompleteSampleMap.values()).sort((a, b) => safeString(a.no_sampel).localeCompare(safeString(b.no_sampel), 'id', { numeric: true }));
-        const sampleNos = samples.map((sample) => sample.no_sampel).filter(Boolean);
+        const samples = Array.from(sampleMap.values()).sort((a, b) => safeString(a.noSampel).localeCompare(safeString(b.noSampel), 'id', { numeric: true }));
+        const incompleteSamples = Array.from(incompleteSampleMap.values()).sort((a, b) => safeString(a.noSampel).localeCompare(safeString(b.noSampel), 'id', { numeric: true }));
+        const sampleNos = samples.map((sample) => sample.noSampel).filter(Boolean);
         const totalParameter = rows.length;
         const totalApprovedKasi = rows.filter((row) => Number(row.is_approved_by_kasi) === 1).length;
         const isComplete = totalParameter > 0 && totalApprovedKasi === totalParameter;
 
-        return {
+        return toCamelCaseDeep({
             ...baseContext,
             idRegistrasi,
-            id_registrasi: idRegistrasi,
             fppl,
             pelanggan,
             sampleNos,
-            sample_nos: sampleNos,
             samples,
             totalSamples: samples.length,
-            total_sampel: samples.length,
             totalParameter,
-            total_parameter: totalParameter,
             totalApprovedKasi,
-            total_approved_kasi: totalApprovedKasi,
             incompleteSamples,
-            incomplete_samples: incompleteSamples,
             isComplete,
-            is_complete: isComplete,
-        };
+        });
     };
 
     getRequestLhuCompletionContext = async (nomorLhu) => {
@@ -214,13 +199,13 @@ getSampleNotificationContext = async (noSampel) => {
             err.statusCode = 404;
             throw err;
         }
-        const currentLhu = getPlain(lhuInstance) || {};
-        const currentSamples = currentLhu.sampels || currentLhu.Sampels || [];
+        const currentLhu = toCamelCaseDeep(getPlain(lhuInstance) || {});
+        const currentSamples = currentLhu.sampels || [];
         const currentSample = Array.isArray(currentSamples) ? currentSamples[0] || {} : {};
-        const currentFpplSampel = currentSample.fppl_sampel || currentSample.FpplSampel || {};
-        const fppl = currentFpplSampel.fppl || currentFpplSampel.Fppl || {};
-        const pelanggan = fppl.pelanggan || fppl.Pelanggan || {};
-        const idRegistrasi = fppl.id_registrasi || currentFpplSampel.id_registrasi || null;
+        const currentFpplSampel = currentSample.fpplSampel || {};
+        const fppl = currentFpplSampel.fppl || {};
+        const pelanggan = fppl.pelanggan || {};
+        const idRegistrasi = fppl.idRegistrasi || currentFpplSampel.idRegistrasi || null;
         if (!idRegistrasi) {
             const err = new Error('ID registrasi permohonan tidak ditemukan untuk cek kelengkapan LHU.');
             err.statusCode = 400;
@@ -242,23 +227,23 @@ getSampleNotificationContext = async (noSampel) => {
             ],
             order: [['no_sampel', 'ASC']],
         });
-        const samples = sampleInstances.map((row) => getPlain(row) || {});
+        const samples = sampleInstances.map((row) => toCamelCaseDeep(getPlain(row) || {}));
         const getSampleLhuRows = (sample = {}) => {
-            const list = sample.lhus || sample.Lhus || [];
+            const list = sample.lhus || [];
             if (Array.isArray(list) && list.length) return list.filter(Boolean);
-            const single = sample.lhu || sample.Lhu || sample.LHU || null;
+            const single = sample.lhu || null;
             return single ? [single] : [];
         };
         const incompleteSamples = samples.filter((sample) => {
-            const approvedFinalLhu = getSampleLhuRows(sample).find((lhu) => lhu && lhu.status_lhu === LHU_STATUS.APPROVED_FINAL);
+            const approvedFinalLhu = getSampleLhuRows(sample).find((lhu) => lhu && lhu.statusLhu === LHU_STATUS.APPROVED_FINAL);
             return !approvedFinalLhu;
         });
         const lhuRowsMap = new Map();
         samples.forEach((sample) => {
             getSampleLhuRows(sample).forEach((lhu) => {
-                if (!lhu || lhu.status_lhu !== LHU_STATUS.APPROVED_FINAL)
+                if (!lhu || lhu.statusLhu !== LHU_STATUS.APPROVED_FINAL)
                     return;
-                const key = lhu.nomor_lhu || lhu.id_lhu;
+                const key = lhu.nomorLhu || lhu.idLhu;
                 if (!key)
                     return;
                 if (!lhuRowsMap.has(key)) {
@@ -269,13 +254,13 @@ getSampleNotificationContext = async (noSampel) => {
                 }
                 const current = lhuRowsMap.get(key);
                 current.sampels.push({
-                    no_sampel: sample.no_sampel,
-                    status_sample: sample.status_sample,
+                    noSampel: sample.noSampel,
+                    statusSample: sample.statusSample,
                 });
             });
         });
-        const lhuRows = Array.from(lhuRowsMap.values()).sort((a, b) => safeString(a.nomor_lhu).localeCompare(safeString(b.nomor_lhu)));
-        return {
+        const lhuRows = Array.from(lhuRowsMap.values()).sort((a, b) => safeString(a.nomorLhu).localeCompare(safeString(b.nomorLhu)));
+        return toCamelCaseDeep({
             isComplete: samples.length > 0 && incompleteSamples.length === 0,
             idRegistrasi,
             fppl,
@@ -283,7 +268,7 @@ getSampleNotificationContext = async (noSampel) => {
             totalSamples: samples.length,
             incompleteSamples,
             lhuRows,
-        };
+        });
     };
     getPenugasanSampleNos = async (idPenugasan) => {
         const details = await PenugasanDetail.findAll({
@@ -394,29 +379,77 @@ getSampleNotificationContext = async (noSampel) => {
             samples: group.samples.sort(),
         }));
     };
+    getRoleNameFallbacks = (roleId) => {
+        const roleKey = safeString(roleId).trim();
+        const map = {
+            'RL-002': ['admin'],
+            'RL-003': ['kasi'],
+            'RL-004': ['penyelia'],
+            'RL-005': ['analis'],
+            'RL-006': ['qc', 'quality control'],
+            'RL-007': ['kalab', 'kepala lab', 'kepala laboratorium'],
+        };
+        return map[roleKey] || [];
+    };
+
+    mapNotificationUser = (row) => {
+        const user = toCamelCaseDeep(getPlain(row) || {});
+        const pegawai = user.pegawai || {};
+        return {
+            ...user,
+            namaPegawai: pegawai.namaPegawai || user.namaPegawai || null,
+            noWa: pegawai.noWa || user.noWa || null,
+        };
+    };
+
     getActiveUsersByRole = async (roleId) => {
+        const roleKey = safeString(roleId).trim();
+        const baseInclude = [
+            {
+                model: Pegawai,
+                required: false,
+            },
+            {
+                model: Role,
+                required: false,
+            },
+        ];
         const rows = await User.findAll({
             where: {
-                id_role: roleId,
+                id_role: roleKey,
                 is_active: 1,
             },
+            include: baseInclude,
+            order: [['username', 'ASC']],
+        });
+        if (rows.length > 0) {
+            return rows.map(this.mapNotificationUser);
+        }
+
+        const roleNameFallbacks = this.getRoleNameFallbacks(roleKey);
+        if (!roleNameFallbacks.length) {
+            return [];
+        }
+        const fallbackRows = await User.findAll({
+            where: { is_active: 1 },
             include: [
                 {
                     model: Pegawai,
                     required: false,
                 },
+                {
+                    model: Role,
+                    required: true,
+                    where: {
+                        [Op.or]: roleNameFallbacks.map((keyword) => ({
+                            nama_role: { [Op.like]: `%${keyword}%` },
+                        })),
+                    },
+                },
             ],
             order: [['username', 'ASC']],
         });
-        return rows.map((row) => {
-            const user = getPlain(row) || {};
-            const pegawai = user.pegawai || user.Pegawai || {};
-            return {
-                ...user,
-                nama_pegawai: pegawai.nama_pegawai || user.nama_pegawai || null,
-                no_wa: pegawai.no_wa || user.no_wa || null,
-            };
-        });
+        return fallbackRows.map(this.mapNotificationUser);
     };
     getRequestWithCustomerAndSamples = async (idRegistrasi) => {
         const registrasiId = safeString(idRegistrasi).trim();
@@ -457,25 +490,25 @@ getSampleNotificationContext = async (noSampel) => {
             err.statusCode = 404;
             throw err;
         }
-        const request = getPlain(requestInstance);
-        const pelanggan = request.pelanggan || request.Pelanggan || {};
-        const fpplSampels = request.fppl_sampels || request.FpplSampels || [];
+        const request = toCamelCaseDeep(getPlain(requestInstance));
+        const pelanggan = request.pelanggan || {};
+        const fpplSampels = request.fpplSampels || [];
         const sampleSummary = fpplSampels.map((row) => {
-            const jenis = row.jenis_sampel || row.JenisSampel || {};
+            const jenis = row.jenisSampel || {};
             return {
-                id_registrasi: row.id_registrasi || request.id_registrasi || null,
-                id_jenis_sampel: row.id_jenis_sampel || null,
-                id_reg_bm: row.id_reg_bm || null,
-                jenis_sampel: jenis.jenis_sampel || row.jenis_sampel || row.jenisSampel || row.nama_jenis_sampel || row.id_jenis_sampel,
-                jumlah_sampel: row.jumlah_sampel || row.jumlahSampel || 1,
+                idRegistrasi: row.idRegistrasi || request.idRegistrasi || null,
+                idJenisSampel: row.idJenisSampel || null,
+                idRegBm: row.idRegBm || null,
+                jenisSampel: jenis.jenisSampel || row.jenisSampel || row.namaJenisSampel || row.idJenisSampel,
+                jumlahSampel: row.jumlahSampel || 1,
             };
         });
         const samples = fpplSampels.flatMap((row) => {
-            const rows = row.sampels || row.Sampels || [];
+            const rows = row.sampels || [];
             return Array.isArray(rows)
                 ? rows.map((sample) => ({
                     ...sample,
-                    jenis_sampel: (row.jenis_sampel || row.JenisSampel || {}).jenis_sampel || row.jenisSampel || row.id_jenis_sampel || null,
+                    jenisSampel: (row.jenisSampel || {}).jenisSampel || row.jenisSampel || row.idJenisSampel || null,
                 }))
                 : [];
         });
@@ -503,9 +536,9 @@ getSampleNotificationContext = async (noSampel) => {
             err.statusCode = 404;
             throw err;
         }
-        const request = getPlain(requestInstance);
-        const pelanggan = request.pelanggan || request.Pelanggan || {};
-        const pelangganId = request.id_pelanggan || pelanggan.id_pelanggan;
+        const request = toCamelCaseDeep(getPlain(requestInstance));
+        const pelanggan = request.pelanggan || {};
+        const pelangganId = request.idPelanggan || pelanggan.idPelanggan;
         if (!pelangganId) {
             const err = new Error('Pelanggan penerima notifikasi tidak valid.');
             err.statusCode = 400;

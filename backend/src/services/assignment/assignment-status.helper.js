@@ -204,7 +204,7 @@ getPlain = (instance) => {
             return 'Draft';
         return 'Perlu Perbaikan';
     };
-    syncLkaAggregateStatus = async (kodeLka, transaction = null, extraPayload = {}) => {
+    syncLkaAggregateStatus = async (kodeLka, transaction = null, extraRequestData = {}) => {
         if (!kodeLka)
             return null;
         const rows = await LkaHasil.findAll({
@@ -214,10 +214,10 @@ getPlain = (instance) => {
         });
         const plainRows = rows.map(this.getPlain).filter(Boolean);
         const status_lka = this.deriveAggregateLkaStatus(plainRows);
-        const payload = { ...extraPayload };
-        if (Object.prototype.hasOwnProperty.call(payload, 'catatan_revisi')) {
-            const nextRevisionNote = payload.catatan_revisi;
-            delete payload.catatan_revisi;
+        const requestData = { ...extraRequestData };
+        if (Object.prototype.hasOwnProperty.call(requestData, 'catatan_revisi')) {
+            const nextRevisionNote = requestData.catatan_revisi;
+            delete requestData.catatan_revisi;
             if (String(nextRevisionNote || '').trim()) {
                 const lka = await Lka.findOne({
                     where: { kode_lka: kodeLka },
@@ -226,12 +226,12 @@ getPlain = (instance) => {
                     lock: transaction ? transaction.LOCK.UPDATE : undefined,
                 });
                 if (lka) {
-                    Object.assign(payload, buildRevisionNotePatch(lka.catatan_revisi, nextRevisionNote));
+                    Object.assign(requestData, buildRevisionNotePatch(lka.catatan_revisi, nextRevisionNote));
                 }
             }
         }
         await Lka.update({
-            ...payload,
+            ...requestData,
             status_lka,
         }, {
             where: { kode_lka: kodeLka },

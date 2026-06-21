@@ -11,7 +11,8 @@ const { parseWorksheetFiles, getPrimaryWorksheetPath, } = require('./assignment-
 const { getDetailParameterInfo, } = require('./assignment-monitor.mapper');
 const { isSubkontrakAssignment, } = require('./assignment-scope.helper');
 const { getActiveJadwalFromFppl, getAssociatedFpmsFromSample, toTinyInt, isSubkontrakFpm, } = require('./assignment-fpm.helper');
-const { loadRevisionRowsForLka, markRevisionItemsApprovedByKasi, } = require('./assignment-worksheet.service');
+const { loadRevisionRowsForLka } = require('./assignment-worksheet-revision-history.helper');
+const { markRevisionItemsApprovedByKasi } = require('./assignment-worksheet-result.helper');
 const { createLkaRevisionLog, groupRevisionRowsByLka, } = require('./assignment-kasi-revision-log.service');
 const { countKasiReviewCompletion, findKasiReviewSample, getCompletedKasiResultRowsFromSample, getKasiReviewResultRows, getKasiReviewSampleHeader, mapKasiReviewSampleHeader, } = require('./assignment-kasi-review-query.service');
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
@@ -83,37 +84,22 @@ getKasiReviewQueue = async () => {
             });
             mappedRows.push({
                 noSampel: sampleHeader.noSampel,
-                no_sampel: sampleHeader.no_sampel,
                 idRegistrasi: sampleHeader.idRegistrasi,
-                id_registrasi: sampleHeader.id_registrasi,
                 nomorFppl: sampleHeader.nomorFppl,
-                nomor_fppl: sampleHeader.nomor_fppl,
                 idJenisSampel: sampleHeader.idJenisSampel,
-                id_jenis_sampel: sampleHeader.id_jenis_sampel,
                 idRegBm: sampleHeader.idRegBm,
-                id_reg_bm: sampleHeader.id_reg_bm,
                 jenisSampel: sampleHeader.jenisSampel,
-                jenis_sampel: sampleHeader.jenis_sampel,
                 tanggalPengambilanSampel: sampleHeader.tanggalPengambilanSampel,
-                tanggal_pengambilan_sampel: sampleHeader.tanggal_pengambilan_sampel,
                 tanggalSampling: sampleHeader.tanggalSampling,
-                tanggal_sampling: sampleHeader.tanggal_sampling,
                 tanggalPenerimaan: sampleHeader.tanggalPenerimaan,
-                tanggal_penerimaan: sampleHeader.tanggal_penerimaan,
                 acuanPengambilanSampel: sampleHeader.acuanPengambilanSampel,
-                acuan_pengambilan_sampel: sampleHeader.acuan_pengambilan_sampel,
                 abnormalitasSampel: sampleHeader.abnormalitasSampel,
-                abnormalitas_sampel: sampleHeader.abnormalitas_sampel,
                 totalParameter,
-                total_parameter: totalParameter,
                 totalSelesai,
                 total_selesai: totalSelesai,
                 statusReviewHasil: sampleHeader.statusReviewHasil,
-                status_review_hasil: sampleHeader.statusReviewHasil,
                 kasiPengujianReviewBy: sampleHeader.kasiPengujianReviewBy,
-                kasi_pengujian_review_by: sampleHeader.kasiPengujianReviewBy,
                 kasiPengujianReviewAt: sampleHeader.kasiPengujianReviewAt,
-                kasi_pengujian_review_at: sampleHeader.kasiPengujianReviewAt,
             });
         }
         return mappedRows.sort((a, b) => String(b.idRegistrasi || '').localeCompare(String(a.idRegistrasi || '')) ||
@@ -189,54 +175,29 @@ getKasiReviewQueue = async () => {
             const pktBm = withPaketBmDisplayFields(pickObject(lhu, ['pkt_bm', 'PktBm']) || {});
             rows.push({
                 noSampel: sampleHeader.noSampel,
-                no_sampel: sampleHeader.no_sampel,
                 idRegistrasi: sampleHeader.idRegistrasi,
-                id_registrasi: sampleHeader.id_registrasi,
                 nomorFppl: sampleHeader.nomorFppl ||
-                    sampleHeader.nomor_fppl ||
-                    pickObject(pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {}, ['fppl', 'Fppl'])?.nomor_fppl ||
-                    null,
-                nomor_fppl: sampleHeader.nomor_fppl ||
-                    sampleHeader.nomorFppl ||
                     pickObject(pickObject(sample, ['fppl_sampel', 'FpplSampel']) || {}, ['fppl', 'Fppl'])?.nomor_fppl ||
                     null,
                 idJenisSampel: sampleHeader.idJenisSampel,
-                id_jenis_sampel: sampleHeader.id_jenis_sampel,
                 idRegBm: sampleHeader.idRegBm,
-                id_reg_bm: sampleHeader.id_reg_bm,
                 jenisSampel: sampleHeader.jenisSampel,
-                jenis_sampel: sampleHeader.jenis_sampel,
                 regBm: sampleHeader.regBm,
-                reg_bm: sampleHeader.reg_bm,
                 standar: sampleHeader.standar,
                 tanggalPengambilanSampel: sampleHeader.tanggalPengambilanSampel,
-                tanggal_pengambilan_sampel: sampleHeader.tanggal_pengambilan_sampel,
                 tanggalPenerimaan: sampleHeader.tanggalPenerimaan,
-                tanggal_penerimaan: sampleHeader.tanggal_penerimaan,
                 acuanPengambilanSampel: sampleHeader.acuanPengambilanSampel,
-                acuan_pengambilan_sampel: sampleHeader.acuan_pengambilan_sampel,
                 abnormalitasSampel: sampleHeader.abnormalitasSampel,
-                abnormalitas_sampel: sampleHeader.abnormalitas_sampel,
                 totalParameter,
-                total_parameter: totalParameter,
                 totalSelesai: approvedKasiRows.length,
-                total_selesai: approvedKasiRows.length,
                 statusReviewHasil: SAMPLE_REVIEW_STATUS.APPROVED_KASI_PENGUJIAN,
-                status_review_hasil: SAMPLE_REVIEW_STATUS.APPROVED_KASI_PENGUJIAN,
                 kasiPengujianReviewBy: sampleHeader.kasiPengujianReviewBy,
-                kasi_pengujian_review_by: sampleHeader.kasiPengujianReviewBy,
                 kasiPengujianReviewAt: sampleHeader.kasiPengujianReviewAt,
-                kasi_pengujian_review_at: sampleHeader.kasiPengujianReviewAt,
                 nomorLhu: lhu.nomor_lhu || null,
-                nomor_lhu: lhu.nomor_lhu || null,
                 statusLhu: lhu.status_lhu || null,
-                status_lhu: lhu.status_lhu || null,
                 tanggalPenerbitan: lhu.tanggal_penerbitan || null,
-                tanggal_penerbitan: lhu.tanggal_penerbitan || null,
                 fileLhuPath: lhu.file_lhu_path || null,
-                file_lhu_path: lhu.file_lhu_path || null,
                 namaPkt: pktBm.nama_pkt || null,
-                nama_pkt: pktBm.nama_pkt || null,
             });
         }
         return rows.sort((a, b) => String(b.kasiPengujianReviewAt || '').localeCompare(String(a.kasiPengujianReviewAt || '')) ||
@@ -261,67 +222,37 @@ getKasiReviewQueue = async () => {
             sample,
             results: results.map((row) => ({
                 kodeLka: row.kode_lka,
-                kode_lka: row.kode_lka,
                 noSampel: row.no_sampel,
-                no_sampel: row.no_sampel,
                 hasil: row.hasil,
                 satuanBm: row.satuan_bm || null,
-                satuan_bm: row.satuan_bm || null,
                 nilaiBm: row.nilai_bm || null,
-                nilai_bm: row.nilai_bm || null,
                 catatanHasil: row.catatan_hasil || '-',
-                catatan_hasil: row.catatan_hasil || '-',
                 statusReviewHasil: row.statusReviewHasil || null,
-                status_review_hasil: row.statusReviewHasil || null,
                 ...buildLkaHasilRevisionResponse(row),
                 statusLka: row.status_lka,
-                status_lka: row.status_lka,
                 tanggalMulaiPengujian: row.tanggal_mulai_pengujian,
-                tanggal_mulai_pengujian: row.tanggal_mulai_pengujian,
                 tanggalSelesaiPengujian: row.tanggal_selesai_pengujian,
-                tanggal_selesai_pengujian: row.tanggal_selesai_pengujian,
                 fileWorksheetPath: row.file_worksheet_path || null,
-                file_worksheet_path: row.file_worksheet_path || null,
                 worksheetFiles: row.worksheetFiles || row.worksheet_files || [],
-                worksheet_files: row.worksheet_files || row.worksheetFiles || [],
                 idPenugasanDetail: row.id_penugasan_detail,
-                id_penugasan_detail: row.id_penugasan_detail,
                 idFpplParameterMetode: row.id_fppl_parameter_metode,
-                id_fppl_parameter_metode: row.id_fppl_parameter_metode,
                 idParameter: row.id_parameter,
-                id_parameter: row.id_parameter,
                 namaParameter: row.nama_parameter,
-                nama_parameter: row.nama_parameter,
                 kategoriParameter: row.kategori_parameter,
-                kategori_parameter: row.kategori_parameter,
                 idMetodeParameter: row.id_metode_parameter,
-                id_metode_parameter: row.id_metode_parameter,
                 namaMetode: row.nama_metode,
-                nama_metode: row.nama_metode,
                 acuanMetode: row.acuan_metode,
-                acuan_metode: row.acuan_metode,
                 isTerakreditasi: Number(row.is_terakreditasi || 0),
-                is_terakreditasi: Number(row.is_terakreditasi || 0),
                 statusKemampuanLab: row.status_kemampuan_lab || null,
-                status_kemampuan_lab: row.status_kemampuan_lab || null,
                 isSubkontrak: Number(row.is_subkontrak || row.isSubkontrak || 0),
-                is_subkontrak: Number(row.is_subkontrak || row.isSubkontrak || 0),
                 isInsitu: Number(row.is_insitu || row.isInsitu || 0),
-                is_insitu: Number(row.is_insitu || row.isInsitu || 0),
                 catatanKemampuan: row.catatan_kemampuan || null,
-                catatan_kemampuan: row.catatan_kemampuan || null,
                 abnormalitasSampel: sample.abnormalitasSampel || '-',
-                abnormalitas_sampel: sample.abnormalitas_sampel || '-',
                 acuanPengambilanSampel: sample.acuanPengambilanSampel || '-',
-                acuan_pengambilan_sampel: sample.acuan_pengambilan_sampel || '-',
                 tanggalPengambilanSampel: sample.tanggalPengambilanSampel || null,
-                tanggal_pengambilan_sampel: sample.tanggal_pengambilan_sampel || null,
                 tanggalSampling: sample.tanggalSampling || null,
-                tanggal_sampling: sample.tanggal_sampling || null,
                 tanggalPenerimaan: sample.tanggalPenerimaan || null,
-                tanggal_penerimaan: sample.diterima_pada || null,
                 jamPenerimaan: sample.jamPenerimaan || null,
-                jam_penerimaan: (sample.diterima_pada ? new Date(sample.diterima_pada).toTimeString().slice(0, 8) : null) || null,
             })),
         };
     };
@@ -407,10 +338,10 @@ getKasiReviewQueue = async () => {
         }
         return result;
     };
-    reviseKasiReview = async (noSampel, catatanRevisi, currentNik, hasilTargets = [], revisionsPayload = null) => {
+    reviseKasiReview = async (noSampel, catatanRevisi, currentNik, hasilTargets = [], revisionsRequestData = null) => {
         const sampleNo = String(noSampel || '').trim();
         const userNik = String(currentNik || '').trim();
-        const revisionItems = normalizeKasiRevisionItems(catatanRevisi, hasilTargets, revisionsPayload, null);
+        const revisionItems = normalizeKasiRevisionItems(catatanRevisi, hasilTargets, revisionsRequestData, null);
         const selectedIds = normalizeIdList(revisionItems.map((item) => item.hasilTargetKey));
         if (!sampleNo) {
             throw new Error('Nomor sampel wajib dikirim.');
@@ -505,9 +436,7 @@ getKasiReviewQueue = async () => {
                     statusRevisi: 'Menunggu Persetujuan Penyelia',
                     items: rows.map((row) => ({
                         kodeLka: row.kode_lka,
-                        kode_lka: row.kode_lka,
                         noSampel: row.no_sampel,
-                        no_sampel: row.no_sampel,
                         catatanRevisi: stripRevisionNotePrefix(noteById.get(String(getLkaHasilKey(row)))),
                     })),
                 }, transaction);
@@ -533,11 +462,9 @@ getKasiReviewQueue = async () => {
                 noSampel: sampleNo,
                 statusReviewHasil: SAMPLE_REVIEW_STATUS.REVISION_KASI_PENGUJIAN,
                 processed: targetIds.length,
-                hasilTargets: targetRows.map((row) => ({ kodeLka: row.kode_lka, kode_lka: row.kode_lka, noSampel: row.no_sampel, no_sampel: row.no_sampel })),
-                hasil_targets: targetRows.map((row) => ({ kodeLka: row.kode_lka, kode_lka: row.kode_lka, noSampel: row.no_sampel, no_sampel: row.no_sampel })),
+                hasilTargets: targetRows.map((row) => ({ kodeLka: row.kode_lka,  noSampel: row.no_sampel, })),
                 revisions: targetRows.map((row) => ({
                     catatanRevisi: targetNoteById.get(String(getLkaHasilKey(row))) || noteById.get(String(getLkaHasilKey(row))) || null,
-                    catatan_revisi: targetNoteById.get(String(getLkaHasilKey(row))) || noteById.get(String(getLkaHasilKey(row))) || null,
                 })),
                 idPenugasanDetailList: targetDetailIds,
             };
@@ -599,15 +526,10 @@ getKasiReviewQueue = async () => {
             const items = (sourceItems.length ? sourceItems : [row]).map((item) => ({
                 ...item,
                 idPenugasanDetail: detail.id_penugasan_detail || lka.id_penugasan_detail || null,
-                id_penugasan_detail: detail.id_penugasan_detail || lka.id_penugasan_detail || null,
                 idMetodeParameter: info.idMetodeParameter || null,
-                id_metode_parameter: info.idMetodeParameter || null,
                 namaParameter: info.namaParameter,
-                nama_parameter: info.namaParameter,
                 namaMetode: info.namaMetode,
-                nama_metode: info.namaMetode,
                 acuanMetode: info.acuanMetode,
-                acuan_metode: info.acuanMetode,
             }));
             return {
                 ...row,
@@ -615,11 +537,11 @@ getKasiReviewQueue = async () => {
             };
         });
     };
-    reviewKasiRevisionRequest = async (idRevisiLka, payload = {}, penyeliaNik) => {
+    reviewKasiRevisionRequest = async (idRevisiLka, requestData = {}, penyeliaNik) => {
         const revisionId = String(idRevisiLka || '').trim();
         const userNik = String(penyeliaNik || '').trim();
-        const action = String(payload.action || payload.aksi || '').trim().toLowerCase();
-        const catatanTinjauan = String(payload.catatanTinjauan || payload.catatan_tinjauan || payload.catatan || '').trim() || null;
+        const action = String(requestData.action || requestData.aksi || '').trim().toLowerCase();
+        const catatanTinjauan = String(requestData.catatanTinjauan || requestData.catatan_tinjauan || requestData.catatan || '').trim() || null;
         if (!revisionId) {
             throw new Error('ID revisi wajib dikirim.');
         }
@@ -686,15 +608,10 @@ getKasiReviewQueue = async () => {
             const sampleNos = Array.from(new Set(items.map((item) => item.no_sampel).filter(Boolean)));
             const notificationItems = items.map((item) => ({
                 idPenugasanDetail: detailContext.id_penugasan_detail || null,
-                id_penugasan_detail: detailContext.id_penugasan_detail || null,
                 namaParameter: parameterInfo.namaParameter || '-',
-                nama_parameter: parameterInfo.namaParameter || '-',
                 namaMetode: parameterInfo.namaMetode || '-',
-                nama_metode: parameterInfo.namaMetode || '-',
                 acuanMetode: parameterInfo.acuanMetode || '-',
-                acuan_metode: parameterInfo.acuanMetode || '-',
                 catatanRevisi: item.catatan_revisi || null,
-                catatan_revisi: item.catatan_revisi || null,
             }));
             const catatanRevisiGabungan = Array.from(new Set(notificationItems.map((item) => String(item.catatan_revisi || '').trim()).filter(Boolean))).join('\n');
             if (hasilTargetKeys.length > 0) {
@@ -715,32 +632,20 @@ getKasiReviewQueue = async () => {
             }
             return {
                 idRevisiLka: revisionId,
-                id_revisi_lka: revisionId,
                 statusRevisi: isApprove ? 'Dikirim ke Analis' : 'Ditolak Penyelia',
-                status_revisi: isApprove ? 'Dikirim ke Analis' : 'Ditolak Penyelia',
                 action: isApprove ? 'approve' : 'reject',
                 noSampel: sampleNos[0] || null,
-                no_sampel: sampleNos[0] || null,
                 noSampelList: sampleNos,
-                no_sampel_list: sampleNos,
                 idPenugasanDetailList,
                 id_penugasan_detail_list: idPenugasanDetailList,
                 diajukanOleh: revision.diajukan_oleh || null,
-                diajukan_oleh: revision.diajukan_oleh || null,
                 catatanRevisi: catatanRevisiGabungan || null,
-                catatan_revisi: catatanRevisiGabungan || null,
                 catatanTinjauan,
                 catatan_tinjauan: catatanTinjauan,
                 items: notificationItems,
                 revisions: notificationItems,
             };
         });
-    };
-    getKasiReviewSampleHeader = (...args) => {
-        return getKasiReviewSampleHeader(...args);
-    };
-    getKasiReviewResultRows = (...args) => {
-        return getKasiReviewResultRows(...args);
     };
 }
 module.exports = new AssignmentKasiReviewService();

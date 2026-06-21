@@ -1,7 +1,31 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Model } = require('sequelize');
 const sequelize = require('../config/database');
 
-const RegBm = sequelize.define('reg_bm', {
+class RegBm extends Model {
+  static associate(models) {
+    RegBm.hasMany(models.FpplSampel, { foreignKey: 'id_reg_bm' });
+    RegBm.hasMany(models.Sampel, { foreignKey: 'id_reg_bm', as: 'sampel_rows' });
+    RegBm.hasMany(models.PktBmKelompok, { foreignKey: 'id_reg_bm' });
+    RegBm.hasMany(models.PktBm, { foreignKey: 'id_reg_bm' });
+    RegBm.hasMany(models.PktBmParam, { foreignKey: 'id_reg_bm' });
+    RegBm.hasMany(models.FpplParameterMetode, { foreignKey: 'id_reg_bm', as: 'fppl_parameter_metodes' });
+  }
+
+  getPrimaryKeyValue() {
+    const primaryKey = this.constructor.primaryKeyAttribute;
+    return primaryKey ? this.get(primaryKey) : undefined;
+  }
+
+  toPlainObject() {
+    return this.get({ plain: true });
+  }
+
+  isActive() {
+    return this.is_active === true || this.is_active === 1;
+  }
+}
+
+RegBm.init({
     id_reg_bm: {
         type: DataTypes.STRING(6),
         primaryKey: true
@@ -20,7 +44,9 @@ const RegBm = sequelize.define('reg_bm', {
         defaultValue: 1
     }
 }, {
-    tableName: 'reg_bm'
+  sequelize,
+  modelName: 'reg_bm',
+tableName: 'reg_bm'
 });
 
 module.exports = RegBm;
