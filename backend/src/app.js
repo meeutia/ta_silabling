@@ -12,6 +12,7 @@ const lkaRevisionRoutes = require('./routes/lka-revision');
 const adminParameterRoutes = require('./routes/admin-parameter');
 const adminAccountRoutes = require('./routes/admin-account');
 const notificationEmailRoutes = require('./routes/notification-email');
+const notificationRoutes = require('./routes/notification');
 const fileRoutes = require('./routes/file');
 const PaymentService = require('./services/payment/payment.service');
 const { createRateLimit } = require('./middlewares/rate-limit');
@@ -89,6 +90,7 @@ class SilablingApplication {
         this.app.use('/admin/parameters', adminParameterRoutes);
         this.app.use('/admin/accounts', adminAccountRoutes);
         this.app.use('/admin/email-notifications', notificationEmailRoutes);
+        this.app.use('/notifications', notificationRoutes);
     };
     registerProtectedFileRoutes = () => {
         const fileAccessLimiter = createRateLimit({

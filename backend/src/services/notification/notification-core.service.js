@@ -2,6 +2,7 @@ const { NotifikasiEmail, Pelanggan, User, } = require('../../models/Associations
 const { NOTIFICATION_TYPE_DEFINITIONS, NOTIFICATION_RECIPIENT_TYPE, NOTIFICATION_REFERENCE_TYPE, STATUS_PENGIRIMAN_EMAIL, } = require('../../constants/notification.constant');
 const { generateId } = require('../../utils/id-generator');
 const mailer = require('../../utils/mailer');
+const pushNotificationService = require('./push-notification.service');
 const { safeString } = require('./notification-format.util');
 
 class NotificationCoreService {
@@ -257,8 +258,59 @@ class NotificationCoreService {
     };
 
     resolveRecipientEmail = async ({ nikPenerima = null, penerimaTipe = null, penerimaId = null, penerimaUserNik = null, penerimaPelangganId = null, } = {}) => {
-        const recipient = await this.resolveRecipientSnapshot({ nikPenerima, penerimaTipe, penerimaId, penerimaUserNik, penerimaPelangganId, requireEmail: true });
+        const recipient = await this.resolveRecipientSnapshot({
+            nikPenerima,
+            penerimaTipe,
+            penerimaId,
+            penerimaUserNik,
+            penerimaPelangganId,
+            requireEmail: this.isEmailDeliveryEnabled(),
+        });
         return recipient.email_tujuan;
+    };
+
+    isEmailDeliveryEnabled = () => {
+        return ['1', 'true', 'yes', 'on'].includes(
+            safeString(process.env.ENABLE_EMAIL_NOTIFICATIONS).trim().toLowerCase()
+        );
+    };
+
+    isCustomerEmailRecipient = async (email) => {
+        const emailTo = safeString(email).trim();
+        if (!emailTo) return false;
+
+        const pelanggan = await Pelanggan.findOne({
+            where: { email_kontak: emailTo },
+            attributes: ['id_pelanggan', 'nik', 'email_kontak'],
+        });
+
+        return Boolean(pelanggan);
+    };
+
+    isCustomerNotificationLog = async (log) => {
+        const plain = this.getPlain(log);
+        const nik = safeString(plain?.nik_penerima).trim();
+        const emailTo = safeString(plain?.email_tujuan).trim();
+
+        if (!nik && !emailTo) return false;
+
+        if (nik) {
+            const pelangganByNik = await Pelanggan.findOne({
+                where: { nik },
+                attributes: ['id_pelanggan', 'nik', 'email_kontak'],
+            });
+            if (pelangganByNik) return true;
+        }
+
+        if (emailTo) {
+            const pelangganByEmail = await Pelanggan.findOne({
+                where: { email_kontak: emailTo },
+                attributes: ['id_pelanggan', 'nik', 'email_kontak'],
+            });
+            if (pelangganByEmail) return true;
+        }
+
+        return false;
     };
 
     sendNotificationEmail = async ({ to, subject, body, html = null }) => {
@@ -266,8 +318,17 @@ class NotificationCoreService {
         const emailSubject = safeString(subject).trim();
         const text = safeString(body);
 
+        if (!this.isEmailDeliveryEnabled()) {
+            return { skipped: true, channel: 'web', reason: 'email_delivery_disabled' };
+        }
+
         if (!emailTo) {
             throw new Error('Email tujuan belum diisi.');
+        }
+
+        const isCustomer = await this.isCustomerEmailRecipient(emailTo);
+        if (!isCustomer) {
+            return { skipped: true, channel: 'web', reason: 'internal_recipient_website_only' };
         }
 
         if (!emailSubject) {
@@ -290,20 +351,51 @@ class NotificationCoreService {
         });
     };
 
+
+
+    dispatchPushNotification = async (log) => {
+        try {
+            const result = await pushNotificationService.sendNotificationForLog(log);
+            if (!result?.skipped) {
+                console.info('[PUSH NOTIFIKASI DIKIRIM]', result);
+            }
+            return result;
+        }
+        catch (error) {
+            console.error('[PUSH NOTIFIKASI GAGAL]', error?.message || error);
+            return { skipped: true, reason: 'push_send_failed', error: error?.message || String(error) };
+        }
+    };
+
     markEmailSent = async (log) => {
+        const plainBeforeUpdate = this.getPlain(log);
+        const isCustomer = await this.isCustomerNotificationLog(log);
+
+        if (!this.isEmailDeliveryEnabled() || !isCustomer) {
+            console.info(isCustomer ? '[NOTIFIKASI WEB PELANGGAN DIBUAT]' : '[NOTIFIKASI WEB INTERNAL DIBUAT]', {
+                id: plainBeforeUpdate?.id_notifikasi_email,
+                tipe: plainBeforeUpdate?.id_tipe_notifikasi,
+                penerima: plainBeforeUpdate?.nik_penerima,
+                referensi: plainBeforeUpdate?.referensi_id,
+            });
+            await this.dispatchPushNotification(log);
+            return this.getPlain(log) || plainBeforeUpdate;
+        }
+
         await log.update({
             status_pengiriman: STATUS_PENGIRIMAN_EMAIL.TERKIRIM,
             pesan_error: null,
             dikirim_pada: new Date(),
         });
         const plain = this.getPlain(log);
-        console.info('[EMAIL TERKIRIM]', {
+        console.info('[EMAIL PELANGGAN TERKIRIM]', {
             id: plain?.id_notifikasi_email,
             tipe: plain?.id_tipe_notifikasi,
             to: plain?.email_tujuan,
             referensi: plain?.referensi_id,
         });
-        return plain;
+        await this.dispatchPushNotification(log);
+        return this.getPlain(log) || plain;
     };
 
     markEmailFailed = async (log, error) => {
@@ -326,6 +418,18 @@ class NotificationCoreService {
 }
 
 const notificationCoreService = new NotificationCoreService();
+
+/**
+ * Fungsi helper standalone untuk mengambil plain object dari instance Sequelize.
+ * Di-export secara terpisah agar bisa di-destructuring oleh service lain.
+ */
+function getPlain(instance) {
+  if (!instance) return null;
+  if (typeof instance.get === 'function') return instance.get({ plain: true });
+  return instance;
+}
+
 module.exports = notificationCoreService;
 module.exports.NotificationCoreService = NotificationCoreService;
 module.exports.notificationCoreService = notificationCoreService;
+module.exports.getPlain = getPlain;

@@ -1,0 +1,31 @@
+@startuml
+title act C.17. Melihat Riwayat LHU
+
+|Kasi Pengujian|
+start
+:Buka menu LHU Sementara;
+
+|Sistem|
+:Tampilkan daftar LHU;
+
+|Kasi Pengujian|
+:Pilih tab Riwayat;
+
+|Sistem|
+:Tampilkan daftar riwayat LHU yang sudah diproses;
+
+|Kasi Pengujian|
+:Gunakan filter atau pencarian jika diperlukan;
+:Pilih salah satu LHU dari riwayat;
+
+|Sistem|
+:Tampilkan detail LHU;
+:Tampilkan hasil uji;
+:Tampilkan status keputusan Kasi Pengujian;
+:Tampilkan catatan revisi jika ada;
+
+|Kasi Pengujian|
+:Melihat detail riwayat LHU;
+
+stop
+@enduml

@@ -1,0 +1,52 @@
+@startuml
+title act C.14. Memperbaiki Hasil Uji
+
+|Analis|
+start
+:Buka menu Daftar Sampel yang Ditugaskan;
+
+|Sistem|
+:Tampilkan daftar penugasan analis;
+:Tampilkan penugasan dengan status Perlu Revisi;
+
+|Analis|
+:Pilih penugasan yang perlu direvisi;
+:Klik Detail;
+
+|Sistem|
+:Tampilkan detail penugasan;
+:Tampilkan catatan revisi dari penyelia atau Kasi Pengujian;
+
+|Analis|
+:Membaca catatan revisi;
+:Memperbaiki data hasil uji;
+
+if (Hanya baris tertentu yang direvisi?) then (Iya)
+  :Perbaiki baris hasil uji yang ditandai;
+else (Tidak)
+  :Perbaiki semua data hasil uji;
+endif
+
+:Klik simpan perbaikan;
+
+|Sistem|
+:Validasi data hasil uji yang diperbaiki;
+
+if (Data valid?) then (Iya)
+  :Simpan hasil uji yang diperbaiki;
+  :Tampilkan pesan perbaikan berhasil disimpan;
+
+  |Analis|
+  :Mengirimkan ulang hasil uji;
+
+  |Sistem|
+  :Memperbarui status penugasan menjadi Menunggu Review;
+else (Tidak)
+  :Tampilkan pesan validasi;
+
+  |Analis|
+  :Perbaiki kembali data yang tidak valid;
+endif
+
+stop
+@enduml

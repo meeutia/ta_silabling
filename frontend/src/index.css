@@ -2986,3 +2986,755 @@ html {
 .opacity-0 { opacity: 0; }
 .opacity-100 { opacity: 1; }
 .transition-opacity { transition-property: opacity; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+
+/* SILABLING notification dropdown fixes.
+   These classes avoid relying on arbitrary Tailwind utilities that may not exist in the compiled CSS. */
+.silabling-notification-panel {
+  position: fixed;
+  top: 76px;
+  right: 24px;
+  z-index: 9999;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 92px);
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  text-align: left;
+}
+
+.silabling-notification-list {
+  max-height: min(54vh, 390px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: rgba(249, 250, 251, 0.75);
+  padding: 8px;
+}
+
+.silabling-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.silabling-push-compact {
+  border: 1px solid #a7f3d0;
+  border-radius: 14px;
+  background: #ecfdf5;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.silabling-push-compact__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.silabling-push-compact__text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.silabling-push-compact__title {
+  margin: 0;
+  color: #064e3b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.silabling-push-compact__desc {
+  margin: 2px 0 0;
+  color: #047857;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.silabling-push-compact__button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 150px;
+  min-height: 32px;
+  border-radius: 10px;
+  background: #059669;
+  padding: 6px 10px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  transition: background-color 150ms ease;
+}
+
+.silabling-push-compact__button:hover:not(:disabled) {
+  background: #047857;
+}
+
+.silabling-push-compact__button:disabled {
+  cursor: not-allowed;
+  background: #d1d5db;
+}
+
+.silabling-push-compact__button span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.silabling-push-compact__message {
+  margin: 8px 0 0;
+  color: #065f46;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+@media (max-width: 640px) {
+  .silabling-notification-panel {
+    top: 68px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}
+
+/* SILABLING notification page layout fixes. */
+.silabling-spin {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  animation: silabling-spin 0.85s linear infinite;
+}
+
+@keyframes silabling-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.silabling-notification-page {
+  min-height: 100%;
+  background: #f8fafc;
+  padding: 24px 28px 40px;
+}
+
+.silabling-notification-page__shell {
+  width: min(100%, 1040px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.silabling-notification-hero,
+.silabling-notification-card,
+.silabling-push-card {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+.silabling-notification-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-radius: 18px;
+  padding: 20px 22px;
+}
+
+.silabling-notification-hero__content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.silabling-notification-hero__icon,
+.silabling-push-card__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.silabling-notification-hero__icon svg,
+.silabling-push-card__icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.silabling-notification-hero__text {
+  min-width: 0;
+}
+
+.silabling-notification-hero__text h1 {
+  margin: 0;
+  color: #020617;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.silabling-notification-hero__text p {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.silabling-notification-hero__text span {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.silabling-notification-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  min-width: 112px;
+  max-width: 210px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.silabling-notification-button svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.silabling-notification-button:disabled {
+  cursor: not-allowed;
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+.silabling-notification-button--primary {
+  background: #059669;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(5, 150, 105, 0.18);
+}
+
+.silabling-notification-button--primary:hover:not(:disabled) {
+  background: #047857;
+}
+
+.silabling-notification-button--secondary {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #334155;
+  box-shadow: none;
+}
+
+.silabling-notification-button--secondary:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.silabling-push-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  border-color: #a7f3d0;
+  border-radius: 16px;
+  background: #ecfdf5;
+  padding: 16px 18px;
+}
+
+.silabling-push-card__icon {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.07);
+}
+
+.silabling-push-card__body {
+  min-width: 0;
+}
+
+.silabling-push-card__body h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.silabling-push-card__body p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.silabling-push-card__message {
+  display: block;
+  margin-top: 6px;
+  color: #047857;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.silabling-push-card__button {
+  min-width: 132px;
+}
+
+.silabling-notification-card {
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.silabling-notification-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid #eef2f7;
+  padding: 14px 18px;
+}
+
+.silabling-notification-tabs {
+  display: inline-flex;
+  gap: 4px;
+  border-radius: 13px;
+  background: #f1f5f9;
+  padding: 4px;
+}
+
+.silabling-notification-tabs button {
+  height: 34px;
+  min-width: 94px;
+  border-radius: 10px;
+  padding: 0 14px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.silabling-notification-tabs button:hover,
+.silabling-notification-tabs button.is-active {
+  background: #ffffff;
+  color: #047857;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.silabling-notification-counter {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.silabling-notification-counter strong {
+  color: #047857;
+}
+
+.silabling-notification-list-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.silabling-notification-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  border-bottom: 1px solid #eef2f7;
+  background: #ffffff;
+  padding: 16px 20px;
+  transition: background-color 150ms ease;
+}
+
+.silabling-notification-row:last-child {
+  border-bottom: 0;
+}
+
+.silabling-notification-row:hover {
+  background: #f8fafc;
+}
+
+.silabling-notification-row.is-unread {
+  background: #f0fdf4;
+}
+
+.silabling-notification-row.is-unread:hover {
+  background: #ecfdf5;
+}
+
+.silabling-notification-row.is-read {
+  grid-template-columns: 10px minmax(0, 1fr);
+}
+
+.silabling-notification-row__dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.silabling-notification-row.is-unread .silabling-notification-row__dot {
+  background: #059669;
+}
+
+.silabling-notification-row__body {
+  min-width: 0;
+}
+
+.silabling-notification-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.silabling-notification-row__head h2 {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  color: #020617;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.silabling-notification-row__head span {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  padding: 0 10px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.silabling-notification-row__head span.is-unread {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.silabling-notification-row__body > p {
+  margin: 5px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.silabling-notification-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.silabling-notification-row__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.silabling-notification-row__meta svg {
+  width: 14px;
+  height: 14px;
+}
+
+.silabling-notification-row__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.silabling-notification-row__actions .silabling-notification-button {
+  height: 36px;
+  min-width: 98px;
+  padding: 0 12px;
+}
+
+.silabling-notification-empty {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 42px 20px;
+  color: #64748b;
+  text-align: center;
+}
+
+.silabling-notification-empty svg {
+  width: 34px;
+  height: 34px;
+  color: #cbd5e1;
+}
+
+.silabling-notification-empty p {
+  margin: 0;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.silabling-notification-empty span {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.silabling-notification-empty.is-error {
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .silabling-notification-page {
+    padding: 18px 16px 32px;
+  }
+
+  .silabling-notification-hero,
+  .silabling-push-card {
+    align-items: stretch;
+  }
+
+  .silabling-notification-hero {
+    flex-direction: column;
+  }
+
+  .silabling-notification-hero > .silabling-notification-button,
+  .silabling-push-card__button {
+    width: 100%;
+    max-width: none;
+  }
+
+  .silabling-push-card {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .silabling-push-card__button {
+    grid-column: 1 / -1;
+  }
+
+  .silabling-notification-row {
+    grid-template-columns: 10px minmax(0, 1fr);
+  }
+
+  .silabling-notification-row__actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .silabling-notification-hero__content {
+    align-items: flex-start;
+  }
+
+  .silabling-notification-hero__text h1 {
+    font-size: 21px;
+  }
+
+  .silabling-notification-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .silabling-notification-tabs {
+    width: 100%;
+  }
+
+  .silabling-notification-tabs button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .silabling-notification-row {
+    padding: 15px 16px;
+  }
+
+  .silabling-notification-row__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .silabling-notification-row__actions .silabling-notification-button {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SILABLING notification badge (lonceng counter)
+   Menggantikan Tailwind arbitrary class yang tidak stabil di compile.
+   ───────────────────────────────────────────────────────────────────────────── */
+.silabling-notif-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #dc2626;
+  padding: 0 5px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 0 0 2px #ffffff;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SILABLING notification dropdown item list
+   ───────────────────────────────────────────────────────────────────────────── */
+.silabling-notification-dropdown-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.silabling-notif-item {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.silabling-notif-item:hover {
+  border-color: #a7f3d0;
+  background: #f0fdf4;
+}
+
+.silabling-notif-item.is-read {
+  cursor: default;
+}
+
+.silabling-notif-item.is-read:hover {
+  border-color: #e5e7eb;
+  background: #ffffff;
+}
+
+.silabling-notif-item.is-unread {
+  border-color: #d1fae5;
+  background: #f0fdf4;
+}
+
+.silabling-notif-item.is-unread:hover {
+  background: #ecfdf5;
+}
+
+.silabling-notif-item__dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #d1d5db;
+}
+
+.silabling-notif-item__dot.is-unread {
+  background: #059669;
+}
+
+.silabling-notif-item__content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 2px;
+}
+
+.silabling-notif-item__title {
+  display: block;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.silabling-notif-item__message {
+  display: block;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.silabling-notif-item__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.silabling-notif-item__time svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Icon size untuk push compact button (lucide icons tanpa ukuran eksplisit)
+   ───────────────────────────────────────────────────────────────────────────── */
+.silabling-push-compact__button svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}

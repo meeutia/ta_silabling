@@ -1,0 +1,37 @@
+@startuml
+title act B05. Mengirim Hasil Uji
+
+|Analis|
+start
+:Buka menu Daftar Sampel yang Ditugaskan;
+
+|Sistem|
+:Tampilkan daftar penugasan analis;
+
+|Analis|
+:Pilih penugasan;
+:Klik Detail;
+
+|Sistem|
+:Tampilkan form hasil uji dan file worksheet;
+
+|Analis|
+:Melengkapi hasil uji dan file pendukung;
+:Klik kirim hasil uji;
+
+|Sistem|
+:Validasi kelengkapan data;
+
+if (Data sudah lengkap?) then (Iya)
+  :Menyimpan hasil uji;
+  :Mengubah status penugasan menjadi Menunggu Review;
+  :Menampilkan pesan hasil uji berhasil dikirim;
+else (Tidak)
+  :Menampilkan pesan kesalahan;
+
+  |Analis|
+  :Melengkapi data yang kurang;
+endif
+
+stop
+@enduml

@@ -1,0 +1,29 @@
+@startuml
+title act C.10. Memantau Penugasan
+
+|Penyelia|
+start
+:Buka menu Penugasan;
+
+|Sistem|
+:Tampilkan daftar penugasan analis;
+
+|Penyelia|
+:Pilih tab Monitor;
+
+|Sistem|
+:Tampilkan daftar penugasan beserta status pengerjaan;
+
+|Penyelia|
+:Pilih penugasan yang akan dipantau;
+:Klik Detail Penugasan;
+
+|Sistem|
+:Tampilkan detail penugasan;
+:Tampilkan analis, sampel, parameter, dan tenggat waktu;
+
+|Penyelia|
+:Memeriksa perkembangan penugasan;
+
+stop
+@enduml

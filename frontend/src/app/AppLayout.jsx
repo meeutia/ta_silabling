@@ -19,8 +19,8 @@ export function AppLayout({
 }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  const handleNavigate = (page) => {
-    onNavigate(page);
+  const handleNavigate = (page, options = null) => {
+    onNavigate(page, options);
     setMobileSidebarOpen(false);
   };
 
@@ -52,6 +52,7 @@ export function AppLayout({
           role={role}
           currentPage={currentPage}
           onOpenSidebar={() => setMobileSidebarOpen(true)}
+          onNavigate={handleNavigate}
         />
         <main className="flex-1 overflow-y-auto">
           <AppErrorBoundary

@@ -1,0 +1,39 @@
+@startuml
+title act B08. Memfinalisasi LHU
+
+|Pengendalian Mutu|
+start
+:Buka menu Verifikasi Hasil Uji;
+
+|Sistem|
+:Tampilkan antrian permohonan yang siap difinalisasi;
+
+|Pengendalian Mutu|
+:Pilih salah satu permohonan;
+:Klik detail;
+
+|Sistem|
+:Menampilkan detail permohonan dan sampel;
+
+|Pengendalian Mutu|
+:Meninjau, memilih sampel dan paket baku mutu;
+:Memeriksa preview LHU;
+:Klik finalisasi LHU;
+
+|Sistem|
+:Validasi data;
+
+if (Data valid?) then (Iya)
+  :Menyimpan data finalisasi;
+  :Menggenerate LHU Draft;
+  :Mengubah status permohonan;
+  :Menampilkan pesan finalisasi berhasil;
+else (Tidak)
+  :Menampilkan pesan kesalahan;
+
+  |Pengendalian Mutu|
+  :Perbaiki data yang tidak valid;
+endif
+
+stop
+@enduml

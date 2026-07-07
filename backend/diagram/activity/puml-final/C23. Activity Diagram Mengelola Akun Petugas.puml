@@ -1,0 +1,75 @@
+@startuml
+title act C.23. Mengelola Akun Petugas
+
+|Administrator|
+start
+:Buka menu Kelola Akun;
+
+|Sistem|
+:Tampilkan daftar akun;
+
+|Administrator|
+:Pilih tab Petugas;
+
+|Sistem|
+:Tampilkan daftar akun petugas;
+
+|Administrator|
+:Memilih aksi yang akan dilakukan;
+
+if (Tambah akun petugas baru?) then (Iya)
+  :Klik tombol Tambah Petugas;
+
+  |Sistem|
+  :Tampilkan form tambah akun petugas;
+
+  |Administrator|
+  :Isi data akun petugas (nama, NIK, role, dll.);
+  :Klik simpan;
+
+  |Sistem|
+  :Validasi data akun;
+
+  if (Data valid?) then (Iya)
+    :Buat akun petugas baru;
+    :Generate kata sandi sementara;
+    :Tampilkan pesan akun berhasil dibuat;
+  else (Tidak)
+    :Tampilkan pesan validasi;
+
+    |Administrator|
+    :Perbaiki data akun;
+  endif
+
+else if (Ubah status akun?) then (Iya)
+  :Pilih akun petugas;
+  :Klik tombol aktifkan atau nonaktifkan;
+
+  |Sistem|
+  :Tampilkan konfirmasi perubahan status;
+
+  |Administrator|
+  :Konfirmasi perubahan status;
+
+  |Sistem|
+  :Perbarui status akun petugas;
+  :Tampilkan pesan status berhasil diperbarui;
+
+else (Reset kata sandi)
+  :Pilih akun petugas;
+  :Klik tombol reset kata sandi;
+
+  |Sistem|
+  :Tampilkan konfirmasi reset kata sandi;
+
+  |Administrator|
+  :Konfirmasi reset kata sandi;
+
+  |Sistem|
+  :Reset kata sandi akun petugas;
+  :Generate kata sandi sementara baru;
+  :Tampilkan pesan kata sandi berhasil direset;
+endif
+
+stop
+@enduml

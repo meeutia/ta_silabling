@@ -1,0 +1,56 @@
+@startuml
+title act C.22. Mengelola Akun Pelanggan
+
+|Administrator|
+start
+:Buka menu Kelola Akun;
+
+|Sistem|
+:Tampilkan daftar akun;
+
+|Administrator|
+:Pilih tab Pelanggan;
+
+|Sistem|
+:Tampilkan daftar akun pelanggan;
+
+|Administrator|
+:Pilih akun pelanggan;
+:Klik detail;
+
+|Sistem|
+:Tampilkan detail akun pelanggan;
+
+|Administrator|
+:Memilih aksi yang akan dilakukan;
+
+if (Ubah status akun?) then (Iya)
+  :Klik tombol aktifkan atau nonaktifkan;
+
+  |Sistem|
+  :Tampilkan konfirmasi perubahan status;
+
+  |Administrator|
+  :Konfirmasi perubahan status;
+
+  |Sistem|
+  :Perbarui status akun pelanggan;
+  :Tampilkan pesan status berhasil diperbarui;
+
+else (Reset kata sandi)
+  :Klik tombol reset kata sandi;
+
+  |Sistem|
+  :Tampilkan konfirmasi reset kata sandi;
+
+  |Administrator|
+  :Konfirmasi reset kata sandi;
+
+  |Sistem|
+  :Reset kata sandi akun pelanggan;
+  :Generate kata sandi sementara baru;
+  :Tampilkan pesan kata sandi berhasil direset;
+endif
+
+stop
+@enduml

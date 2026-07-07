@@ -1,0 +1,35 @@
+@startuml
+title act C.12. Menyimpan Draf Hasil Uji
+
+|Analis|
+start
+:Buka menu Penugasan;
+:Pilih penugasan sampel;
+
+|Sistem|
+:Tampilkan detail penugasan;
+:Tampilkan form input hasil uji;
+
+|Analis|
+:Isi hasil uji sementara;
+:Unggah file pendukung jika ada;
+:Klik simpan draf;
+
+|Sistem|
+:Validasi data hasil uji;
+
+if (Data dapat disimpan?) then (Iya)
+  :Simpan draf hasil uji;
+  :Tampilkan pesan draf berhasil disimpan;
+
+  |Analis|
+  :Melihat status draf pada penugasan;
+else (Tidak)
+  :Tampilkan pesan validasi;
+
+  |Analis|
+  :Perbaiki data hasil uji;
+endif
+
+stop
+@enduml

@@ -148,7 +148,7 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                         id_jenis_sampel: jenisSampel,
                         id_reg_bm: idRegBm,
                         id_parameter: idParam,
-                        id_metode_parameter: null, // diisi Kasi
+                        id_metode_parameter: null,
                         status_kemampuan_lab: 'MAMPU',
                         catatan_kemampuan: null,
                         is_insitu: 0,

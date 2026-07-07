@@ -11,16 +11,8 @@ class Fppl extends Model {
     Fppl.hasMany(models.FpplParameterMetode, { foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'fppl_parameter_metodes_direct' });
     Fppl.hasMany(models.Lhu, { foreignKey: 'id_registrasi', as: 'lhus' });
     Fppl.hasMany(models.Invoice, { foreignKey: 'id_registrasi' });
-    Fppl.hasOne(models.JadwalPengambilanLhu, {
-  foreignKey: 'id_registrasi',
-  sourceKey: 'id_registrasi',
-  as: 'jadwal_pengambilan_lhu',
-});
-    Fppl.hasMany(models.PengajuanPerubahanJadwal, {
-  foreignKey: 'id_registrasi',
-  sourceKey: 'id_registrasi',
-  as: 'pengajuan_perubahan_jadwal',
-});
+    Fppl.hasOne(models.JadwalPengambilanLhu, {foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'jadwal_pengambilan_lhu',});
+    Fppl.hasMany(models.PengajuanPerubahanJadwal, {foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'pengajuan_perubahan_jadwal',});
   }
 
   getPrimaryKeyValue() {

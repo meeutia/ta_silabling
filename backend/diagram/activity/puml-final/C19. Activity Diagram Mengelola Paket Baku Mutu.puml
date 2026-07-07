@@ -1,0 +1,77 @@
+@startuml
+title act C.19. Mengelola Paket Baku Mutu
+
+|Administrator|
+start
+:Buka menu Kelola Parameter;
+
+|Sistem|
+:Tampilkan daftar paket baku mutu;
+
+|Administrator|
+:Memilih aksi yang akan dilakukan;
+
+if (Tambah paket baru?) then (Iya)
+  :Klik tombol tambah;
+
+  |Sistem|
+  :Tampilkan form tambah paket baku mutu;
+
+  |Administrator|
+  :Isi nama dan data paket baku mutu;
+  :Klik simpan;
+
+  |Sistem|
+  :Validasi data;
+
+  if (Data valid?) then (Iya)
+    :Simpan paket baku mutu baru;
+    :Tampilkan pesan paket berhasil ditambahkan;
+  else (Tidak)
+    :Tampilkan pesan validasi;
+
+    |Administrator|
+    :Perbaiki data;
+  endif
+
+else if (Ubah paket?) then (Iya)
+  :Pilih paket yang akan diubah;
+  :Klik ubah;
+
+  |Sistem|
+  :Tampilkan form ubah paket baku mutu;
+
+  |Administrator|
+  :Perbarui data paket;
+  :Klik simpan;
+
+  |Sistem|
+  :Validasi data;
+
+  if (Data valid?) then (Iya)
+    :Simpan perubahan paket;
+    :Tampilkan pesan paket berhasil diperbarui;
+  else (Tidak)
+    :Tampilkan pesan validasi;
+
+    |Administrator|
+    :Perbaiki data;
+  endif
+
+else (Hapus paket)
+  :Pilih paket yang akan dihapus;
+  :Klik hapus;
+
+  |Sistem|
+  :Tampilkan konfirmasi penghapusan;
+
+  |Administrator|
+  :Konfirmasi penghapusan;
+
+  |Sistem|
+  :Hapus paket baku mutu;
+  :Tampilkan pesan paket berhasil dihapus;
+endif
+
+stop
+@enduml

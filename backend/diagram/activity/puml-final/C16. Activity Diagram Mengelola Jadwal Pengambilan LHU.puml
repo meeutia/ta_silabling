@@ -1,0 +1,49 @@
+@startuml
+title act C.16. Mengelola Jadwal Pengambilan LHU
+
+|Administrator|
+start
+:Buka menu Permohonan Uji;
+
+|Sistem|
+:Tampilkan daftar permohonan pengujian;
+
+|Administrator|
+:Pilih tab Pengambilan;
+
+|Sistem|
+:Tampilkan daftar antrian pengambilan LHU;
+
+|Administrator|
+:Pilih permohonan yang akan dijadwalkan pengambilan LHU;
+
+|Sistem|
+:Tampilkan form penjadwalan pengambilan LHU;
+
+|Administrator|
+:Isi tanggal dan waktu pengambilan LHU;
+:Klik simpan jadwal;
+
+|Sistem|
+:Validasi jadwal pengambilan;
+
+if (Jadwal valid?) then (Iya)
+  :Simpan jadwal pengambilan LHU;
+  :Tampilkan pesan jadwal berhasil disimpan;
+
+  |Administrator|
+  :Memantau status pengambilan LHU;
+  :Klik konfirmasi pengambilan setelah LHU diambil;
+
+  |Sistem|
+  :Memperbarui status permohonan menjadi selesai;
+  :Tampilkan pesan pengambilan berhasil dikonfirmasi;
+else (Tidak)
+  :Tampilkan pesan validasi;
+
+  |Administrator|
+  :Perbaiki data jadwal;
+endif
+
+stop
+@enduml

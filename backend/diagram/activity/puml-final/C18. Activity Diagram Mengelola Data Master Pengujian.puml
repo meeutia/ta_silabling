@@ -1,0 +1,77 @@
+@startuml
+title act C.18. Mengelola Parameter Metode Pengujian
+
+|Administrator|
+start
+:Buka menu Kelola Parameter;
+
+|Sistem|
+:Tampilkan daftar parameter metode pengujian;
+
+|Administrator|
+:Memilih aksi yang akan dilakukan;
+
+if (Tambah parameter metode baru?) then (Iya)
+  :Klik tombol tambah;
+
+  |Sistem|
+  :Tampilkan form tambah parameter metode;
+
+  |Administrator|
+  :Isi data parameter metode;
+  :Klik simpan;
+
+  |Sistem|
+  :Validasi data;
+
+  if (Data valid?) then (Iya)
+    :Simpan data parameter metode baru;
+    :Tampilkan pesan data berhasil ditambahkan;
+  else (Tidak)
+    :Tampilkan pesan validasi;
+
+    |Administrator|
+    :Perbaiki data;
+  endif
+
+else if (Ubah parameter metode?) then (Iya)
+  :Pilih data yang akan diubah;
+  :Klik ubah;
+
+  |Sistem|
+  :Tampilkan form ubah data;
+
+  |Administrator|
+  :Perbarui data parameter metode;
+  :Klik simpan;
+
+  |Sistem|
+  :Validasi data;
+
+  if (Data valid?) then (Iya)
+    :Simpan perubahan data;
+    :Tampilkan pesan data berhasil diperbarui;
+  else (Tidak)
+    :Tampilkan pesan validasi;
+
+    |Administrator|
+    :Perbaiki data;
+  endif
+
+else (Hapus parameter metode)
+  :Pilih data yang akan dihapus;
+  :Klik hapus;
+
+  |Sistem|
+  :Tampilkan konfirmasi penghapusan;
+
+  |Administrator|
+  :Konfirmasi penghapusan;
+
+  |Sistem|
+  :Hapus data parameter metode;
+  :Tampilkan pesan data berhasil dihapus;
+endif
+
+stop
+@enduml

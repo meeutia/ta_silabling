@@ -25,6 +25,7 @@ import {
 } from './app/routeUtils';
 import { authApi } from './api/authApi';
 import { subscribeBlockingRequests } from './api/httpClient';
+import { deactivateBrowserPushNotification } from './utils/browserPushNotification';
 
 export default function App() {
   const location = useLocation();
@@ -428,6 +429,12 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    try {
+      await deactivateBrowserPushNotification();
+    } catch {
+      // Push subscription lokal tetap boleh gagal dibersihkan. Logout tetap dilanjutkan.
+    }
+
     try {
       await authApi.logout();
     } catch {

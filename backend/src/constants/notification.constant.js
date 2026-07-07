@@ -31,6 +31,7 @@ const NOTIFICATION_TYPE = {
   HASIL_KASI_MENUNGGU_QC: 'TN031',
   PEMBAYARAN_PELANGGAN_ADMIN: 'TN032',
   PEMBATALAN_PELANGGAN_ADMIN: 'TN033',
+  PUSH_SUBSCRIPTION_BROWSER: 'TN999',
 };
 
 const NOTIFICATION_TYPE_DEFINITIONS = [
@@ -64,6 +65,7 @@ const NOTIFICATION_TYPE_DEFINITIONS = [
   { id: NOTIFICATION_TYPE.HASIL_KASI_MENUNGGU_QC, deskripsi: 'Hasil yang disetujui Kasi Pengujian menunggu verifikasi QC', konteks: 'LHU' },
   { id: NOTIFICATION_TYPE.PEMBAYARAN_PELANGGAN_ADMIN, deskripsi: 'Pelanggan telah menyelesaikan pembayaran permohonan', konteks: 'FPPL' },
   { id: NOTIFICATION_TYPE.PEMBATALAN_PELANGGAN_ADMIN, deskripsi: 'Pelanggan membatalkan permohonan', konteks: 'FPPL' },
+  { id: NOTIFICATION_TYPE.PUSH_SUBSCRIPTION_BROWSER, deskripsi: 'Registrasi push notification browser', konteks: 'PUSH' },
 ];
 
 

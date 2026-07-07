@@ -1,0 +1,42 @@
+@startuml
+title act C.13. Menanggapi Permintaan Revisi Kasi
+
+|Penyelia|
+start
+:Buka menu Penugasan;
+
+|Sistem|
+:Tampilkan daftar penugasan analis;
+:Tampilkan notifikasi permintaan revisi dari Kasi Pengujian;
+
+|Penyelia|
+:Pilih penugasan yang memiliki permintaan revisi;
+:Klik Detail Penugasan;
+
+|Sistem|
+:Tampilkan detail penugasan;
+:Tampilkan daftar permintaan revisi dari Kasi Pengujian;
+
+|Penyelia|
+:Meninjau catatan revisi dari Kasi Pengujian;
+:Memilih tindakan (Setujui atau Tolak);
+
+|Sistem|
+:Validasi tindakan;
+
+if (Tindakan valid?) then (Iya)
+  :Menyimpan keputusan penyelia;
+  :Memperbarui status permintaan revisi;
+  :Meneruskan keputusan kepada analis;
+
+  |Penyelia|
+  :Melihat konfirmasi keputusan berhasil disimpan;
+else (Tidak)
+  :Tampilkan pesan validasi;
+
+  |Penyelia|
+  :Perbaiki atau lengkapi tindakan;
+endif
+
+stop
+@enduml

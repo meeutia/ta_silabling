@@ -1,0 +1,32 @@
+@startuml
+title act C.9. Melihat Penugasan
+
+|Analis|
+start
+:Buka menu penugasan;
+
+|Sistem|
+:Tampilkan daftar penugasan analis;
+
+|Analis|
+:Pilih salah satu penugasan;
+
+|Sistem|
+:Tampilkan detail penugasan;
+:Tampilkan data sampel;
+:Tampilkan parameter uji;
+:Tampilkan batas waktu pengerjaan;
+
+|Analis|
+:Melihat detail pekerjaan uji;
+
+if (Penugasan tersedia?) then (Iya)
+  |Analis|
+  :Mulai mengerjakan hasil uji;
+else (Tidak)
+  |Sistem|
+  :Tampilkan informasi belum ada penugasan;
+endif
+
+stop
+@enduml

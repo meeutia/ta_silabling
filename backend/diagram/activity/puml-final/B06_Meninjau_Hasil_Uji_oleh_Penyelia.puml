@@ -1,0 +1,42 @@
+@startuml
+title act B06. Meninjau Hasil Uji oleh Penyelia
+
+|Penyelia|
+start
+:Buka menu Penugasan;
+
+|Sistem|
+:Tampilkan daftar penugasan analis;
+
+|Penyelia|
+:Pilih penugasan dengan status Menunggu Review;
+:Klik Detail Penugasan;
+
+|Sistem|
+:Tampilkan detail penugasan;
+:Tampilkan daftar hasil uji analis dan file worksheet;
+
+|Penyelia|
+:Meninjau hasil uji dan memilih keputusan;
+
+if (Keputusan?) then (Setuju)
+  :Klik setujui hasil uji;
+
+  |Sistem|
+  :Menyimpan persetujuan penyelia;
+  :Mengubah status penugasan;
+  :Menampilkan pesan berhasil;
+
+else (Revisi)
+  :Klik revisi;
+  :Mengisi catatan revisi;
+  :Klik kirim revisi;
+
+  |Sistem|
+  :Menyimpan catatan revisi;
+  :Mengubah status penugasan menjadi Perlu Revisi;
+  :Menampilkan pesan berhasil;
+endif
+
+stop
+@enduml

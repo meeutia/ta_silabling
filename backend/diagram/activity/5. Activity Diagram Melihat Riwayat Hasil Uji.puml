@@ -1,0 +1,30 @@
+@startuml
+title act C.15. Melihat Riwayat Hasil Uji
+
+|Analis|
+start
+:Buka menu Daftar Sampel yang Ditugaskan;
+
+|Sistem|
+:Tampilkan daftar penugasan analis;
+
+|Analis|
+:Pilih tab Riwayat;
+
+|Sistem|
+:Tampilkan daftar riwayat hasil uji;
+
+|Analis|
+:Gunakan filter atau pencarian jika diperlukan;
+:Pilih salah satu hasil uji;
+
+|Sistem|
+:Tampilkan detail hasil uji;
+:Tampilkan status review;
+:Tampilkan catatan revisi jika ada;
+
+|Analis|
+:Melihat riwayat hasil uji;
+
+stop
+@enduml

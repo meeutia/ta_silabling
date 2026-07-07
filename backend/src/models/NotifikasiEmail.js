@@ -88,6 +88,43 @@ NotifikasiEmail.init({
     allowNull: true,
   },
 
+
+  push_endpoint: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
+  push_p256dh: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+
+  push_auth: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+
+  push_user_agent: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+
+  push_aktif: {
+    type: DataTypes.TINYINT,
+    allowNull: false,
+    defaultValue: 0,
+  },
+
+  push_subscription_pada: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+
+  push_terkirim_pada: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+
   dibuat_pada: {
     type: DataTypes.DATE,
     allowNull: false,

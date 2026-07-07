@@ -1,0 +1,44 @@
+@startuml
+title act C.11. Mengubah Tenggat Penugasan
+
+|Penyelia|
+start
+:Buka menu Penugasan;
+
+|Sistem|
+:Tampilkan daftar penugasan analis;
+
+|Penyelia|
+:Pilih tab Monitor;
+:Pilih penugasan;
+:Klik Detail Penugasan;
+:Klik ubah tenggat waktu;
+
+|Sistem|
+:Tampilkan form perubahan tenggat;
+
+|Penyelia|
+:Isi tenggat waktu baru;
+:Isi alasan perubahan;
+:Klik simpan;
+
+|Sistem|
+:Validasi perubahan tenggat;
+
+if (Data valid?) then (Iya)
+  :Simpan tenggat waktu baru;
+  :Perbarui status penugasan;
+  :Tampilkan pesan perubahan berhasil;
+
+  |Analis|
+  :Menerima informasi tenggat baru;
+else (Tidak)
+  |Sistem|
+  :Tampilkan pesan validasi;
+
+  |Penyelia|
+  :Perbaiki data perubahan tenggat;
+endif
+
+stop
+@enduml

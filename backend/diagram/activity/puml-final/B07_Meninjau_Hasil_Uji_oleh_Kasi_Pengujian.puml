@@ -1,0 +1,41 @@
+@startuml
+title act B07. Meninjau Hasil Uji oleh Kasi Pengujian
+
+|Kasi Pengujian|
+start
+:Buka menu LHU Sementara;
+
+|Sistem|
+:Tampilkan daftar hasil uji yang menunggu persetujuan Kasi Pengujian;
+
+|Kasi Pengujian|
+:Pilih salah satu hasil uji;
+:Klik detail hasil uji;
+
+|Sistem|
+:Tampilkan detail hasil uji dan file worksheet;
+
+|Kasi Pengujian|
+:Meninjau dan memilih keputusan hasil uji;
+
+if (Keputusan?) then (Setuju)
+  :Klik setujui hasil uji;
+
+  |Sistem|
+  :Menyimpan persetujuan Kasi Pengujian;
+  :Mengubah status;
+  :Menampilkan pesan berhasil;
+
+else (Revisi)
+  :Klik revisi;
+  :Mengisi catatan revisi;
+  :Klik kirim revisi;
+
+  |Sistem|
+  :Menyimpan revisi;
+  :Mengubah status menjadi Perlu Revisi;
+  :Menampilkan pesan berhasil;
+endif
+
+stop
+@enduml

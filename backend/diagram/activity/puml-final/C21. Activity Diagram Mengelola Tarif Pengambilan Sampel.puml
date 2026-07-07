@@ -1,0 +1,77 @@
+@startuml
+title act C.21. Mengelola Tarif Pengambilan Sampel
+
+|Administrator|
+start
+:Buka menu Kelola Parameter;
+
+|Sistem|
+:Tampilkan daftar tarif pengambilan sampel;
+
+|Administrator|
+:Memilih aksi yang akan dilakukan;
+
+if (Tambah tarif baru?) then (Iya)
+  :Klik tombol tambah;
+
+  |Sistem|
+  :Tampilkan form tambah tarif pengambilan;
+
+  |Administrator|
+  :Isi data tarif pengambilan;
+  :Klik simpan;
+
+  |Sistem|
+  :Validasi data;
+
+  if (Data valid?) then (Iya)
+    :Simpan tarif pengambilan baru;
+    :Tampilkan pesan tarif berhasil ditambahkan;
+  else (Tidak)
+    :Tampilkan pesan validasi;
+
+    |Administrator|
+    :Perbaiki data;
+  endif
+
+else if (Ubah tarif?) then (Iya)
+  :Pilih tarif yang akan diubah;
+  :Klik ubah;
+
+  |Sistem|
+  :Tampilkan form ubah tarif;
+
+  |Administrator|
+  :Perbarui data tarif;
+  :Klik simpan;
+
+  |Sistem|
+  :Validasi data;
+
+  if (Data valid?) then (Iya)
+    :Simpan perubahan tarif;
+    :Tampilkan pesan tarif berhasil diperbarui;
+  else (Tidak)
+    :Tampilkan pesan validasi;
+
+    |Administrator|
+    :Perbaiki data;
+  endif
+
+else (Hapus tarif)
+  :Pilih tarif yang akan dihapus;
+  :Klik hapus;
+
+  |Sistem|
+  :Tampilkan konfirmasi penghapusan;
+
+  |Administrator|
+  :Konfirmasi penghapusan;
+
+  |Sistem|
+  :Hapus tarif pengambilan;
+  :Tampilkan pesan tarif berhasil dihapus;
+endif
+
+stop
+@enduml
