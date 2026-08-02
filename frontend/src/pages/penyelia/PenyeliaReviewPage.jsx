@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { AlertCircle, CheckCircle2, ClipboardList, FlaskRound, Loader2, Search } from 'lucide-react';
 import { getApiErrorMessage } from '../../api/httpClient';
 import { supervisionApi } from '../../api/supervisionApi';
@@ -72,24 +73,26 @@ export function PenyeliaReviewPage() {
   const [activeTab, setActiveTab] = useState('aktif');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const fetchOverview = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage('');
+  const fetchOverview = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setErrorMessage('');
 
     try {
       const data = await supervisionApi.getTestingOverview();
       setRows(Array.isArray(data) ? data : []);
     } catch (err) {
-      setRows([]);
-      setErrorMessage(getApiErrorMessage(err, 'Gagal memuat overview pengujian.'));
+      if (!silent) setRows([]);
+      if (!silent) setErrorMessage(getApiErrorMessage(err, 'Gagal memuat overview pengujian.'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchOverview();
   }, [fetchOverview]);
+
+  useAutoRefresh(fetchOverview);
 
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => getRowTimeValue(b) - getRowTimeValue(a));

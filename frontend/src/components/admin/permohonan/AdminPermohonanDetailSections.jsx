@@ -555,7 +555,7 @@ export function LhuDocumentSection({
                           {getLhuStatusBadge(row.lhu?.status_lhu || row.lhu?.statusLhu || 'Belum Ada LHU')}
                         </td>
                         <td className="px-4 py-3 text-gray-700">
-                          {formatDate(row.lhu?.tanggal_penerbitan || row.lhu?.tanggalPenerbitan || row.lhu?.kalab_at || row.lhu?.kalabAt)}
+                          {formatDate(row.lhu?.tanggal_penerbitan || row.lhu?.tanggalPenerbitan || row.lhu?.qc_at || row.lhu?.qcAt)}
                         </td>
                         <td className="px-4 py-3 text-center">
                           {filePath ? (

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import { useLocation } from 'react-router-dom';
 import { lhuReviewApi } from '../../../api/lhuReviewApi';
 import { showError, showSuccess, showWarning } from '../../../utils/feedback';
@@ -129,36 +130,44 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
     );
   }
 
-  const loadQueue = useCallback(async () => {
-    setLoadingQueue(true);
+  const loadQueue = useCallback(async (silent = false) => {
+    if (!silent) setLoadingQueue(true);
 
     try {
       const data = await lhuReviewApi.getQcFinalizationQueue();
       setQueue(normalizeQcQueueResponse(data));
     } catch (error) {
-      showError(getErrorMessage(error, 'Gagal memuat antrean finalisasi LHU.'));
+      if (!silent) showError(getErrorMessage(error, 'Gagal memuat antrean finalisasi LHU.'));
     } finally {
-      setLoadingQueue(false);
+      if (!silent) setLoadingQueue(false);
     }
   }, []);
 
-  const loadHistory = useCallback(async () => {
-    setLoadingHistory(true);
+  const loadHistory = useCallback(async (silent = false) => {
+    if (!silent) setLoadingHistory(true);
 
     try {
       const data = await lhuReviewApi.getLhuFinalizationHistory();
       setHistoryRows(data || []);
     } catch (error) {
-      showError(getErrorMessage(error, 'Gagal memuat riwayat LHU.'));
+      if (!silent) showError(getErrorMessage(error, 'Gagal memuat riwayat LHU.'));
     } finally {
-      setLoadingHistory(false);
+      if (!silent) setLoadingHistory(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadQueue();
-    loadHistory();
+  const fetchAll = useCallback(async (silent = false) => {
+    await Promise.all([
+      loadQueue(silent),
+      loadHistory(silent)
+    ]);
   }, [loadQueue, loadHistory]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  useAutoRefresh(fetchAll);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search || '');
@@ -245,18 +254,21 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
       return status.includes('menunggu qc') || status.includes('draft') || status.includes('belum');
     }).length;
 
-    const menungguKalab = historyRows.filter((item) =>
-      String(getStatusLhu(item)).toLowerCase().includes('menunggu persetujuan kepala lab')
-    ).length;
-
     const disahkan = historyRows.filter((item) =>
       String(getStatusLhu(item)).toLowerCase().includes('disahkan')
     ).length;
 
+    const today = new Date().toISOString().slice(0, 10);
+    const finalHariIni = historyRows.filter((item) => {
+      const status = String(getStatusLhu(item)).toLowerCase();
+      const qcDate = String(item.qcAt || item.qc_at || item.tanggalPenerbitan || item.tanggal_penerbitan || '').slice(0, 10);
+      return status.includes('disahkan') && qcDate === today;
+    }).length;
+
     return {
       total,
       belumDibuat,
-      menungguKalab,
+      finalHariIni,
       disahkan,
     };
   }, [queue, historyRows]);
@@ -393,7 +405,7 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
 
   function handleFinalize() {
     if (!isQcEditableLhuStatus(selectedStatus)) {
-      showWarning('LHU sudah masuk tahap approval Kepala Lab atau sudah disahkan, sehingga tidak bisa difinalisasi ulang oleh QC.');
+      showWarning('LHU sudah masuk tahap approval Pengendalian Mutu atau sudah disahkan, sehingga tidak bisa difinalisasi ulang oleh QC.');
       return;
     }
 
@@ -429,8 +441,8 @@ export function useQcLhuPage({ initialLhuNumber = '' } = {}) {
 
       showSuccess(
         nomorLhu
-          ? `LHU ${nomorLhu} berhasil dibuat dan dikirim ke Kepala Lab.`
-          : 'LHU berhasil dibuat dan dikirim ke Kepala Lab.'
+          ? `LHU ${nomorLhu} berhasil dibuat dan dilangsung sahkan.`
+          : 'LHU berhasil dibuat dan dilangsung sahkan.'
       );
 
       setConfirmFinalizeModal({ open: false, sampleLabel: '' });

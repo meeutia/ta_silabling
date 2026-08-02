@@ -387,7 +387,6 @@ getSampleNotificationContext = async (noSampel) => {
             'RL-004': ['penyelia'],
             'RL-005': ['analis'],
             'RL-006': ['qc', 'quality control'],
-            'RL-007': ['kalab', 'kepala lab', 'kepala laboratorium'],
         };
         return map[roleKey] || [];
     };

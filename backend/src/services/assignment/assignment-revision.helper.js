@@ -541,11 +541,6 @@ pickArray = (source, keys = []) => {
             lower === 'pengujian') {
             return { internal: 'Kasi Pengujian', display: 'Kasi Pengujian' };
         }
-        if (lower === 'kalab' ||
-            lower === 'kepala lab' ||
-            lower === 'kepala laboratorium') {
-            return { internal: 'Kalab', display: 'Kalab' };
-        }
         // Fallback: keep as-is
         return { internal: raw, display: raw };
     };

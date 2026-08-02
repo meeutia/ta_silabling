@@ -3,8 +3,8 @@
 const jwt = require('jsonwebtoken');
 const Roles = require('../../src/constants/roles');
 
-const FUTURE_DATE = '2026-06-02';
-const FUTURE_DATE_2 = '2026-06-03';
+const FUTURE_DATE = '2099-06-02';
+const FUTURE_DATE_2 = '2099-06-03';
 const VALID_TIME = '09:00';
 const VALID_TIME_2 = '10:00';
 const INVALID_TIME = '17:15';
@@ -16,7 +16,7 @@ const nikByRole = {
   [Roles.PENYELIA]: '3171000000000004',
   [Roles.ANALIS]: '3171000000000005',
   [Roles.QC]: '3171000000000006',
-  [Roles.KALAB]: '3171000000000007',
+
 };
 
 function makeToken(idRole, nik = nikByRole[idRole] || '3171999999999999') {
@@ -135,6 +135,7 @@ function validAssignmentPayload(overrides = {}) {
     assignments: [
       {
         id_fppl_parameter_metode: 'FPM-001',
+        id_user_analis: nikByRole[Roles.ANALIS],
         no_sampel: ['37/AM/VI/2026'],
         tanggal_tenggat: FUTURE_DATE_2,
         catatan_detail: 'Prioritas normal.',

@@ -51,8 +51,4 @@ export const dashboardApi = {
     return requestData('/lhu/finalization/history', {}, authConfig);
   },
 
-  getKalabQueue() {
-    return requestData('/lhu/kalab/queue', {}, authConfig);
-  },
-
 };

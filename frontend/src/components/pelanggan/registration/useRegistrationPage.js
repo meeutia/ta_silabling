@@ -44,6 +44,7 @@ export function useRegistrationPage({
   const [isAgreed, setIsAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [duplicateRequest, setDuplicateRequest] = useState(null);
   const [showTariffModal, setShowTariffModal] = useState(false);
 
   const [waterTypes, setWaterTypes] = useState([]);
@@ -390,6 +391,7 @@ export function useRegistrationPage({
 
     setSubmitting(true);
     setSubmitError('');
+    setDuplicateRequest(null);
 
     try {
       const payload = buildRegistrationPayload(normalizedFormData);
@@ -403,6 +405,11 @@ export function useRegistrationPage({
       if (err?.status === 401 || err?.status === 403) {
         setSubmitError('Sesi login berakhir. Silakan login ulang.');
         onSessionExpired?.();
+      } else if (err?.status === 409) {
+        // Duplikasi permohonan — ambil data permohonan lama dari response
+        const existing = err?.data?.errors?.existingRequest || err?.data?.data?.existingRequest || null;
+        setDuplicateRequest(existing);
+        setSubmitError(err?.message || 'Permohonan dengan data yang sama sudah pernah dibuat.');
       } else {
         setSubmitError(err?.message || 'Tidak bisa menghubungi server.');
       }
@@ -430,6 +437,7 @@ export function useRegistrationPage({
     setIsAgreed,
     submitting,
     submitError,
+    duplicateRequest,
     showTariffModal,
     setShowTariffModal,
     waterTypes,

@@ -256,7 +256,7 @@ class LhuPickupService {
             throw err;
         }
         if (coverage.notFinalSamples.length > 0) {
-            const err = new Error(`Masih ada sampel yang LHU-nya belum disahkan Kalab: ${coverage.notFinalSamples.join(', ')}.`);
+            const err = new Error(`Masih ada sampel yang LHU-nya belum disahkan: ${coverage.notFinalSamples.join(', ')}.`);
             err.statusCode = 400;
             throw err;
         }

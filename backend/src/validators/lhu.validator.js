@@ -20,14 +20,6 @@ const validateFinalizeLhu = (req, res, next) => {
   next();
 };
 
-const validateKalabApproval = (req, res, next) => {
-  if (isBlank(req.body?.nomorLhu || req.body?.nomor_lhu || req.query?.nomorLhu)) {
-    return fail(res, 'Nomor LHU wajib dikirim.');
-  }
-
-  next();
-};
-
 const validateLhuPickupSchedule = (req, res, next) => {
   const body = req.body || {};
 
@@ -69,7 +61,6 @@ const validateLhuPickupCompletion = (req, res, next) => {
 
 module.exports = {
   validateFinalizeLhu,
-  validateKalabApproval,
   validateLhuPickupCompletion,
   validateLhuPickupSchedule,
 };

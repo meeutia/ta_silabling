@@ -4,7 +4,10 @@ require('../fixtures/integration-mocks');
 
 const request = require('supertest');
 const app = require('../../src/app');
-const assignmentService = require('../../src/services/assignment.service');
+const assignmentReadService = require('../../src/services/assignment/assignment-read.service');
+const assignmentWorksheetService = require('../../src/services/assignment/assignment-worksheet.service');
+const assignmentPenyeliaReviewService = require('../../src/services/assignment/assignment-penyelia-review.service');
+const assignmentKasiReviewService = require('../../src/services/assignment/assignment-kasi-review.service');
 const {
   FUTURE_DATE_2,
   Roles,
@@ -36,7 +39,7 @@ beforeEach(() => {
 
 describe('Integration Testing - Input Hasil dan Review', () => {
   test('IT-046 Penyelia melihat overview pengujian', async () => {
-    assignmentService.getTestingOverview.mockResolvedValueOnce({
+    assignmentReadService.getTestingOverview.mockResolvedValueOnce({
       totalSampel: 3,
       menungguHasil: 1,
       selesai: 2,
@@ -49,11 +52,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data.totalSampel).toBe(3);
-    expect(assignmentService.getTestingOverview).toHaveBeenCalledTimes(1);
+    expect(assignmentReadService.getTestingOverview).toHaveBeenCalledTimes(1);
   });
 
   test('IT-047 Analis melihat penugasan miliknya', async () => {
-    assignmentService.getMyAssignments.mockResolvedValueOnce([
+    assignmentReadService.getMyAssignments.mockResolvedValueOnce([
       { id_penugasan_detail: 'PD001', no_sampel: '37/AM/VI/2026', status: 'Ditugaskan' },
     ]);
 
@@ -64,11 +67,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data).toHaveLength(1);
-    expect(assignmentService.getMyAssignments).toHaveBeenCalledWith(nikByRole[Roles.ANALIS]);
+    expect(assignmentReadService.getMyAssignments).toHaveBeenCalledWith(nikByRole[Roles.ANALIS]);
   });
 
   test('IT-048 Analis melihat detail pekerjaan pengujian', async () => {
-    assignmentService.getAssignmentWorkDetail.mockResolvedValueOnce({
+    assignmentWorksheetService.getAssignmentWorkDetail.mockResolvedValueOnce({
       id_penugasan_detail: 'PD001',
       no_sampel: '37/AM/VI/2026',
       parameter: 'pH',
@@ -81,11 +84,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data.id_penugasan_detail).toBe('PD001');
-    expect(assignmentService.getAssignmentWorkDetail).toHaveBeenCalledWith('PD001', nikByRole[Roles.ANALIS]);
+    expect(assignmentWorksheetService.getAssignmentWorkDetail).toHaveBeenCalledWith('PD001', nikByRole[Roles.ANALIS]);
   });
 
   test('IT-049 Analis menyimpan draft worksheet pengujian', async () => {
-    assignmentService.saveWorksheetDraft.mockResolvedValueOnce({
+    assignmentWorksheetService.saveWorksheetDraft.mockResolvedValueOnce({
       id_penugasan_detail: 'PD001',
       status: 'Draft',
     });
@@ -98,11 +101,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Worksheet draft tersimpan.');
-    expect(assignmentService.saveWorksheetDraft).toHaveBeenCalledWith('PD001', expect.any(Object), nikByRole[Roles.ANALIS]);
+    expect(assignmentWorksheetService.saveWorksheetDraft).toHaveBeenCalledWith('PD001', expect.any(Object), nikByRole[Roles.ANALIS]);
   });
 
   test('IT-050 Analis menginputkan hasil pengujian', async () => {
-    assignmentService.saveWorksheetResults.mockResolvedValueOnce({
+    assignmentWorksheetService.saveWorksheetResults.mockResolvedValueOnce({
       id_penugasan_detail: 'PD001',
       status: 'Draft Hasil',
       results: validResultsPayload().results,
@@ -116,7 +119,7 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Hasil pengujian tersimpan.');
-    expect(assignmentService.saveWorksheetResults).toHaveBeenCalledWith('PD001', expect.any(Object), nikByRole[Roles.ANALIS]);
+    expect(assignmentWorksheetService.saveWorksheetResults).toHaveBeenCalledWith('PD001', expect.any(Object), nikByRole[Roles.ANALIS]);
   });
 
   test('IT-051 Sistem menolak hasil pengujian dengan format hasil tidak valid', async () => {
@@ -128,11 +131,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(false);
     expect(response.body.message).toContain('harus berupa angka');
-    expect(assignmentService.saveWorksheetResults).not.toHaveBeenCalled();
+    expect(assignmentWorksheetService.saveWorksheetResults).not.toHaveBeenCalled();
   });
 
   test('IT-052 Analis mengirim hasil pengujian ke Penyelia', async () => {
-    assignmentService.submitWorksheet.mockResolvedValueOnce({
+    assignmentWorksheetService.submitWorksheet.mockResolvedValueOnce({
       id_penugasan_detail: 'PD001',
       status: 'Menunggu Review Penyelia',
     });
@@ -145,7 +148,7 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Worksheet berhasil dikirim.');
-    expect(assignmentService.submitWorksheet).toHaveBeenCalledWith('PD001', nikByRole[Roles.ANALIS], expect.any(Object));
+    expect(assignmentWorksheetService.submitWorksheet).toHaveBeenCalledWith('PD001', nikByRole[Roles.ANALIS], expect.any(Object));
   });
 
   test('IT-053 Sistem menolak submit hasil jika file worksheet belum tersedia', async () => {
@@ -166,11 +169,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(false);
     expect(response.body.message).toBe('File Worksheet wajib diupload.');
-    expect(assignmentService.submitWorksheet).not.toHaveBeenCalled();
+    expect(assignmentWorksheetService.submitWorksheet).not.toHaveBeenCalled();
   });
 
   test('IT-054 Penyelia melihat antrean hasil yang menunggu review', async () => {
-    assignmentService.getReviewQueue.mockResolvedValueOnce([
+    assignmentPenyeliaReviewService.getReviewQueue.mockResolvedValueOnce([
       { id_penugasan_detail: 'PD001', status: 'Menunggu Review Penyelia' },
     ]);
 
@@ -181,11 +184,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data[0].status).toBe('Menunggu Review Penyelia');
-    expect(assignmentService.getReviewQueue).toHaveBeenCalledTimes(1);
+    expect(assignmentPenyeliaReviewService.getReviewQueue).toHaveBeenCalledTimes(1);
   });
 
   test('IT-055 Penyelia melihat detail hasil yang akan direview', async () => {
-    assignmentService.getReviewDetail.mockResolvedValueOnce({
+    assignmentPenyeliaReviewService.getReviewDetail.mockResolvedValueOnce({
       id_penugasan_detail: 'PD001',
       results: validResultsPayload().results,
     });
@@ -197,11 +200,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data.id_penugasan_detail).toBe('PD001');
-    expect(assignmentService.getReviewDetail).toHaveBeenCalledWith('PD001');
+    expect(assignmentPenyeliaReviewService.getReviewDetail).toHaveBeenCalledWith('PD001');
   });
 
   test('IT-056 Penyelia menyetujui hasil pengujian', async () => {
-    assignmentService.reviewWorksheet.mockResolvedValueOnce({
+    assignmentPenyeliaReviewService.reviewWorksheet.mockResolvedValueOnce({
       id_penugasan_detail: 'PD001',
       status: 'Disetujui Penyelia',
     });
@@ -214,11 +217,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Worksheet berhasil disetujui.');
-    expect(assignmentService.reviewWorksheet).toHaveBeenCalledWith('PD001', { action: 'approve' }, nikByRole[Roles.PENYELIA]);
+    expect(assignmentPenyeliaReviewService.reviewWorksheet).toHaveBeenCalledWith('PD001', { action: 'approve' }, nikByRole[Roles.PENYELIA]);
   });
 
   test('IT-057 Penyelia meminta revisi hasil pengujian dengan catatan', async () => {
-    assignmentService.reviewWorksheet.mockResolvedValueOnce({
+    assignmentPenyeliaReviewService.reviewWorksheet.mockResolvedValueOnce({
       id_penugasan_detail: 'PD001',
       status: 'Perlu Revisi Hasil',
       revisions: validPenyeliaRevisionPayload().revisions,
@@ -232,11 +235,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Permintaan revisi berhasil dikirim.');
-    expect(assignmentService.reviewWorksheet).toHaveBeenCalledWith('PD001', expect.objectContaining({ action: 'revise' }), nikByRole[Roles.PENYELIA]);
+    expect(assignmentPenyeliaReviewService.reviewWorksheet).toHaveBeenCalledWith('PD001', expect.objectContaining({ action: 'revise' }), nikByRole[Roles.PENYELIA]);
   });
 
   test('IT-058 Kasi melihat detail hasil yang telah disetujui Penyelia', async () => {
-    assignmentService.getKasiReviewDetail.mockResolvedValueOnce({
+    assignmentKasiReviewService.getKasiReviewDetail.mockResolvedValueOnce({
       no_sampel: '37/AM/VI/2026',
       status_review: 'Disetujui Penyelia',
     });
@@ -248,11 +251,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data.status_review).toBe('Disetujui Penyelia');
-    expect(assignmentService.getKasiReviewDetail).toHaveBeenCalledWith('37/AM/VI/2026');
+    expect(assignmentKasiReviewService.getKasiReviewDetail).toHaveBeenCalledWith('37/AM/VI/2026');
   });
 
   test('IT-059 Kasi menyetujui hasil pengujian', async () => {
-    assignmentService.approveKasiReview.mockResolvedValueOnce({
+    assignmentKasiReviewService.approveKasiReview.mockResolvedValueOnce({
       no_sampel: '37/AM/VI/2026',
       status_review: 'Disetujui Kasi',
     });
@@ -265,11 +268,11 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Hasil sampel berhasil disetujui Kasi Pengujian.');
-    expect(assignmentService.approveKasiReview).toHaveBeenCalledWith('37/AM/VI/2026', nikByRole[Roles.KASI]);
+    expect(assignmentKasiReviewService.approveKasiReview).toHaveBeenCalledWith('37/AM/VI/2026', nikByRole[Roles.KASI]);
   });
 
   test('IT-060 Kasi meminta revisi hasil pengujian dengan catatan', async () => {
-    assignmentService.reviseKasiReview.mockResolvedValueOnce({
+    assignmentKasiReviewService.reviseKasiReview.mockResolvedValueOnce({
       no_sampel: '37/AM/VI/2026',
       status_review: 'Revisi Kasi',
       revisions: validKasiRevisionPayload().revisions,
@@ -283,7 +286,7 @@ describe('Integration Testing - Input Hasil dan Review', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Permintaan revisi hasil berhasil dikirim.');
-    expect(assignmentService.reviseKasiReview).toHaveBeenCalledWith(
+    expect(assignmentKasiReviewService.reviseKasiReview).toHaveBeenCalledWith(
       '37/AM/VI/2026',
       null,
       nikByRole[Roles.KASI],

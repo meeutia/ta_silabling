@@ -458,7 +458,7 @@ findExistingFile = (paths = []) => {
         }
         notes.push('Laboratorium melayani pengaduan maksimum 1 (satu) minggu terhitung dari tanggal penyerahan LHU;', 'Keabsahan data pada laporan hasil penggandaan berada di luar tanggung jawab laboratorium.');
         if (!isFinal) {
-            notes.push('Dokumen ini adalah draft dan belum disahkan Kepala Lab.');
+            notes.push('Dokumen ini adalah draft dan belum difinalisasi Pengendalian Mutu.');
         }
         if (lhu.catatanTambahanLhu) {
             notes.push(lhu.catatanTambahanLhu);
@@ -551,16 +551,16 @@ findExistingFile = (paths = []) => {
     drawSignature = (doc, lhu, isFinal, y) => {
         const x = 360;
         doc.font(PDF_FONT.regular).fontSize(8).fillColor('#111111');
-        doc.text(`Padang, ${isFinal ? formatDateId(lhu.tanggalPenerbitan || lhu.kalabAt) : '-'}`, x, y, {
+        doc.text(`Padang, ${isFinal ? formatDateId(lhu.tanggalPenerbitan || lhu.qcAt || lhu.createdAt) : '-'}`, x, y, {
             width: 180,
             align: 'center',
         });
-        doc.text('Kepala UPTD Laboratorium Lingkungan,', x, y + 14, {
+        doc.text(valueOrDash(lhu.kalabJabatan || 'Kepala UPTD Laboratorium Lingkungan') + ',', x, y + 14, {
             width: 180,
             align: 'center',
         });
         doc.font(PDF_FONT.regular).fontSize(7).fillColor(isFinal ? '#111111' : '#b45309');
-        doc.text(isFinal ? '' : '(Draft belum disahkan)', x, y + 52, {
+        doc.text(isFinal ? '' : '(Draft belum difinalisasi)', x, y + 52, {
             width: 180,
             align: 'center',
         });

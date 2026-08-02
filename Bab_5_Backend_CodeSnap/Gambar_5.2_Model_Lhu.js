@@ -8,12 +8,10 @@ class Lhu extends Model {
     Lhu.hasMany(models.Sampel,  { foreignKey: 'nomor_lhu', as: 'sampels' });
   }
 
-  isDraft()     { return this.status_lhu === 'Draft'; }
-  isFinalized() { return this.status_lhu === 'Menunggu Pengesahan'; }
+  isWaitQc()    { return this.status_lhu === 'Menunggu QC'; }
   isApproved()  { return this.status_lhu === 'Disahkan'; }
 
-  canBeFinalized() { return this.isDraft(); }
-  canBeApproved()  { return this.isFinalized(); }
+  canBeFinalized() { return this.isWaitQc(); }
   hasPublishedFile() { return Boolean(this.file_lhu_path); }
 }
 
@@ -25,18 +23,14 @@ Lhu.init({
   file_lhu_path:      { type: DataTypes.STRING(255), allowNull: true  },
   qc_by:              { type: DataTypes.STRING(16),  allowNull: true  },
   qc_at:              { type: DataTypes.DATE,        allowNull: true  },
-  kalab_by:           { type: DataTypes.STRING(16),  allowNull: true  },
-  kalab_at:           { type: DataTypes.DATE,        allowNull: true  },
   status_lhu: {
     type: DataTypes.ENUM(
-      'Draft',
       'Menunggu QC',
-      'Menunggu Persetujuan Kepala Lab',
       'Disahkan',
       'Dibatalkan'
     ),
     allowNull: false,
-    defaultValue: 'Draft',
+    defaultValue: 'Menunggu QC',
   },
 }, {
   sequelize,

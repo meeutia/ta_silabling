@@ -5,7 +5,6 @@ export const ROLE_CODE_TO_KEY = {
   'RL-004': 'penyelia',
   'RL-005': 'analis',
   'RL-006': 'qc',
-  'RL-007': 'kalab',
 };
 
 export function resolveUserRole(user = {}) {

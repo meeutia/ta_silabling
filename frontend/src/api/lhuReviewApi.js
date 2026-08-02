@@ -89,24 +89,4 @@ export const lhuReviewApi = {
     );
   },
 
-  getKalabQueue() {
-    return requestData('/lhu/kalab/queue', {}, { auth: true });
-  },
-
-  approveKalabLhu(nomorLhu) {
-    const normalizedNomorLhu = String(nomorLhu || '').trim();
-
-    const query = new URLSearchParams({ nomorLhu: normalizedNomorLhu }).toString();
-
-    return requestJson(
-      `/lhu/kalab/approve?${query}`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          nomorLhu: normalizedNomorLhu,
-        }),
-      },
-      { auth: true }
-    );
-  },
 };

@@ -2,7 +2,7 @@ const { Op, QueryTypes } = require('sequelize');
 const sequelize = require('../../config/database');
 const lhuPdfService = require('./lhu-pdf.service');
 const WorkflowLogService = require('../workflow/workflow-log.service');
-const { generateDraftNomorLhu } = require('../../utils/id-generator');
+const { generateNomorLhu } = require('../../utils/id-generator');
 const { Fppl, FpplSampel, Pelanggan, JadwalSampel, JenisSampel, RegBm, PktBm, Klasifikasi, PktBmParam, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, Lhu, } = require('../../models/Associations');
 const { LHU_STATUS, LHU_EDITABLE_BY_QC_STATUSES, LHU_NEXT_STATUS, } = require('../../constants/lhu-status.constant');
 const { calculateAccreditationStats, getPlain, pickObject, getLkaHasilTargetKey, getFallbackParameterKey, sortDetailRowsForLhu, applyDetailOrder, getExistingLhuBySample, getSampleInfo, getLkaResultRows, getExpectedParameterRows, getBmInfo, isEditableByQcStatus, mapSampleRequestData, mapPelangganRequestData, mapRequestRequestData, buildDefaultDetailRows, toTinyIntFlag, getSubkontrakSnapshot, } = require('./lhu-data.service');
@@ -11,7 +11,7 @@ const { getApprovedLkaRowsForExpectedParameters, } = require('./lhu-approved-lka
 const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/bm-format.util');
 const { toCamelCaseDeep } = require('../../utils/case-transform.util');
 class LhuFinalizationService {
-dedupeLkaResultRows = (rows = []) => {
+    dedupeLkaResultRows = (rows = []) => {
         const map = new Map();
         rows.forEach((row) => {
             const key = String(row.id_metode_parameter ||
@@ -662,7 +662,7 @@ dedupeLkaResultRows = (rows = []) => {
             }
             const locked = existingRows.find((row) => !isEditableByQcStatus(row.status_lhu));
             if (locked) {
-                throw new Error(`Sampel sudah masuk LHU ${locked.nomor_lhu} yang sedang proses approval dan tidak dapat diubah QC.`);
+                throw new Error(`Sampel sudah masuk LHU ${locked.nomor_lhu} yang sudah final dan tidak dapat diubah QC.`);
             }
             const existingNomors = [...new Set(existingRows.map((row) => row.nomor_lhu).filter(Boolean))];
             if (existingNomors.length > 1) {
@@ -672,28 +672,39 @@ dedupeLkaResultRows = (rows = []) => {
             let lhuInstance = existing
                 ? await Lhu.findOne({ where: { nomor_lhu: existing.nomor_lhu }, transaction, lock: transaction.LOCK.UPDATE })
                 : null;
-            const nomorLhu = existing?.nomor_lhu || await generateDraftNomorLhu(Lhu, transaction);
+            const issuedAt = new Date();
+            const oldNomorLhu = existing?.nomor_lhu || null;
+            const nomorLhu = await generateNomorLhu(Lhu, transaction, issuedAt);
+            const duplicate = await Lhu.findOne({
+                where: { nomor_lhu: nomorLhu },
+                transaction,
+                lock: transaction.LOCK.UPDATE,
+            });
+            if (duplicate && duplicate.nomor_lhu !== oldNomorLhu) {
+                throw new Error(`Nomor LHU resmi ${nomorLhu} sudah digunakan. Silakan ulangi finalisasi.`);
+            }
             const firstSample = sampleInfos[0];
             const lhuRequestData = {
                 nomor_lhu: nomorLhu,
                 id_registrasi: firstSample.id_registrasi || firstSample.idRegistrasi,
                 id_pkt_bm: idPktBm,
-                tanggal_penerbitan: null,
+                tanggal_penerbitan: issuedAt,
                 file_lhu_path: null,
                 qc_by: currentNik,
-                qc_at: new Date(),
+                qc_at: issuedAt,
                 kalab_by: null,
                 kalab_at: null,
                 status_lhu: LHU_NEXT_STATUS.AFTER_QC_FINALIZE,
             };
             if (lhuInstance) {
-                await lhuInstance.update(lhuRequestData, { transaction });
+                await Lhu.update(lhuRequestData, { where: { nomor_lhu: oldNomorLhu }, transaction });
+                lhuInstance = await Lhu.findOne({ where: { nomor_lhu: nomorLhu }, transaction, lock: transaction.LOCK.UPDATE });
             }
             else {
                 lhuInstance = await Lhu.create(lhuRequestData, { transaction });
             }
             await Sampel.update({ nomor_lhu: null }, {
-                where: { nomor_lhu: nomorLhu },
+                where: { nomor_lhu: oldNomorLhu || nomorLhu },
                 transaction,
             });
             await Sampel.update({ nomor_lhu: nomorLhu }, {
@@ -702,22 +713,24 @@ dedupeLkaResultRows = (rows = []) => {
             });
             const orderedDetails = applyDetailOrder(details.map((row) => ({ ...row, nomor_lhu: nomorLhu, nomorLhu })), detailOrderInput);
             await this.saveDetailOrderSnapshot({ nomorLhu, rows: orderedDetails, currentNik, transaction });
-            const pdfResult = await lhuPdfService.generateDraftLhuPdf(nomorLhu, transaction, { detailOrder: orderedDetails });
+            const pdfResult = await lhuPdfService.generateFinalLhuPdf(nomorLhu, transaction, { detailOrder: orderedDetails });
             await lhuInstance.update({ file_lhu_path: pdfResult.filePath }, { transaction });
             await WorkflowLogService.logStatusTransition({
                 entityType: 'LHU',
                 entityId: nomorLhu,
-                action: existing ? 'MEMPERBARUI_DRAFT_LHU' : 'MEMBUAT_DRAFT_LHU',
+                action: existing ? 'MEMPERBARUI_LHU_FINAL' : 'MEMBUAT_LHU_FINAL',
                 statusBefore: existing?.status_lhu || null,
                 statusAfter: LHU_NEXT_STATUS.AFTER_QC_FINALIZE,
                 source: 'QC',
-                note: existing ? 'Draft LHU multi-sampel diperbarui oleh QC.' : 'Draft LHU multi-sampel dibuat oleh QC.',
+                note: existing
+                    ? `LHU ${oldNomorLhu || ''} diperbarui dan langsung disahkan oleh QC.`.trim()
+                    : 'LHU multi-sampel dibuat dan langsung disahkan oleh QC.',
                 actorNik: currentNik || null,
                 transaction,
             });
             return {
                 nomorLhu,
-                idRegistrasi: firstSample.id_registrasi,
+                idRegistrasi: firstSample.id_registrasi || firstSample.idRegistrasi,
                 sampleNos,
                 statusLhu: LHU_NEXT_STATUS.AFTER_QC_FINALIZE,
                 idPktBm,

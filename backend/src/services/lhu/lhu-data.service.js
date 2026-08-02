@@ -5,7 +5,7 @@ const { withPaketBmDisplayFields, buildPaketBmTeksLhu } = require('../../utils/b
 const { isLhuEditableByQc } = require('../../constants/lhu-status.constant');
 const { toCamelCaseDeep } = require('../../utils/case-transform.util');
 class LhuPdfDataService {
-getPlain = (instance) => {
+    getPlain = (instance) => {
         return instance ? toCamelCaseDeep(instance.get({ plain: true })) : null;
     };
     pickObject = (source, keys = []) => {
@@ -100,8 +100,8 @@ getPlain = (instance) => {
         return rows
             .filter((row) => String(row?.statusJadwal || '').trim().toLowerCase() !== 'dibatalkan')
             .sort((a, b) => (this.getScheduleCreatedTime(b) - this.getScheduleCreatedTime(a) ||
-            this.getScheduleIdOrder(b) - this.getScheduleIdOrder(a) ||
-            this.getScheduleDateTime(b) - this.getScheduleDateTime(a)))[0] || null;
+                this.getScheduleIdOrder(b) - this.getScheduleIdOrder(a) ||
+                this.getScheduleDateTime(b) - this.getScheduleDateTime(a)))[0] || null;
     };
     getPegawaiSnapshot = async (nik, transaction = null) => {
         const userNik = String(nik || '').trim();
@@ -126,6 +126,54 @@ getPlain = (instance) => {
         return {
             namaPegawai: row.namaPegawai || null,
             nip: row.nip || null,
+        };
+    };
+    getLhuSignerSnapshot = async (fallbackNik = null, transaction = null) => {
+        const envName = String(process.env.LHU_SIGNER_NAME || '').trim();
+        const envNip = String(process.env.LHU_SIGNER_NIP || '').trim();
+        const title = String(process.env.LHU_SIGNER_TITLE || '').trim() || 'Kepala UPTD Laboratorium Lingkungan';
+
+        if (envName) {
+            return {
+                namaPegawai: envName,
+                nip: envNip || null,
+                jabatan: title,
+            };
+        }
+
+        const candidates = [];
+        const pushCandidate = (where) => {
+            const key = JSON.stringify(where || {});
+            if (where && Object.keys(where).length && !candidates.some((item) => JSON.stringify(item) === key)) {
+                candidates.push(where);
+            }
+        };
+
+        pushCandidate(process.env.LHU_SIGNER_PEGAWAI_ID ? { id_pegawai: String(process.env.LHU_SIGNER_PEGAWAI_ID).trim() } : null);
+        pushCandidate(process.env.LHU_SIGNER_NIK ? { nik: String(process.env.LHU_SIGNER_NIK).trim() } : null);
+        pushCandidate(fallbackNik ? { nik: String(fallbackNik).trim() } : null);
+        pushCandidate(envNip ? { nip: envNip } : null);
+        pushCandidate({ id_pegawai: 'PGW-001' });
+
+        for (const where of candidates) {
+            const pegawai = await Pegawai.findOne({
+                where,
+                attributes: ['id_pegawai', 'nik', 'nama_pegawai', 'nip'],
+                transaction,
+            });
+            if (!pegawai) continue;
+            const row = this.getPlain(pegawai);
+            return {
+                namaPegawai: row.namaPegawai || null,
+                nip: row.nip || null,
+                jabatan: title,
+            };
+        }
+
+        return {
+            namaPegawai: null,
+            nip: envNip || null,
+            jabatan: title,
         };
     };
     getLhuHeaderForPdf = async (nomorLhu, transaction = null) => {
@@ -509,9 +557,9 @@ getPlain = (instance) => {
             throw new Error('Data LHU tidak ditemukan untuk generate PDF.');
         }
         const sampleRows = await this.getLhuSampleRowsForPdf(nomorLhu, transaction);
-        const [qc, kalab, details] = await Promise.all([
+        const [qc, signer, details] = await Promise.all([
             this.getPegawaiSnapshot(header.qcBy, transaction),
-            this.getPegawaiSnapshot(header.kalabBy, transaction),
+            this.getLhuSignerSnapshot(header.kalabBy, transaction),
             this.getLhuDetailRowsForPdf(nomorLhu, header, sampleRows, transaction, options),
         ]);
         const firstSample = sampleRows[0] || {};
@@ -536,8 +584,9 @@ getPlain = (instance) => {
             standarLhu: header.teksLhu || [header.regBmInstansi, header.refReg].filter(Boolean).join(' - ') || null,
             qcNama: qc.namaPegawai,
             qcNip: qc.nip,
-            kalabNama: kalab.namaPegawai,
-            kalabNip: kalab.nip,
+            kalabNama: signer.namaPegawai,
+            kalabNip: signer.nip,
+            kalabJabatan: signer.jabatan,
         };
         return { lhu, details: toCamelCaseDeep(details) };
     };
@@ -1168,7 +1217,7 @@ getPlain = (instance) => {
         const header = await this.getLhuHeaderForPdf(nomorLhu, transaction);
         if (!header) return [];
         const sampleRows = await this.getLhuSampleRowsForPdf(nomorLhu, transaction);
-        
+
         const explicitDetailOrder = this.normalizeDetailOrderInput(options.detailOrder || options.detail_order || []);
         const storedDetailOrder = explicitDetailOrder.length ? explicitDetailOrder : await this.getStoredDetailOrderForLhu(nomorLhu, transaction);
 
@@ -1181,7 +1230,8 @@ getPlain = (instance) => {
         const firstSample = sampleInfos[0] || {};
         const sampleNos = sampleInfos.map((sample) => sample.noSampel || sample.no_sampel).filter(Boolean);
         const qcNama = await this.getPegawaiDisplayName(lhuData.qcBy || lhuData.qc_by);
-        const kalabNama = await this.getPegawaiDisplayName(lhuData.kalabBy || lhuData.kalab_by);
+        const signer = await this.getLhuSignerSnapshot(lhuData.kalabBy || lhuData.kalab_by);
+        const kalabNama = signer.namaPegawai || null;
         const nomorFppl = firstSample.nomorFppl || firstSample.nomor_fppl || lhuData.nomorFppl || lhuData.nomor_fppl || null;
         return {
             ...lhuData,

@@ -54,8 +54,6 @@ const getLhuRowsFromActualSample = (actualSample) => {
 const getLhuNumberValue = (lhu) => lhu?.nomor_lhu || lhu?.nomorLhu || lhu?.no_lhu || lhu?.noLhu || '';
 
 export const getLhuCreatedDateValue = (lhu) => pickFirstDateValue(
-  lhu?.diajukan_ke_kalab_pada,
-  lhu?.diajukanKeKalabPada,
   lhu?.qc_approved_at,
   lhu?.qcApprovedAt,
   lhu?.created_at,
@@ -65,8 +63,6 @@ export const getLhuCreatedDateValue = (lhu) => pickFirstDateValue(
 );
 
 export const getLhuApprovedDateValue = (lhu) => pickFirstDateValue(
-  lhu?.kalab_at,
-  lhu?.kalabAt,
   lhu?.disahkan_pada,
   lhu?.disahkanPada,
   lhu?.disetujui_pada,
@@ -210,8 +206,6 @@ export const getLhuApprovalDate = (request) => {
   return pickLatestDateValue(
     lhuRows.map((lhu) =>
       pickFirstDateValue(
-        lhu?.kalab_at,
-        lhu?.kalabAt,
         lhu?.disahkan_pada,
         lhu?.disahkanPada,
         lhu?.disetujui_pada,
@@ -233,12 +227,12 @@ const getUniqueEntityIds = (rows = []) => {
 export const getLhuActivityFacts = (requestData) => {
   const lhuCreatedRows = getActivityRowsByActions(
     requestData,
-    ['MEMBUAT_LHU', 'QC_MENYETUJUI_LHU'],
+    ['MEMBUAT_LHU', 'MEMBUAT_LHU_FINAL', 'MEMPERBARUI_LHU_FINAL', 'QC_MENYETUJUI_LHU', 'QC_MENGESAHKAN_LHU'],
     ['LHU']
   );
   const lhuApprovalRows = getActivityRowsByActions(
     requestData,
-    ['KALAB_MENGESAHKAN_LHU'],
+    ['MEMBUAT_LHU_FINAL', 'MEMPERBARUI_LHU_FINAL', 'QC_MENGESAHKAN_LHU'],
     ['LHU']
   );
   const lhuPickupScheduleRows = getActivityRowsByActions(

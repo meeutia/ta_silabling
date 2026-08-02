@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { adminAccountApi } from '../../api/adminAccountApi';
 import { ErrorState } from '../../components/common/ErrorState';
 import { ToastNotification } from '../../components/common/ToastNotification';
@@ -59,9 +60,9 @@ export function AdminKelolaAkunPage() {
     setConfirmAction(null);
   };
 
-  const loadStaff = async () => {
-    setLoading(true);
-    setErrorMessage('');
+  const loadStaff = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setErrorMessage('');
 
     try {
       const query = buildQuery({
@@ -74,15 +75,15 @@ export function AdminKelolaAkunPage() {
       const rows = json?.data?.staff || [];
       setStaffRows(Array.isArray(rows) ? rows : []);
     } catch (error) {
-      handleError(error);
+      if (!silent) handleError(error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, [search, staffRole, staffStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadCustomers = async () => {
-    setLoading(true);
-    setErrorMessage('');
+  const loadCustomers = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setErrorMessage('');
 
     try {
       const query = buildQuery({
@@ -94,13 +95,13 @@ export function AdminKelolaAkunPage() {
       const rows = json?.data?.customers || [];
       setCustomerRows(Array.isArray(rows) ? rows : []);
     } catch (error) {
-      handleError(error);
+      if (!silent) handleError(error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, [search, customerStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadStaffSummary = async () => {
+  const loadStaffSummary = useCallback(async () => {
     try {
       const json = await adminAccountApi.getStaff('');
       const rows = json?.data?.staff || [];
@@ -108,9 +109,9 @@ export function AdminKelolaAkunPage() {
     } catch {
       // Ringkasan tab lain tidak boleh mengganggu tab aktif.
     }
-  };
+  }, []);
 
-  const loadCustomerSummary = async () => {
+  const loadCustomerSummary = useCallback(async () => {
     try {
       const json = await adminAccountApi.getCustomers('');
       const rows = json?.data?.customers || [];
@@ -118,22 +119,27 @@ export function AdminKelolaAkunPage() {
     } catch {
       // Ringkasan tab lain tidak boleh mengganggu tab aktif.
     }
-  };
+  }, []);
+
+  const fetchAll = useCallback(async (silent = false) => {
+    if (activeTab === 'staff') {
+      await loadStaff(silent);
+      await loadCustomerSummary();
+    } else {
+      await loadCustomers(silent);
+      await loadStaffSummary();
+    }
+  }, [activeTab, loadStaff, loadCustomers, loadStaffSummary, loadCustomerSummary]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      if (activeTab === 'staff') {
-        loadStaff();
-        loadCustomerSummary();
-      } else {
-        loadCustomers();
-        loadStaffSummary();
-      }
+      fetchAll();
     }, 250);
 
     return () => window.clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, search, staffRole, staffStatus, customerStatus]);
+  }, [fetchAll]);
+
+  useAutoRefresh(fetchAll);
 
   const handleSubmitStaff = async (formData) => {
     setActionLoading(true);

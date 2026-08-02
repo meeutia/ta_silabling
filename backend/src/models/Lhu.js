@@ -26,7 +26,7 @@ class Lhu extends Model {
   }
 
   isFinalized() {
-    return this.isStatus('Menunggu Pengesahan');
+    return this.isStatus('Disahkan');
   }
 
   isApproved() {
@@ -98,7 +98,6 @@ Lhu.init({
     type: DataTypes.ENUM(
       'Draft',
       'Menunggu QC',
-      'Menunggu Persetujuan Kepala Lab',
       'Disahkan',
       'Dibatalkan'
     ),
@@ -108,7 +107,7 @@ Lhu.init({
 }, {
   sequelize,
   modelName: 'lhu',
-tableName: 'lhu',
+  tableName: 'lhu',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',

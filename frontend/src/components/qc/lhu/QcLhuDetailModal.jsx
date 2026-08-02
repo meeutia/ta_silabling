@@ -98,7 +98,7 @@ export function QcLhuDetailModal({
     : '';
   const canFinalizeCurrentStatus = canFinalizeSelectedLhu ?? isQcEditableLhuStatus(selectedStatus);
   const finalizeDisabledReason = !canFinalizeCurrentStatus
-    ? 'LHU sudah masuk approval Kepala Lab atau sudah disahkan.'
+    ? 'LHU sudah masuk approval Pengendalian Mutu atau sudah disahkan.'
     : !hasSelectedSamples
       ? 'Pilih minimal satu sampel.'
       : !selectedSampleTypesCompatible
@@ -170,8 +170,8 @@ export function QcLhuDetailModal({
             </h3>
             <p className="text-sm text-emerald-100">
               {detailMode === 'history'
-                ? 'Lihat detail LHU dan PDF draft/final.'
-                : 'Pilih sampel untuk 1 LHU, tentukan paket baku mutu, lalu kirim ke Kepala Lab.'}
+                ? 'Lihat detail LHU dan PDF final.'
+                : 'Pilih sampel untuk 1 LHU, tentukan paket baku mutu, lalu langsung sahkan.'}
             </p>
           </div>
 
@@ -517,7 +517,7 @@ export function QcLhuDetailModal({
                       <p className="mt-1 text-sm text-purple-700">
                         {String(selectedStatus).toLowerCase().includes('disahkan')
                           ? 'File ini adalah LHU final.'
-                          : 'File ini adalah draft LHU untuk review Kepala Lab.'}
+                          : 'File ini adalah draft LHU untuk review Pengendalian Mutu.'}
                       </p>
                     </div>
                     <button
@@ -538,7 +538,7 @@ export function QcLhuDetailModal({
                   Catatan Pengendalian Mutu
                 </h4>
                 <p className="text-sm text-blue-800">
-                  Nomor LHU dan PDF draft dibuat saat finalisasi. Setelah disetujui Kepala Lab, PDF akan menjadi versi final.
+                  Nomor LHU resmi dan PDF final dibuat langsung saat finalisasi QC.
                 </p>
               </div>
             </div>
@@ -552,11 +552,11 @@ export function QcLhuDetailModal({
               type="button"
               onClick={handleFinalize}
               disabled={submitting || loadingDetail || loadingPreview || Boolean(finalizeDisabledReason)}
-              title={finalizeDisabledReason || 'Finalisasi LHU dan kirim ke Kepala Lab'}
+              title={finalizeDisabledReason || 'Finalisasi LHU dan langsung sahkan'}
               className="flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-2.5 font-medium text-white shadow-md transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-              Finalisasi & Kirim ke Kalab
+              Finalisasi & Sahkan
             </button>
           )}
         </div>

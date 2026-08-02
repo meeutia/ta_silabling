@@ -21,7 +21,6 @@ import { AnalisDetailSampelPage } from '../pages/analis/AnalisDetailSampelPage';
 
 import { QcLhuPage } from '../pages/qc/QcLhuPage';
 
-import { KalabLhuPage } from '../pages/kalab/KalabLhuPage';
 import { NotificationPage } from '../pages/notification/NotificationPage';
 
 import { getDefaultPageForRole, isPageAllowedForRole } from './pageConfig';
@@ -50,7 +49,6 @@ export function AppPageRenderer({
   selectedAdminPermohonanRegistrationId,
   selectedKasiPermohonanRegistrationId,
   selectedQcLhuNumber,
-  selectedKalabLhuNumber,
   selectedPenugasanDetailId,
   setSelectedPenugasanDetailId,
   selectedAssignmentId,
@@ -239,10 +237,6 @@ export function AppPageRenderer({
       break;
     }
 
-    case 'kalab': {
-      if (currentPage === 'lhu') return <KalabLhuPage initialLhuNumber={selectedKalabLhuNumber} />;
-      break;
-    }
 
     default: {
       if (currentPage === 'dashboard') {

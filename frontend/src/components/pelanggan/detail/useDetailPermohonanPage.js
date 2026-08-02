@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import { useLocation } from 'react-router-dom';
 import { customerRequestApi } from '../../../api/customerRequestApi';
 import { showError, showSuccess } from '../../../utils/feedback';
@@ -179,42 +180,34 @@ export function useDetailPermohonanPage(request) {
     });
   }, [request]);
 
-  useEffect(() => {
-    if (!detailRegistrationId || detailRegistrationId === '-') return undefined;
+  const fetchData = useCallback(async (silent = false) => {
+    if (!detailRegistrationId || detailRegistrationId === '-') return;
 
-    let cancelled = false;
+    if (!silent) setDetailRefreshing(true);
+    if (!silent) setDetailError('');
 
-    const fetchData = async () => {
-      setDetailRefreshing(true);
-      setDetailError('');
+    try {
+      const data = await customerRequestApi.getDetail(detailRegistrationId);
 
-      try {
-        const data = await customerRequestApi.getDetail(detailRegistrationId);
-
-        if (cancelled) return;
-
-        setRequestData((previousRequest) =>
-          mergeDetailRequestDates(data, previousRequest)
-        );
-      } catch (error) {
-        if (cancelled) return;
-
-        const errorMsg = error?.message || 'Gagal memuat detail permohonan.';
+      setRequestData((previousRequest) =>
+        mergeDetailRequestDates(data, previousRequest)
+      );
+    } catch (error) {
+      const errorMsg = error?.message || 'Gagal memuat detail permohonan.';
+      if (!silent) {
         setDetailError(errorMsg);
         showError(errorMsg);
-      } finally {
-        if (!cancelled) {
-          setDetailRefreshing(false);
-        }
       }
-    };
-
-    fetchData();
-
-    return () => {
-      cancelled = true;
-    };
+    } finally {
+      if (!silent) setDetailRefreshing(false);
+    }
   }, [detailRegistrationId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useAutoRefresh(fetchData);
 
 
   useEffect(() => {

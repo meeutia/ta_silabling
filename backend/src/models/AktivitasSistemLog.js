@@ -50,7 +50,7 @@ AktivitasSistemLog.init({
       allowNull: true,
     },
     sumber_aksi: {
-      type: DataTypes.ENUM('Pelanggan', 'Admin', 'Kasi', 'Penyelia', 'Analis', 'QC', 'Kalab', 'Sistem'),
+      type: DataTypes.ENUM('Pelanggan', 'Admin', 'Kasi', 'Penyelia', 'Analis', 'QC', 'Sistem'),
       allowNull: false,
       defaultValue: 'Sistem',
     },

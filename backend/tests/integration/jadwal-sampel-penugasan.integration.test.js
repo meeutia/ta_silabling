@@ -4,10 +4,11 @@ require('../fixtures/integration-mocks');
 
 const request = require('supertest');
 const app = require('../../src/app');
-const RequestService = require('../../src/services/request/request.service');
 const RequestWorkflowService = require('../../src/services/request/request-workflow.service');
 const ScheduleChangeService = require('../../src/services/schedule/schedule-change.service');
-const assignmentService = require('../../src/services/assignment.service');
+const assignmentReadService = require('../../src/services/assignment/assignment-read.service');
+const assignmentCreateService = require('../../src/services/assignment/assignment-create.service');
+const assignmentSubkontrakService = require('../../src/services/assignment/assignment-subkontrak.service');
 const {
   FUTURE_DATE,
   FUTURE_DATE_2,
@@ -174,7 +175,7 @@ describe('Integration Testing - Jadwal, Sampel, dan Penugasan', () => {
       status: 'Sampel Diterima',
       sampels: [{ no_sampel: '37/AM/VI/2026', diterima_pada: `${FUTURE_DATE}T09:00:00.000Z` }],
     });
-    assignmentService.getSubkontrakItems.mockResolvedValueOnce([]);
+    assignmentSubkontrakService.getSubkontrakItems.mockResolvedValueOnce([]);
 
     const response = await request(app)
       .post('/requests/REG-001/samples/receive')
@@ -200,7 +201,7 @@ describe('Integration Testing - Jadwal, Sampel, dan Penugasan', () => {
   });
 
   test('IT-040 Penyelia melihat opsi analis untuk penugasan', async () => {
-    RequestService.getAnalystOptions.mockResolvedValueOnce([
+    assignmentReadService.getAnalystOptions.mockResolvedValueOnce([
       { nik: nikByRole[Roles.ANALIS], nama: 'Analis Uji' },
     ]);
 
@@ -211,11 +212,11 @@ describe('Integration Testing - Jadwal, Sampel, dan Penugasan', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data[0].nik).toBe(nikByRole[Roles.ANALIS]);
-    expect(RequestService.getAnalystOptions).toHaveBeenCalledTimes(1);
+    expect(assignmentReadService.getAnalystOptions).toHaveBeenCalledTimes(1);
   });
 
   test('IT-041 Penyelia melihat referensi analis dari modul assignment', async () => {
-    assignmentService.getAnalystOptions.mockResolvedValueOnce([
+    assignmentReadService.getAnalystOptions.mockResolvedValueOnce([
       { nik: nikByRole[Roles.ANALIS], nama: 'Analis Uji' },
     ]);
 
@@ -226,11 +227,11 @@ describe('Integration Testing - Jadwal, Sampel, dan Penugasan', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data).toHaveLength(1);
-    expect(assignmentService.getAnalystOptions).toHaveBeenCalledTimes(1);
+    expect(assignmentReadService.getAnalystOptions).toHaveBeenCalledTimes(1);
   });
 
   test('IT-042 Penyelia melihat sampel siap ditugaskan', async () => {
-    assignmentService.getPendingItems.mockResolvedValueOnce([
+    assignmentReadService.getPendingItems.mockResolvedValueOnce([
       { no_sampel: '37/AM/VI/2026', status: 'Siap Ditugaskan' },
     ]);
 
@@ -241,11 +242,11 @@ describe('Integration Testing - Jadwal, Sampel, dan Penugasan', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data).toHaveLength(1);
-    expect(assignmentService.getPendingItems).toHaveBeenCalledTimes(1);
+    expect(assignmentReadService.getPendingItems).toHaveBeenCalledTimes(1);
   });
 
   test('IT-043 Penyelia membuat penugasan analis', async () => {
-    assignmentService.createAssignment.mockResolvedValueOnce({
+    assignmentCreateService.createAssignment.mockResolvedValueOnce({
       id_penugasan: 'PNG-001',
       id_user_analis: nikByRole[Roles.ANALIS],
       status: 'Ditugaskan',
@@ -260,7 +261,7 @@ describe('Integration Testing - Jadwal, Sampel, dan Penugasan', () => {
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Penugasan berhasil dibuat.');
     expect(response.body.data.id_penugasan).toBe('PNG-001');
-    expect(assignmentService.createAssignment).toHaveBeenCalledWith(expect.any(Object), nikByRole[Roles.PENYELIA]);
+    expect(assignmentCreateService.createAssignment).toHaveBeenCalledWith(expect.any(Object), nikByRole[Roles.PENYELIA]);
   });
 
   test('IT-044 Sistem menolak pembuatan penugasan jika data assignment kosong', async () => {
@@ -272,11 +273,11 @@ describe('Integration Testing - Jadwal, Sampel, dan Penugasan', () => {
 
     expect(response.body.success).toBe(false);
     expect(response.body.message).toContain('item yang ditugaskan');
-    expect(assignmentService.createAssignment).not.toHaveBeenCalled();
+    expect(assignmentCreateService.createAssignment).not.toHaveBeenCalled();
   });
 
   test('IT-045 Penyelia memonitor status penugasan analis', async () => {
-    assignmentService.getAssignmentMonitor.mockResolvedValueOnce([
+    assignmentReadService.getAssignmentMonitor.mockResolvedValueOnce([
       { id_penugasan: 'PNG-001', status: 'Berjalan', tanggal_tenggat: FUTURE_DATE_2 },
     ]);
 
@@ -287,6 +288,6 @@ describe('Integration Testing - Jadwal, Sampel, dan Penugasan', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data[0].id_penugasan).toBe('PNG-001');
-    expect(assignmentService.getAssignmentMonitor).toHaveBeenCalledTimes(1);
+    expect(assignmentReadService.getAssignmentMonitor).toHaveBeenCalledTimes(1);
   });
 });

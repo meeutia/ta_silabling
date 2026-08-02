@@ -42,7 +42,6 @@ const requiredPageFiles = [
   'src/pages/kasi/KasiDashboardPage.jsx',
   'src/pages/kasi/KasiLhuPage.jsx',
   'src/pages/kasi/KasiPermohonanPage.jsx',
-  'src/pages/kalab/KalabLhuPage.jsx',
   'src/pages/qc/QcLhuPage.jsx',
 ];
 

@@ -57,7 +57,7 @@ const isCompletedHistoryLhuPickupSchedule = (schedule) =>
 
 const isApprovedFinalHistoryLhu = (lhu) => {
   const status = String(lhu?.status_lhu || lhu?.statusLhu || lhu?.status || '').trim();
-  return status === LHU_FINAL_STATUS || Boolean(lhu?.kalab_at || lhu?.kalabAt);
+  return status === LHU_FINAL_STATUS || Boolean(lhu?.tanggal_penerbitan || lhu?.tanggalPenerbitan);
 };
 
 const areAllHistoryLhusApproved = (requestItem) => {

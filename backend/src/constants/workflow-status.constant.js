@@ -25,7 +25,6 @@ const WORKFLOW_SOURCE = Object.freeze({
   PENYELIA: 'Penyelia',
   ANALIS: 'Analis',
   QC: 'QC',
-  KALAB: 'Kalab',
   SYSTEM: 'Sistem',
 });
 

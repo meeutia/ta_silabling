@@ -5,7 +5,6 @@ export const STAFF_ROLES = [
   'Penyelia',
   'Analis',
   'Pengendalian Mutu',
-  'Kepala Lab',
   'PCC',
 ];
 

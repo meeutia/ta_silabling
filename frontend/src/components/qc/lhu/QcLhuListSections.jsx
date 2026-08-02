@@ -44,9 +44,9 @@ export function QcLhuSummaryCards({ summary }) {
         <div className="mb-3 w-fit rounded-lg bg-red-50 p-3 text-red-700">
           <AlertCircle className="h-6 w-6" />
         </div>
-        <p className="mb-1 text-2xl font-bold text-gray-900">{summary.menungguKalab}</p>
-        <p className="mb-1 text-sm font-medium text-gray-900">Menunggu Kepala Lab</p>
-        <p className="text-xs text-gray-600">LHU menunggu pengesahan</p>
+        <p className="mb-1 text-2xl font-bold text-gray-900">{summary.finalHariIni}</p>
+        <p className="mb-1 text-sm font-medium text-gray-900">Finalisasi QC</p>
+        <p className="text-xs text-gray-600">LHU langsung disahkan QC</p>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -213,7 +213,7 @@ export function QcLhuHistoryTable({ loadingHistory, filteredHistoryRows, openHis
       <div className="border-b border-gray-200 px-6 py-4">
         <h2 className="text-base font-bold text-gray-900">Riwayat Finalisasi LHU</h2>
         <p className="mt-0.5 text-xs text-gray-500">
-          LHU yang sudah dibuat QC, termasuk draft dan LHU yang sedang menunggu persetujuan Kepala Lab.
+          LHU yang sudah dibuat QC, termasuk draft dan LHU yang sedang menunggu persetujuan Pengendalian Mutu.
         </p>
       </div>
 

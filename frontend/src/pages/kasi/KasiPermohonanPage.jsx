@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { useLocation } from 'react-router-dom';
 import { X, CheckCircle, Loader2 } from 'lucide-react';
 import { getApiErrorMessage } from '../../api/httpClient';
@@ -49,18 +50,18 @@ export function KasiPermohonanPage({ initialRegistrationId = '', onDetailRouteCh
     }).format(date);
   };
 
-  const fetchRequests = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
+  const fetchRequests = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    if (!silent) setError('');
     const statusQuery = activeTab === 'Riwayat' ? 'Riwayat' : '';
 
     try {
       const data = await kasiRequestApi.getRequests(statusQuery);
       setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Gagal memuat data permohonan.'));
+      if (!silent) setError(getApiErrorMessage(err, 'Gagal memuat data permohonan.'));
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [activeTab]);
 
@@ -71,6 +72,8 @@ export function KasiPermohonanPage({ initialRegistrationId = '', onDetailRouteCh
 
     return () => clearTimeout(timer);
   }, [fetchRequests]);
+
+  useAutoRefresh(fetchRequests);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search || '');

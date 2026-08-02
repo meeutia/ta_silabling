@@ -78,7 +78,7 @@ class RequestTransformUtil {
         if (!lhu) return false;
         const normalizedLhu = this.normalizeRequestData(lhu);
         const normalizedStatus = normalizeLhuStatus(normalizedLhu.statusLhu || normalizedLhu.status || '');
-        return normalizedStatus === LHU_STATUS.APPROVED_FINAL || Boolean(normalizedLhu.kalabAt);
+        return normalizedStatus === LHU_STATUS.APPROVED_FINAL || Boolean(normalizedLhu.tanggalPenerbitan || normalizedLhu.qcAt);
     };
 
     areAllAvailableLhusApproved = (requestData = {}) => {

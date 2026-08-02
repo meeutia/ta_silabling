@@ -3,13 +3,12 @@ const path = require('path');
 const { Op } = require('sequelize');
 const sequelize = require('../../config/database');
 const lhuPdfService = require('./lhu-pdf.service');
-const { calculateAccreditationStats, getPlain, getSampleInfosForLhu, getPktBmHeaderById, getDetailLhuRows, getPegawaiDisplayName, mapLhuHeaderRequestData, mapSampleRequestData, mapPelangganRequestData, buildLhuListRow, } = require('./lhu-data.service');
+const { calculateAccreditationStats, getPlain, getSampleInfosForLhu, getPktBmHeaderById, getDetailLhuRows, getPegawaiDisplayName, getLhuSignerSnapshot, mapLhuHeaderRequestData, mapSampleRequestData, mapPelangganRequestData, buildLhuListRow, } = require('./lhu-data.service');
 const lhuDetailRowMapper = require('./lhu-detail-row.mapper');
 const notificationService = require('../notification/notification.service');
 const WorkflowLogService = require('../workflow/workflow-log.service');
-const { generateNomorLhu } = require('../../utils/id-generator');
 const { User, Pegawai, Role, Pelanggan, Fppl, JadwalSampel, FpplSampel, JenisSampel, RegBm, PktBm, PktBmParam, Parameter, Metode, ParameterMetode, FpplParameterMetode, Sampel, SampelParameter, PenugasanItem, PenugasanDetail, Lka, LkaHasil, Lhu, JadwalPengambilanLhu, } = require('../../models/Associations');
-const { LHU_STATUS, LHU_EDITABLE_BY_QC_STATUSES, LHU_NEXT_STATUS, isLhuEditableByQc, } = require('../../constants/lhu-status.constant');
+const { LHU_STATUS, LHU_EDITABLE_BY_QC_STATUSES, LHU_NEXT_STATUS, isLhuEditableByQc, normalizeLhuStatus, } = require('../../constants/lhu-status.constant');
 const { buildLkaHasilRevisionResponse } = require('../assignment/assignment-revision.helper');
 const RequestStatus = require('../../constants/request-status');
 const PUBLIC_LHU_DIR = path.join(__dirname, '../../../public', 'lhu');
@@ -78,7 +77,7 @@ class LhuService {
         if (lhu.file_lhu_path && this.isStoredLhuFileAvailable(lhu.file_lhu_path)) {
             return lhu;
         }
-        const status = String(lhu.status_lhu || lhu.statusLhu || '').toLowerCase();
+        const status = String(normalizeLhuStatus(lhu.status_lhu || lhu.statusLhu || '')).toLowerCase();
         const generator = status.includes('disahkan')
             ? lhuPdfService.generateFinalLhuPdf
             : lhuPdfService.generateDraftLhuPdf;
@@ -91,7 +90,7 @@ class LhuService {
         return lhu;
     };
 
-getLhuDetail = async (nomorLhu) => {
+    getLhuDetail = async (nomorLhu) => {
         const lhuNo = String(nomorLhu || '').trim();
         if (!lhuNo || ['undefined', 'null', '-'].includes(lhuNo.toLowerCase())) {
             throw new Error('Nomor LHU wajib dikirim.');
@@ -114,10 +113,11 @@ getLhuDetail = async (nomorLhu) => {
         const sampleInfo = sampleInfos[0] || {};
         const pktBm = await getPktBmHeaderById(idPktBmValue);
         const details = await getDetailLhuRows(nomorLhuValue);
-        const [qcNama, kalabNama] = await Promise.all([
+        const [qcNama, signer] = await Promise.all([
             getPegawaiDisplayName(qcByValue),
-            getPegawaiDisplayName(kalabByValue),
+            getLhuSignerSnapshot(kalabByValue),
         ]);
+        const kalabNama = signer?.namaPegawai || null;
         const sampleRequestDatas = sampleInfos.map(mapSampleRequestData);
         const sampleNos = dedupeSampleNos(sampleInfos.map((info) => info.noSampel || info.no_sampel).filter(Boolean));
         const noSampelText = sampleNos.join('\n') || null;
@@ -166,7 +166,6 @@ getLhuDetail = async (nomorLhu) => {
                     {
                         status_lhu: {
                             [Op.in]: [
-                                LHU_STATUS.WAIT_KALAB,
                                 LHU_STATUS.APPROVED_FINAL,
                             ],
                         },
@@ -178,23 +177,6 @@ getLhuDetail = async (nomorLhu) => {
                 ['updated_at', 'DESC'],
                 ['created_at', 'DESC'],
                 ['nomor_lhu', 'DESC'],
-            ],
-        });
-        const mappedRows = [];
-        for (const instance of rows) {
-            mappedRows.push(await buildLhuListRow(getPlain(instance)));
-        }
-        return mappedRows;
-    };
-    getKalabApprovalQueue = async () => {
-        const rows = await Lhu.findAll({
-            where: {
-                status_lhu: LHU_STATUS.WAIT_KALAB,
-            },
-            order: [
-                ['qc_at', 'ASC'],
-                ['created_at', 'ASC'],
-                ['nomor_lhu', 'ASC'],
             ],
         });
         const mappedRows = [];
@@ -260,82 +242,6 @@ getLhuDetail = async (nomorLhu) => {
                 : 'Semua LHU pada permohonan sudah disahkan. Menunggu admin menjadwalkan pengambilan LHU.',
             actorNik,
             transaction,
-        });
-    };
-    approveByKalab = async (nomorLhu, currentNik) => {
-        const lhuNo = String(nomorLhu || '').trim();
-        const userNik = String(currentNik || '').trim();
-        if (!lhuNo) {
-            throw new Error('Nomor LHU wajib dikirim.');
-        }
-        if (!userNik) {
-            throw new Error('User Kepala Lab tidak valid.');
-        }
-        return sequelize.transaction(async (transaction) => {
-            const lhu = await Lhu.findOne({
-                where: { nomor_lhu: lhuNo },
-                transaction,
-                lock: transaction.LOCK.UPDATE,
-            });
-            if (!lhu) {
-                throw new Error('LHU tidak ditemukan.');
-            }
-            if (lhu.status_lhu !== LHU_STATUS.WAIT_KALAB) {
-                throw new Error('LHU ini tidak berada pada tahap persetujuan Kepala Lab.');
-            }
-            const approvedAt = new Date();
-            const officialNomorLhu = await generateNomorLhu(Lhu, transaction, approvedAt);
-            const duplicate = await Lhu.findOne({
-                where: { nomor_lhu: officialNomorLhu },
-                transaction,
-                lock: transaction.LOCK.UPDATE,
-            });
-            if (duplicate && duplicate.nomor_lhu !== lhuNo) {
-                throw new Error(`Nomor LHU resmi ${officialNomorLhu} sudah digunakan. Silakan ulangi persetujuan.`);
-            }
-            await Lhu.update({
-                nomor_lhu: officialNomorLhu,
-                tanggal_penerbitan: approvedAt,
-                kalab_by: userNik,
-                kalab_at: approvedAt,
-                status_lhu: LHU_STATUS.APPROVED_FINAL,
-            }, {
-                where: { nomor_lhu: lhuNo },
-                transaction,
-            });
-            const approvedLhu = await Lhu.findOne({
-                where: { nomor_lhu: officialNomorLhu },
-                transaction,
-                lock: transaction.LOCK.UPDATE,
-            });
-            const pdfResult = await lhuPdfService.generateFinalLhuPdf(officialNomorLhu, transaction);
-            await approvedLhu.update({
-                file_lhu_path: pdfResult.filePath,
-            }, { transaction });
-            await WorkflowLogService.logStatusTransition({
-                entityType: 'LHU',
-                entityId: officialNomorLhu,
-                action: 'KALAB_MENGESAHKAN_LHU',
-                statusBefore: LHU_STATUS.WAIT_KALAB,
-                statusAfter: LHU_STATUS.APPROVED_FINAL,
-                source: 'Kalab',
-                note: lhuNo !== officialNomorLhu
-                    ? `LHU draft ${lhuNo} disahkan menjadi nomor resmi ${officialNomorLhu}.`
-                    : 'LHU disahkan oleh Kepala Laboratorium.',
-                actorNik: userNik,
-                transaction,
-            });
-            await this.updateRequestStatusAfterLhuApproval({
-                idRegistrasi: approvedLhu.id_registrasi,
-                actorNik: userNik,
-                transaction,
-            });
-            return {
-                nomorLhu: officialNomorLhu,
-                nomorDraftLhu: lhuNo,
-                statusLhu: LHU_STATUS.APPROVED_FINAL,
-                fileLhuPath: pdfResult.filePath,
-            };
         });
     };
 }

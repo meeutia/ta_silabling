@@ -1,24 +1,26 @@
 const LHU_STATUS = Object.freeze({
   DRAFT: 'Draft',
   WAIT_QC: 'Menunggu QC',
-  WAIT_KALAB: 'Menunggu Persetujuan Kepala Lab',
   APPROVED_FINAL: 'Disahkan',
   CANCELLED: 'Dibatalkan',
 });
 
 /**
- * Alias lama tidak boleh dipakai sebagai status aktif.
- * Map ini hanya untuk normalisasi data lama agar kode tidak salah membaca status historis.
+ * Alias lama hanya untuk membaca data historis.
+ * Tidak ada lagi status aktif yang menunggu approval Kepala Laboratorium.
  */
 const LHU_LEGACY_STATUS_MAP = Object.freeze({
-  'Menunggu Persetujuan Penyelia': LHU_STATUS.WAIT_KALAB,
-  'Perlu Revisi Penyelia': LHU_STATUS.WAIT_KALAB,
-  'Disetujui Penyelia': LHU_STATUS.WAIT_KALAB,
-  'Menunggu Verifikasi Kasi Pengujian': LHU_STATUS.WAIT_KALAB,
-  'Revisi Kasi Pengujian': LHU_STATUS.WAIT_KALAB,
-  'Disetujui Kasi Pengujian': LHU_STATUS.WAIT_KALAB,
+  'Menunggu Persetujuan Penyelia': LHU_STATUS.APPROVED_FINAL,
+  'Perlu Revisi Penyelia': LHU_STATUS.APPROVED_FINAL,
+  'Disetujui Penyelia': LHU_STATUS.APPROVED_FINAL,
+  'Menunggu Verifikasi Kasi Pengujian': LHU_STATUS.APPROVED_FINAL,
+  'Revisi Kasi Pengujian': LHU_STATUS.APPROVED_FINAL,
+  'Disetujui Kasi Pengujian': LHU_STATUS.APPROVED_FINAL,
   'Revisi QC': LHU_STATUS.WAIT_QC,
-  'Disetujui QC': LHU_STATUS.WAIT_KALAB,
+  'Disetujui QC': LHU_STATUS.APPROVED_FINAL,
+  'Menunggu Persetujuan Kepala Lab': LHU_STATUS.APPROVED_FINAL,
+  'Menunggu Persetujuan Kalab': LHU_STATUS.APPROVED_FINAL,
+  'Disetujui Kalab': LHU_STATUS.APPROVED_FINAL,
 });
 
 function normalizeLhuStatus(status) {
@@ -42,8 +44,8 @@ const SAMPLE_REVIEW_KASI_QUEUE_STATUSES = Object.freeze([
 ]);
 
 /**
- * QC hanya boleh membuat/memperbarui LHU yang belum masuk approval Kalab.
- * Begitu status sudah Menunggu Persetujuan Kepala Lab atau Disahkan, sumber LKA dikunci.
+ * QC hanya boleh membuat/memperbarui LHU yang belum final.
+ * Setelah QC finalisasi, LHU langsung berstatus Disahkan dan sumber LKA dikunci.
  */
 const LHU_EDITABLE_BY_QC_STATUSES = Object.freeze([
   LHU_STATUS.DRAFT,
@@ -54,13 +56,10 @@ const LHU_EDITABLE_BY_QC_STATUSES = Object.freeze([
 const LHU_EDITABLE_BY_PENYELIA_STATUSES = LHU_EDITABLE_BY_QC_STATUSES;
 
 const LHU_NEXT_STATUS = Object.freeze({
-  AFTER_QC_FINALIZE: LHU_STATUS.WAIT_KALAB,
-  AFTER_KALAB_APPROVE: LHU_STATUS.APPROVED_FINAL,
-
-  // Alias transisi lama agar import lama tidak crash.
-  AFTER_PENYELIA_FINALIZE: LHU_STATUS.WAIT_KALAB,
-  AFTER_KASI_PENGUJIAN_APPROVE: LHU_STATUS.WAIT_KALAB,
-  AFTER_QC_APPROVE: LHU_STATUS.WAIT_KALAB,
+  AFTER_QC_FINALIZE: LHU_STATUS.APPROVED_FINAL,
+  AFTER_PENYELIA_FINALIZE: LHU_STATUS.APPROVED_FINAL,
+  AFTER_KASI_PENGUJIAN_APPROVE: LHU_STATUS.APPROVED_FINAL,
+  AFTER_QC_APPROVE: LHU_STATUS.APPROVED_FINAL,
 });
 
 function isLhuEditableByQc(status) {

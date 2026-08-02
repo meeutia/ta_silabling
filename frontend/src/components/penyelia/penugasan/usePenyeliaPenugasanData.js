@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import { getApiErrorMessage } from '../../../api/httpClient';
 import { penyeliaPenugasanApi } from '../../../api/penyeliaPenugasanApi';
 import { showError, showSuccess } from '../../../utils/feedback';
@@ -31,22 +32,22 @@ export function usePenyeliaPenugasanData() {
     }
   }, []);
 
-  const fetchPendingItems = useCallback(async () => {
-    setLoadingPending(true);
-    setErrorPending('');
+  const fetchPendingItems = useCallback(async (silent = false) => {
+    if (!silent) setLoadingPending(true);
+    if (!silent) setErrorPending('');
 
     try {
       const rows = await penyeliaPenugasanApi.getPendingItems();
       setPendingItems(rows || []);
     } catch (err) {
-      setErrorPending(getApiErrorMessage(err, 'Gagal terhubung ke server.'));
+      if (!silent) setErrorPending(getApiErrorMessage(err, 'Gagal terhubung ke server.'));
     } finally {
-      setLoadingPending(false);
+      if (!silent) setLoadingPending(false);
     }
   }, []);
 
-  const fetchMonitorRows = useCallback(async () => {
-    setLoadingMonitor(true);
+  const fetchMonitorRows = useCallback(async (silent = false) => {
+    if (!silent) setLoadingMonitor(true);
 
     try {
       const rows = await penyeliaPenugasanApi.getMonitorRows();
@@ -54,22 +55,22 @@ export function usePenyeliaPenugasanData() {
     } catch {
       // Abaikan kegagalan data opsional.
     } finally {
-      setLoadingMonitor(false);
+      if (!silent) setLoadingMonitor(false);
     }
   }, []);
 
 
-  const fetchPendingKasiRevisions = useCallback(async () => {
-    setLoadingKasiRevisions(true);
-    setErrorKasiRevisions('');
+  const fetchPendingKasiRevisions = useCallback(async (silent = false) => {
+    if (!silent) setLoadingKasiRevisions(true);
+    if (!silent) setErrorKasiRevisions('');
 
     try {
       const rows = await penyeliaPenugasanApi.getPendingKasiRevisionRequests();
       setPendingKasiRevisions(rows || []);
     } catch (err) {
-      setErrorKasiRevisions(getApiErrorMessage(err, 'Gagal memuat revisi dari Kasi Pengujian.'));
+      if (!silent) setErrorKasiRevisions(getApiErrorMessage(err, 'Gagal memuat revisi dari Kasi Pengujian.'));
     } finally {
-      setLoadingKasiRevisions(false);
+      if (!silent) setLoadingKasiRevisions(false);
     }
   }, []);
 
@@ -122,13 +123,21 @@ export function usePenyeliaPenugasanData() {
     }
   }, []);
 
+  const fetchAll = useCallback(async (silent = false) => {
+    await Promise.all([
+      fetchPendingItems(silent),
+      fetchMonitorRows(silent),
+      fetchPendingKasiRevisions(silent)
+    ]);
+  }, [fetchPendingItems, fetchMonitorRows, fetchPendingKasiRevisions]);
+
   useEffect(() => {
     fetchAnalysts();
-    fetchPendingItems();
-    fetchMonitorRows();
-    fetchPendingKasiRevisions();
+    fetchAll();
     fetchHolidays();
-  }, [fetchAnalysts, fetchPendingItems, fetchMonitorRows, fetchPendingKasiRevisions, fetchHolidays]);
+  }, [fetchAnalysts, fetchAll, fetchHolidays]);
+
+  useAutoRefresh(fetchAll);
 
   return {
     activeTab,

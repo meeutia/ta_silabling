@@ -40,7 +40,7 @@ const usageSteps = [
   {
     title: 'Pantau proses pengujian',
     description:
-      'Sampel diproses oleh analis dan diverifikasi bertahap oleh penyelia, Kasi Pengujian, Pengendalian Mutu, dan Kalab.',
+      'Sampel diproses oleh analis dan diverifikasi bertahap oleh penyelia, Kasi Pengujian, dan Pengendalian Mutu.',
     icon: FlaskConical,
   },
   {

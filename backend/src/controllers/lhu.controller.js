@@ -134,16 +134,30 @@ class LhuController {
             this.requireValue(req.body.idPktBm || req.body.id_pkt_bm, 'Paket baku mutu wajib dipilih.');
             const data = await this.lhuFinalizationService.finalizeLhu(identifier, req.body, currentNik);
             try {
-                await this.notificationService.notifyLhuNeedsKalabApproval({
-                    nomorLhu: data?.nomorLhu || data?.nomor_lhu,
+                await this.lhuService.updateRequestStatusAfterLhuApproval({
+                    idRegistrasi: data?.idRegistrasi || data?.id_registrasi,
+                    actorNik: currentNik,
                 });
             }
-            catch (notificationError) {
-                console.error('Gagal kirim notifikasi LHU ke Kalab:', notificationError);
+            catch (statusError) {
+                console.error('Gagal memperbarui status permohonan setelah finalisasi LHU:', statusError);
             }
+            setImmediate(() => {
+                const nomorLhu = data?.nomorLhu || data?.nomor_lhu;
+                Promise.allSettled([
+                    this.notificationService.notifyAdminWhenRequestLhusComplete({ nomorLhu }),
+                ]).then((results) => {
+                    results.forEach((result, index) => {
+                        if (result.status === 'rejected') {
+                            const target = 'Admin kelengkapan LHU';
+                            console.error(`notify ${target} after finalizeLhu error:`, result.reason);
+                        }
+                    });
+                });
+            });
             return res.json({
                 success: true,
-                message: 'LHU berhasil dibuat, PDF draft dibuat, dan dikirim ke Kepala Lab.',
+                message: 'LHU berhasil difinalisasi, disahkan, dan PDF final berhasil dibuat.',
                 data: secureKnownFileFields(data),
             });
         }
@@ -192,58 +206,6 @@ class LhuController {
         }
         catch (error) {
             return this.handleError(res, error, 'Gagal memuat riwayat finalisasi LHU.');
-        }
-    };
-    getKalabApprovalQueue = async (req, res) => {
-        try {
-            const data = await this.lhuService.getKalabApprovalQueue();
-            return res.json({
-                success: true,
-                data: secureKnownFileFields(data),
-            });
-        }
-        catch (error) {
-            return this.handleError(res, error, 'Gagal memuat antrean persetujuan Kepala Lab.');
-        }
-    };
-    approveByKalab = async (req, res) => {
-        try {
-            const currentNik = this.getCurrentNik(req);
-            if (!currentNik) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'User Kepala Lab tidak valid. Silakan login ulang.',
-                });
-            }
-            const nomorLhu = this.requireValue(req.body.nomorLhu ||
-                req.body.nomor_lhu ||
-                req.query.nomorLhu ||
-                req.query.nomor_lhu ||
-                req.params.nomorLhu ||
-                req.params.nomor_lhu, 'Nomor LHU wajib dikirim.');
-            const data = await this.lhuService.approveByKalab(nomorLhu, currentNik);
-            const approvedNomorLhu = data?.nomor_lhu || data?.nomorLhu || nomorLhu;
-            setImmediate(() => {
-                Promise.allSettled([
-                    this.notificationService.notifyLhuReady({ nomorLhu: approvedNomorLhu }),
-                    this.notificationService.notifyAdminWhenRequestLhusComplete({ nomorLhu: approvedNomorLhu }),
-                ]).then((results) => {
-                    results.forEach((result, index) => {
-                        if (result.status === 'rejected') {
-                            const target = index === 0 ? 'Pelanggan LHU siap diambil' : 'Admin kelengkapan LHU';
-                            console.error(`notify${target} this.approveByKalab error:`, result.reason);
-                        }
-                    });
-                });
-            });
-            return res.json({
-                success: true,
-                message: 'LHU berhasil disahkan dan PDF final berhasil dibuat.',
-                data: secureKnownFileFields(data),
-            });
-        }
-        catch (error) {
-            return this.handleError(res, error, 'Gagal menyetujui LHU.');
         }
     };
 }

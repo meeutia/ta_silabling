@@ -4,7 +4,7 @@ const { generateId } = require('../utils/id-generator');
 const { WORKFLOW_SOURCE } = require('../constants/workflow-status.constant');
 const ALLOWED_LOG_SOURCES = new Set(Object.values(WORKFLOW_SOURCE));
 class ActivityLogService {
-normalizeNullable = (value) => {
+    normalizeNullable = (value) => {
         if (value === undefined || value === '')
             return null;
         return value;
@@ -529,13 +529,13 @@ normalizeNullable = (value) => {
                 await this.createActivityLogIfMissing({
                     entityType: 'LHU',
                     entityId: lhu.nomor_lhu,
-                    action: 'KALAB_MENGESAHKAN_LHU',
+                    action: 'QC_MENGESAHKAN_LHU',
                     statusBefore: null,
                     statusAfter: 'Disahkan',
-                    source: 'Kalab',
-                    note: 'LHU disahkan oleh Kepala Laboratorium.',
-                    actorNik: lhu.kalab_by,
-                    createdAt: this.toDateOrNull(lhu.kalab_at) || new Date(),
+                    source: 'QC',
+                    note: 'LHU disahkan melalui alur finalisasi QC. Identitas Kepala Laboratorium tetap digunakan sebagai penandatangan dokumen.',
+                    actorNik: lhu.qc_by || lhu.kalab_by,
+                    createdAt: this.toDateOrNull(lhu.qc_at || lhu.kalab_at) || new Date(),
                 }, options);
             }
         }

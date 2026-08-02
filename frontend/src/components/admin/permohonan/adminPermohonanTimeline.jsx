@@ -191,7 +191,7 @@ export const getUniqueAdminLhuRows = (requestItem) => {
 const getNormalizedLhuStatus = (lhu) => normalizeLhuStatus(lhu?.status_lhu || lhu?.statusLhu || '');
 const isLhuDisahkan = (lhu) => getNormalizedLhuStatus(lhu) === 'Disahkan';
 const isLhuWaitingQc = (lhu) => ['Draft', 'Menunggu QC'].includes(getNormalizedLhuStatus(lhu));
-const isLhuWaitingKalab = (lhu) => getNormalizedLhuStatus(lhu) === 'Menunggu Persetujuan Kepala Lab';
+const isLhuWaitingDeprecatedApproval = () => false;
 
 
 const getActivityEntityType = (log) => log?.entity_type || log?.entityType || '';
@@ -220,7 +220,7 @@ const getUniqueActivityEntityIds = (rows = []) => {
 
 const getAdminLhuActivityFacts = (requestItem) => {
   const createdRows = getActivityRowsByActions(requestItem, ['MEMBUAT_LHU', 'QC_MENYETUJUI_LHU'], ['LHU']);
-  const approvedRows = getActivityRowsByActions(requestItem, ['KALAB_MENGESAHKAN_LHU'], ['LHU']);
+  const approvedRows = getActivityRowsByActions(requestItem, ['MEMBUAT_LHU_FINAL', 'MEMPERBARUI_LHU_FINAL', 'QC_MENGESAHKAN_LHU'], ['LHU']);
 
   const createdIds = getUniqueActivityEntityIds(createdRows);
   const approvedIds = getUniqueActivityEntityIds(approvedRows);
@@ -269,7 +269,7 @@ export const getRequestTrackingSteps = (requestItem) => {
     ? uniqueLhus.every(isLhuDisahkan)
     : lhuActivityFacts.allApproved;
   const hasLhuWaitingQc = uniqueLhus.some(isLhuWaitingQc);
-  const hasLhuWaitingKalab = uniqueLhus.some(isLhuWaitingKalab) || (lhuActivityFacts.hasCreatedOrQcLhu && !allLhuDisahkan);
+  const hasLhuWaitingDeprecatedApproval = false;
   const invoiceInfo = requestItem?.invoice || requestItem?.Invoice || requestItem?.invoiceSummary || null;
   const verifiedLog = findLatestFpplStatusLog(requestItem, [FPPL_STATUSES.MENUNGGU_PENENTUAN_PARAMETER], ['MEMVERIFIKASI_PERMOHONAN']);
   const verifiedDate = getLogDate(verifiedLog) || requestItem?.tanggal_verifikasi;
@@ -337,20 +337,20 @@ export const getRequestTrackingSteps = (requestItem) => {
     {
       key: 'lhu_qc',
       label: 'LHU difinalisasi QC',
-      description: hasLhuWaitingKalab || allLhuDisahkan
-        ? 'QC telah memfinalisasi LHU dan meneruskannya ke Kepala Lab.'
+      description: hasLhuWaitingDeprecatedApproval || allLhuDisahkan
+        ? 'QC telah memfinalisasi dan mengesahkan LHU.'
         : 'Menunggu QC memfinalisasi LHU.',
-      done: hasLhuWaitingKalab || allLhuDisahkan,
-      active: hasAnyLhu && hasLhuWaitingQc && !hasLhuWaitingKalab && !allLhuDisahkan,
+      done: hasLhuWaitingDeprecatedApproval || allLhuDisahkan,
+      active: hasAnyLhu && hasLhuWaitingQc && !hasLhuWaitingDeprecatedApproval && !allLhuDisahkan,
     },
     {
-      key: 'lhu_kalab',
-      label: 'LHU disahkan Kepala Lab',
+      key: 'lhu_final',
+      label: 'LHU disahkan',
       description: allLhuDisahkan
-        ? 'Kepala Lab telah mengesahkan seluruh LHU permohonan ini.'
-        : 'Menunggu Kepala Lab mengesahkan LHU.',
+        ? 'Seluruh LHU permohonan ini telah disahkan.'
+        : 'Menunggu finalisasi LHU.',
       done: allLhuDisahkan,
-      active: hasLhuWaitingKalab && !allLhuDisahkan,
+      active: hasLhuWaitingDeprecatedApproval && !allLhuDisahkan,
     },
     {
       key: 'pickup_schedule',
@@ -572,7 +572,7 @@ export const getSampleTrackingSteps = (actualSample, lhu) => {
     {
       key: 'qc_baku_mutu',
       label: 'LHU difinalisasi QC',
-      description: 'QC menetapkan paket/acuan baku mutu, menerbitkan nomor LHU, dan meneruskan LHU ke Kepala Lab.',
+      description: 'QC menetapkan paket/acuan baku mutu, menerbitkan nomor LHU, dan mengesahkan LHU.',
       date: qcBmDate,
       done: Boolean(lhu?.id_pkt_bm || lhu?.nomor_lhu),
     },
@@ -590,14 +590,12 @@ export const getSampleTrackingSteps = (actualSample, lhu) => {
       active: sampleStatus === 'Selesai' && !hasLhu,
     },
     {
-      key: 'lhu_approved_kalab',
-      label: 'LHU disahkan Kepala Lab',
+      key: 'lhu_final',
+      label: 'LHU disahkan',
       description: lhuFinal
-        ? 'Kepala Lab mengesahkan LHU.'
-        : 'Menunggu pengesahan LHU oleh Kepala Lab.',
+        ? 'LHU telah disahkan.'
+        : 'Menunggu finalisasi LHU.',
       date: pickFirstValue(
-        lhu?.kalab_at,
-        lhu?.kalabAt,
         lhu?.disetujui_pada,
         lhu?.tanggal_penerbitan,
         lhu?.tanggal_lhu

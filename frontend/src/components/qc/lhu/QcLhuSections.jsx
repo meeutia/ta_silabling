@@ -67,8 +67,8 @@ export function QcLhuSections(page) {
       <ConfirmActionModal
         open={page.confirmFinalizeModal?.open}
         title="Konfirmasi Finalisasi LHU"
-        message={`Finalisasi LHU untuk sampel ${page.confirmFinalizeModal?.sampleLabel || '-'} dan kirim ke Kepala Lab?`}
-        confirmLabel="Finalisasi & Kirim"
+        message={`Finalisasi LHU untuk sampel ${page.confirmFinalizeModal?.sampleLabel || '-'} dan langsung sahkan?`}
+        confirmLabel="Finalisasi & Sahkan"
         loading={page.submitting}
         onCancel={page.closeConfirmFinalizeModal}
         onConfirm={page.confirmFinalizeLhu}

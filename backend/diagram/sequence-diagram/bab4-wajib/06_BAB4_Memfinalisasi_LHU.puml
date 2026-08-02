@@ -4,61 +4,54 @@
     skinparam sequenceMessageAlign center
     skinparam responseMessageBelowArrow true
     skinparam BoxPadding 10
-    skinparam ParticipantPadding 18
     hide footbox
 
     actor "Pengendalian Mutu" as QC
-boundary "QcLhuPage
-QcLhuDetailModal" as FE
+boundary "QcLhuPage\nQcLhuDetailModal" as FE
 control "lhuReviewApi" as Api
-control "LhuController
-.finalizeLhu()" as Controller
-control "LhuService
-.finalizeLhu()" as LhuService
-control "LhuFinalizationService
-.finalizeLhu()" as FinalizationService
-control "LhuPdfService
-.generateDraftLhuPdf()" as PdfService
-database "Sequelize Models
-Sampel, Lhu, LhuSampel, DetailLhu" as DB
-control "WorkflowLogService" as Log
-control "NotificationService" as Notif
+control "LhuController\n.finalizeLhu()" as Controller
+control "LhuService\n.finalizeLhu()" as LhuService
+control "LhuFinalizationService\n.finalizeLhu()" as FinalizationService
+control "LhuPdfService\n.generateFinalLhuPdf()" as PdfService
+entity "Lhu" as ModelLhu
+entity "LkaHasil" as ModelLka
+entity "Sampel" as ModelSampel
 
 QC -> FE: Memilih sampel, paket baku mutu, dan urutan parameter
 FE -> Api: getLhuFinalizationPreview(identifier, idPktBm, sampleNos)
 Api -> Controller: GET /lhu/finalization/preview
 Controller -> LhuService: previewFinalization(identifier, idPktBm, sampleNos)
 LhuService -> FinalizationService: previewFinalization(...)
-FinalizationService -> DB: ambil sampel, hasil disetujui Kasi, paket BM
+FinalizationService -> ModelSampel: find() - Ambil data sampel
+FinalizationService -> ModelLka: find() - Ambil hasil LKA disetujui
 FinalizationService --> FE: preview detail LHU
 
-QC -> FE: Klik Finalisasi & Kirim ke Kalab
+QC -> FE: Klik Finalisasi
 FE -> Api: finalizeLhu(payload)
 Api -> Controller: POST /lhu/finalization/finalize
 activate Controller
 Controller -> LhuService: finalizeLhu(identifier, body, qcNik)
 LhuService -> FinalizationService: finalizeLhu(identifier, payload, qcNik)
 activate FinalizationService
-FinalizationService -> DB: begin transaction
-FinalizationService -> DB: resolveSelectedSampleInfos() dan dedupe sampleNos
-FinalizationService -> DB: getBmInfo(idPktBm)
+
+FinalizationService -> FinalizationService: resolveSelectedSampleInfos() & dedupe sampleNos
 FinalizationService -> FinalizationService: validateSampleCompatibilityForLhu()
-FinalizationService -> DB: buildLhuPreviewDetails()
-FinalizationService -> DB: create/update Lhu
-status = Menunggu Kalab
-FinalizationService -> DB: replace LhuSampel dan DetailLhu
-FinalizationService -> PdfService: generateDraftLhuPdf(nomorLhu, transaction)
-PdfService -> DB: ambil data LHU dan detail
-PdfService --> FinalizationService: filePath draft PDF
-FinalizationService -> DB: update file_lhu_path
-FinalizationService -> Log: logStatusTransition(MEMBUAT/MEMPERBARUI_DRAFT_LHU)
-FinalizationService -> DB: commit transaction
-FinalizationService --> LhuService: nomorLhu, filePath, status Menunggu Kalab
+FinalizationService -> FinalizationService: buildLhuPreviewDetails()
+
+FinalizationService -> ModelLhu: create / update (status_lhu="Disahkan")
+FinalizationService -> ModelLka: replace/update data terkait detail LHU
+FinalizationService -> PdfService: generateFinalLhuPdf(nomorLhu, transaction)
+PdfService -> ModelLhu: ambil data LHU dan detail
+PdfService --> FinalizationService: filePath final PDF
+FinalizationService -> ModelLhu: update (file_lhu_path)
+
+
+FinalizationService --> LhuService: nomorLhu, filePath, status="Disahkan"
 deactivate FinalizationService
 LhuService --> Controller: result
-Controller -> Notif: notifyLhuNeedsKalabApproval(nomorLhu)
+
 Controller --> Api: successResponse
-Api --> FE: data LHU draft
+Api --> FE: data LHU final
 FE --> QC: Menampilkan finalisasi berhasil
 
 deactivate Controller

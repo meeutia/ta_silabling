@@ -6,7 +6,7 @@ export function Topbar({ role, currentPage, onOpenSidebar, onNavigate }) {
   const pageTitle = getPageTitle(role, currentPage);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-gray-200 bg-white">
+    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white">
       <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-8 md:py-4">
         <div className="flex min-w-0 items-center gap-3">
           <button

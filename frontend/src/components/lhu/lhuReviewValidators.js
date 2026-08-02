@@ -82,18 +82,3 @@ export function buildQcFinalizePayload({ selectedSample, form } = {}) {
     keteranganSampel: (form?.keteranganSampel || '').trim() || null,
   };
 }
-
-export function validateKalabApprove({ selectedRow, detailRows } = {}) {
-  const nomorLhu = getNomorLhu(selectedRow);
-  if (isBlank(nomorLhu)) return 'Nomor LHU tidak valid.';
-
-  const rows = Array.isArray(detailRows) ? detailRows : [];
-  if (!rows.length) return 'Detail LHU belum tersedia. Buka ulang detail LHU sebelum menyetujui.';
-
-  const emptyResultIndex = rows.findIndex((row) => isBlank(getResultValue(row)));
-  if (emptyResultIndex >= 0) {
-    return `Hasil pengujian pada detail LHU baris #${emptyResultIndex + 1} belum tersedia.`;
-  }
-
-  return '';
-}

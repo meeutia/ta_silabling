@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import { adminPermohonanApi } from '../../../api/adminPermohonanApi';
 import { showError } from '../../../utils/feedback';
 
@@ -25,21 +26,23 @@ export function useAdminPermohonanData({ setSaving }) {
     }
   }, [fetchRequestDetail, setSaving]);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setError('');
 
     try {
       const rows = await adminPermohonanApi.getRequests();
       setRequestList(rows);
       return rows;
     } catch (error) {
-      setError(error?.message || 'Gagal terhubung ke server.');
+      if (!silent) setError(error?.message || 'Gagal terhubung ke server.');
       return [];
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
+
+  useAutoRefresh(fetchData);
 
   return {
     selectedRequest,

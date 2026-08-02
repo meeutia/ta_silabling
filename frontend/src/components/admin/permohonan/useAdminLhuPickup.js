@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import { adminPermohonanApi } from '../../../api/adminPermohonanApi';
 import { showError, showSuccess, showWarning } from '../../../utils/feedback';
 import {
@@ -88,21 +89,23 @@ export function useAdminLhuPickup({
     setPickupForm(EMPTY_PICKUP_FORM);
   }, []);
 
-  const fetchPickupQueue = useCallback(async () => {
-    setPickupLoading(true);
-    setPickupError('');
+  const fetchPickupQueue = useCallback(async (silent = false) => {
+    if (!silent) setPickupLoading(true);
+    if (!silent) setPickupError('');
 
     try {
       const rows = await adminPermohonanApi.getPickupQueue();
       setPickupRows(rows);
       return rows;
     } catch (error) {
-      setPickupError(error?.message || 'Gagal terhubung ke server.');
+      if (!silent) setPickupError(error?.message || 'Gagal terhubung ke server.');
       return [];
     } finally {
-      setPickupLoading(false);
+      if (!silent) setPickupLoading(false);
     }
   }, []);
+
+  useAutoRefresh(fetchPickupQueue);
 
   const openSchedulePickupModal = useCallback((row) => {
     if (!canScheduleLhuPickup(row)) {

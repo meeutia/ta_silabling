@@ -72,6 +72,23 @@ class WebNotificationController {
     }
   };
 
+  getPushStatus = async (req, res) => {
+    try {
+      const data = await pushNotificationService.getSubscriptionStatus(req.user);
+      return res.json({
+        success: true,
+        message: 'Status push notification berhasil diambil.',
+        data,
+      });
+    } catch (error) {
+      console.error('getPushStatus error:', error);
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Gagal mengambil status push notification.',
+      });
+    }
+  };
+
   subscribePush = async (req, res) => {
     try {
       const data = await pushNotificationService.saveSubscription(
@@ -139,6 +156,7 @@ module.exports = {
   markWebNotificationRead: webNotificationController.markRead,
   markAllWebNotificationsRead: webNotificationController.markAllRead,
   getPushNotificationConfig: webNotificationController.getPushConfig,
+  getPushNotificationStatus: webNotificationController.getPushStatus,
   subscribePushNotification: webNotificationController.subscribePush,
   unsubscribePushNotification: webNotificationController.unsubscribePush,
   WebNotificationController,

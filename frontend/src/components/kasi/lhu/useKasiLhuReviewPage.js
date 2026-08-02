@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { lhuReviewApi } from '../../../api/lhuReviewApi';
 import { showError, showSuccess, showWarning } from '../../../utils/feedback';
@@ -84,8 +85,8 @@ export function useKasiLhuReviewPage() {
   const [approveModal, setApproveModal] = useState({ open: false, noSampel: '' });
   const [detailMode, setDetailMode] = useState('queue');
 
-  const fetchQueue = useCallback(async () => {
-    setLoadingQueue(true);
+  const fetchQueue = useCallback(async (silent = false) => {
+    if (!silent) setLoadingQueue(true);
 
     try {
       const data = await lhuReviewApi.getKasiReviewQueue();
@@ -95,30 +96,38 @@ export function useKasiLhuReviewPage() {
       setRows(queueRows);
       setHistoryRows((prev) => mergeUniqueReviewRows(prev, historyRowsFromQueue));
     } catch (error) {
-      showError(getErrorMessage(error, 'Gagal memuat antrean review hasil Kasi Pengujian.'));
+      if (!silent) showError(getErrorMessage(error, 'Gagal memuat antrean review hasil Kasi Pengujian.'));
     } finally {
-      setLoadingQueue(false);
+      if (!silent) setLoadingQueue(false);
     }
   }, []);
 
-  const fetchHistory = useCallback(async () => {
-    setLoadingHistory(true);
+  const fetchHistory = useCallback(async (silent = false) => {
+    if (!silent) setLoadingHistory(true);
 
     try {
       const data = await lhuReviewApi.getKasiReviewHistory();
       const historyRowsFromApi = (data || []).filter(isHistoryReviewRow);
       setHistoryRows((prev) => mergeUniqueReviewRows(historyRowsFromApi, prev));
     } catch (error) {
-      showError(getErrorMessage(error, 'Gagal memuat riwayat persetujuan Kasi Pengujian.'));
+      if (!silent) showError(getErrorMessage(error, 'Gagal memuat riwayat persetujuan Kasi Pengujian.'));
     } finally {
-      setLoadingHistory(false);
+      if (!silent) setLoadingHistory(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchQueue();
-    fetchHistory();
+  const fetchAll = useCallback(async (silent = false) => {
+    await Promise.all([
+      fetchQueue(silent),
+      fetchHistory(silent)
+    ]);
   }, [fetchQueue, fetchHistory]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  useAutoRefresh(fetchAll);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search || '');

@@ -185,6 +185,54 @@ getPlain = (instance) => {
             nip: row.nip || null,
         };
     };
+    getLhuSignerSnapshot = async (fallbackNik = null, transaction = null) => {
+        const envName = String(process.env.LHU_SIGNER_NAME || '').trim();
+        const envNip = String(process.env.LHU_SIGNER_NIP || '').trim();
+        const title = String(process.env.LHU_SIGNER_TITLE || '').trim() || 'Kepala UPTD Laboratorium Lingkungan';
+
+        if (envName) {
+            return {
+                nama_pegawai: envName,
+                nip: envNip || null,
+                jabatan: title,
+            };
+        }
+
+        const candidates = [];
+        const pushCandidate = (where) => {
+            const key = JSON.stringify(where || {});
+            if (where && Object.keys(where).length && !candidates.some((item) => JSON.stringify(item) === key)) {
+                candidates.push(where);
+            }
+        };
+
+        pushCandidate(process.env.LHU_SIGNER_PEGAWAI_ID ? { id_pegawai: String(process.env.LHU_SIGNER_PEGAWAI_ID).trim() } : null);
+        pushCandidate(process.env.LHU_SIGNER_NIK ? { nik: String(process.env.LHU_SIGNER_NIK).trim() } : null);
+        pushCandidate(fallbackNik ? { nik: String(fallbackNik).trim() } : null);
+        pushCandidate(envNip ? { nip: envNip } : null);
+        pushCandidate({ id_pegawai: 'PGW-001' });
+
+        for (const where of candidates) {
+            const pegawai = await Pegawai.findOne({
+                where,
+                attributes: ['id_pegawai', 'nik', 'nama_pegawai', 'nip'],
+                transaction,
+            });
+            if (!pegawai) continue;
+            const row = this.getPlain(pegawai);
+            return {
+                nama_pegawai: row.nama_pegawai || null,
+                nip: row.nip || null,
+                jabatan: title,
+            };
+        }
+
+        return {
+            nama_pegawai: null,
+            nip: envNip || null,
+            jabatan: title,
+        };
+    };
     getLhuHeaderForPdf = async (nomorLhu, transaction = null) => {
         const instance = await Lhu.findByPk(nomorLhu, {
             include: [
@@ -633,7 +681,7 @@ getPlain = (instance) => {
         const storedDetailOrder = explicitDetailOrder.length ? explicitDetailOrder : await this.getStoredDetailOrderForLhu(nomorLhu, transaction);
         const [qc, kalab, details] = await Promise.all([
             this.getPegawaiSnapshot(header.qc_by || header.qcBy, transaction),
-            this.getPegawaiSnapshot(header.kalab_by || header.kalabBy, transaction),
+            this.getLhuSignerSnapshot(header.kalab_by || header.kalabBy, transaction),
             this.getLhuDetailRowsForPdf(nomorLhu, header, sampleRows, transaction, { ...options, detailOrder: storedDetailOrder }),
         ]);
         const firstSample = sampleRows[0] || {};
@@ -698,6 +746,8 @@ getPlain = (instance) => {
             kalabNama: kalab.nama_pegawai,
             kalab_nip: kalab.nip,
             kalabNip: kalab.nip,
+            kalab_jabatan: kalab.jabatan,
+            kalabJabatan: kalab.jabatan,
         };
         return toCamelCaseDeep({ lhu, details });
     };

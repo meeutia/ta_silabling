@@ -257,6 +257,33 @@ class AssignmentCreateService {
                 item.pairs = Array.from(resolvedPairMap.values());
                 item.no_sampel = Array.from(new Set(item.pairs.map((pair) => pair.no_sampel)));
             }
+            
+            const groupedAssignmentsMap = new Map();
+            for (const item of normalizedAssignments) {
+                const key = `${item.id_metode_parameter}::${item.tanggal_tenggat || 'null'}`;
+                if (groupedAssignmentsMap.has(key)) {
+                    const existing = groupedAssignmentsMap.get(key);
+                    item.no_sampel.forEach(ns => {
+                        if (!existing.no_sampel.includes(ns)) existing.no_sampel.push(ns);
+                    });
+                    existing.pairs.push(...item.pairs);
+                    if (item.catatan_detail) {
+                        if (!existing.catatan_detail) {
+                            existing.catatan_detail = item.catatan_detail;
+                        } else if (!existing.catatan_detail.includes(item.catatan_detail)) {
+                            existing.catatan_detail += `\n${item.catatan_detail}`;
+                        }
+                    }
+                } else {
+                    groupedAssignmentsMap.set(key, { 
+                        ...item, 
+                        no_sampel: [...item.no_sampel],
+                        pairs: [...item.pairs]
+                    });
+                }
+            }
+            const groupedAssignments = Array.from(groupedAssignmentsMap.values());
+
             const idPenugasan = await nextRunningId('penugasan', 'id_penugasan', 'PNG-', 4, transaction);
             await Penugasan.create({
                 id_penugasan: idPenugasan,
@@ -268,7 +295,7 @@ class AssignmentCreateService {
                 catatan_penugasan: catatanPenugasan,
             }, { transaction });
             const createdDetails = [];
-            for (const item of normalizedAssignments) {
+            for (const item of groupedAssignments) {
                 const idPenugasanDetail = await nextRunningId('penugasan_detail', 'id_penugasan_detail', 'PD-', 5, transaction);
                 await PenugasanDetail.create({
                     id_penugasan_detail: idPenugasanDetail,

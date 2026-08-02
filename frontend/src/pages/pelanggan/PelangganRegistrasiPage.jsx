@@ -12,6 +12,7 @@ export function PelangganRegistrasiPage({ onSubmit, onNavigate, userData, onSess
     setIsAgreed,
     submitting,
     submitError,
+    duplicateRequest,
     showTariffModal,
     setShowTariffModal,
     waterTypes,
@@ -194,7 +195,54 @@ export function PelangganRegistrasiPage({ onSubmit, onNavigate, userData, onSess
             setIsAgreed={setIsAgreed}
           />
 
-          {submitError && (
+          {/* Error duplikasi permohonan — tampilan informatif */}
+          {duplicateRequest && (
+            <div className="mt-6 mb-2 bg-amber-50 border border-amber-400 rounded-xl p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-800 mb-1">Permohonan Duplikat Terdeteksi</p>
+                  <p className="text-sm text-amber-700 mb-3">
+                    Anda sudah memiliki permohonan dengan data yang sama yang masih dalam proses.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                    {duplicateRequest.nomor_fppl && (
+                      <div className="bg-amber-100 border border-amber-200 rounded-lg px-3 py-2">
+                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">No. FPPL</p>
+                        <p className="text-sm font-semibold text-amber-900 mt-0.5">{duplicateRequest.nomor_fppl}</p>
+                      </div>
+                    )}
+                    <div className="bg-amber-100 border border-amber-200 rounded-lg px-3 py-2">
+                      <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">ID Registrasi</p>
+                      <p className="text-sm font-semibold text-amber-900 mt-0.5">{duplicateRequest.id_registrasi}</p>
+                    </div>
+                    <div className="bg-amber-100 border border-amber-200 rounded-lg px-3 py-2">
+                      <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Status</p>
+                      <p className="text-sm font-semibold text-amber-900 mt-0.5">{duplicateRequest.status_fppl}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('status', { pathSegments: [duplicateRequest.id_registrasi] })}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Lihat Detail Permohonan
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error biasa (bukan duplikasi) */}
+          {submitError && !duplicateRequest && (
             <div className="mt-6 mb-2 bg-red-50 border border-red-300 rounded-lg p-4 flex items-center gap-3">
               <svg className="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />

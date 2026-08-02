@@ -99,77 +99,6 @@ safeString = (value) => {
         const values = this.dedupeTextValues((Array.isArray(samples) ? samples : []).map(this.getSampleTypeLabel));
         return values.length ? values.join(', ') : fallback;
     };
-    buildKalabApprovalLink = (nomorLhu = '') => {
-        const frontendUrl = this.safeString(process.env.FRONTEND_URL || 'http://localhost:5173')
-            .trim()
-            .replace(/\/+$/, '');
-        if (!frontendUrl)
-            return null;
-        const lhuNumber = this.safeString(nomorLhu).trim();
-        return lhuNumber
-            ? `${frontendUrl}/kalab/lhu/${encodeURIComponent(lhuNumber)}`
-            : `${frontendUrl}/kalab/lhu`;
-    };
-    buildLhuNeedsKalabApprovalEmail = ({ penerima = {}, context = {}, nomorLhu = '', lhus = [] }) => {
-        const data = toCamelCaseDeep(context);
-        const recipient = toCamelCaseDeep(penerima);
-        const { sample = {}, fppl = {}, pelanggan = {}, jenis = {} } = data;
-        const contextSampleNos = Array.isArray(data.sampleNos) ? data.sampleNos.filter(Boolean) : [];
-        const fallbackNomorSampel = sample.noSampel || '-';
-        const nomorSampel = contextSampleNos.length ? this.formatSampleNosForDisplay(contextSampleNos) : fallbackNomorSampel;
-        const totalSampel = data.totalSamples || contextSampleNos.length || (fallbackNomorSampel !== '-' ? 1 : 0);
-        const nomorFppl = fppl.nomorFppl || fppl.idRegistrasi || data?.lhu?.idRegistrasi || '-';
-        const namaPelanggan = pelanggan.namaInstansi || pelanggan.namaPelanggan || pelanggan.nama || '-';
-        const jenisSampel = jenis.jenisSampel || this.formatSampleTypesForDisplay(data.samples || [], '-');
-        const namaPenerima = recipient.namaPegawai || recipient.username || recipient.nik || 'Kepala Laboratorium';
-        const lhuRows = Array.isArray(lhus) && lhus.length
-            ? toCamelCaseDeep(lhus)
-            : [{ nomorLhu, idRegistrasi: data?.lhu?.idRegistrasi, sampleNos: contextSampleNos, noSampel: nomorSampel }];
-        const detailLink = this.buildKalabApprovalLink(nomorLhu || lhuRows[0]?.nomorLhu || '');
-        const subject = lhuRows.length > 1
-            ? `${lhuRows.length} LHU menunggu persetujuan Kepala Lab`
-            : `LHU menunggu persetujuan Kepala Lab - ${nomorLhu || lhuRows[0]?.nomorLhu || '-'}`;
-        const daftarLhu = lhuRows.map((row, index) => {
-            const rowNomorLhu = row.nomorLhu || '-';
-            const rowRegistrasi = row.idRegistrasi || '-';
-            const rowSampleNoList = Array.isArray(row.sampleNos)
-                ? row.sampleNos.filter(Boolean)
-                : [row.noSampel || '-'];
-            const rowSampleNos = this.formatSampleNosForDisplay(rowSampleNoList);
-            const rowTotalSampel = row.totalSamples || this.dedupeSampleNos(rowSampleNoList).length || 0;
-            const rowJenisSampel = row.jenisSampel || this.formatSampleTypesForDisplay(row.samples || [], '');
-            const jenisInfo = rowJenisSampel ? ` | Jenis: ${rowJenisSampel}` : '';
-            return `${index + 1}. ${rowNomorLhu} | ${rowRegistrasi} | ${rowTotalSampel} sampel: ${rowSampleNos || '-'}${jenisInfo}`;
-        });
-        const body = [
-            `Yth. ${namaPenerima},`,
-            '',
-            'QC telah menyelesaikan finalisasi LHU dan mengirimkannya ke tahap persetujuan Kepala Laboratorium.',
-            '',
-            lhuRows.length > 1 ? 'Daftar LHU dalam rentang 20 menit terakhir:' : `Nomor LHU: ${nomorLhu || lhuRows[0]?.nomorLhu || '-'}`,
-            ...(lhuRows.length > 1 ? daftarLhu : []),
-            lhuRows.length > 1 ? null : `Total sampel: ${totalSampel}`,
-            lhuRows.length > 1 ? null : `Nomor sampel: ${nomorSampel}`,
-            lhuRows.length > 1 ? null : `Nomor FPPL: ${nomorFppl}`,
-            lhuRows.length > 1 ? null : `Jenis sampel: ${jenisSampel}`,
-            lhuRows.length > 1 ? null : `Pelanggan: ${namaPelanggan}`,
-            '',
-            detailLink ? `Buka detail: ${detailLink}` : null,
-            'Silakan review PDF draft dan detail LHU pada sistem.',
-            '',
-            'Terima kasih.',
-        ].filter(Boolean).join('\n');
-        return buildEmailResponse({
-            subject,
-            body,
-            title: subject,
-            preheader: lhuRows.length > 1
-                ? `${lhuRows.length} LHU menunggu persetujuan Kepala Lab.`
-                : `LHU ${nomorLhu || lhuRows[0]?.nomorLhu || '-'} dengan ${totalSampel} sampel menunggu persetujuan Kepala Lab.`,
-            actionUrl: detailLink,
-            actionLabel: 'Review LHU',
-        });
-    };
     buildRequestLhusCompleteAdminEmail = ({ penerima = {}, context = {} }) => {
         const data = toCamelCaseDeep(context);
         const recipient = toCamelCaseDeep(penerima);
@@ -190,7 +119,7 @@ safeString = (value) => {
         const body = [
             `Yth. ${namaPenerima},`,
             '',
-            'Seluruh LHU untuk satu permohonan pelanggan sudah disahkan oleh Kepala Laboratorium.',
+            'Seluruh LHU untuk satu permohonan pelanggan sudah disahkan oleh QCoratorium.',
             '',
             `Nomor permohonan : ${fppl.idRegistrasi || idRegistrasi || '-'}`,
             `Nomor FPPL       : ${nomorFppl}`,

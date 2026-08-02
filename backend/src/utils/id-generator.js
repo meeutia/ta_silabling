@@ -208,7 +208,7 @@ const parseNomorLhuSequence = (nomorLhu) => {
  * Format: DLHU-YYMMDD-0001
  *
  * Nomor ini hanya dipakai sebagai PK sementara supaya draft LHU dapat
- * disimpan sebelum Kepala Laboratorium mengesahkan nomor LHU resmi.
+ * disimpan sebelum QC menerbitkan nomor LHU resmi.
  */
 const generateDraftNomorLhu = async (LhuModel, transaction = null, date = new Date()) => {
   const draftDate = date instanceof Date ? date : new Date(date);
@@ -253,7 +253,7 @@ const generateDraftNomorLhu = async (LhuModel, transaction = null, date = new Da
  *
  * Nomor resmi hanya dihitung dari LHU yang sudah disahkan pada tahun
  * berjalan. Draft DLHU-* dan LHU yang belum disahkan tidak ikut dihitung,
- * sehingga urutan mengikuti waktu persetujuan Kepala Laboratorium.
+ * sehingga urutan mengikuti waktu finalisasi QC.
  */
 const generateNomorLhu = async (LhuModel, transaction = null, date = new Date()) => {
   const approvalDate = date instanceof Date ? date : new Date(date);
@@ -274,7 +274,6 @@ const generateNomorLhu = async (LhuModel, transaction = null, date = new Date())
       },
       [Op.or]: [
         { status_lhu: 'Disahkan' },
-        { kalab_by: { [Op.ne]: null } },
         { tanggal_penerbitan: { [Op.ne]: null } },
       ],
     },

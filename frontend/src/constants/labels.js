@@ -4,6 +4,5 @@ export const ROLE_LABELS = Object.freeze({
   analis: 'Analis',
   penyelia: 'Penyelia',
   kasi: 'Kasi Pengujian',
-  kalab: 'Kepala Laboratorium',
   qc: 'Pengendalian Mutu',
 });

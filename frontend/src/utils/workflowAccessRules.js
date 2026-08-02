@@ -5,9 +5,10 @@ const trim = (value) => String(value ?? '').trim();
 export const LHU_STATUS_ALIASES = Object.freeze({
   'Menunggu Verifikasi Mutu': LHU_STATUSES.WAIT_QC,
   'Revisi QC': LHU_STATUSES.WAIT_QC,
-  'Disetujui Mutu': LHU_STATUSES.WAIT_KALAB,
-  'Disetujui QC': LHU_STATUSES.WAIT_KALAB,
-  'Menunggu Persetujuan Kalab': LHU_STATUSES.WAIT_KALAB,
+  'Disetujui Mutu': LHU_STATUSES.APPROVED,
+  'Disetujui QC': LHU_STATUSES.APPROVED,
+  'Menunggu Persetujuan Kepala Lab': LHU_STATUSES.APPROVED,
+  'Menunggu Persetujuan Kalab': LHU_STATUSES.APPROVED,
   'Disetujui Kalab': LHU_STATUSES.APPROVED,
 });
 
@@ -31,8 +32,8 @@ export function isQcEditableLhuStatus(status) {
   ].includes(normalizeLhuStatus(status));
 }
 
-export function isKalabApprovalLhuStatus(status) {
-  return normalizeLhuStatus(status) === LHU_STATUSES.WAIT_KALAB;
+export function isDeprecatedApprovalLhuStatus() {
+  return false;
 }
 
 export function isFinalLhuStatus(status) {

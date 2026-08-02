@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAutoRefresh } from '../../../hooks/useAutoRefresh';
 import { useLocation } from 'react-router-dom';
 import { ApiError } from '../../../api/httpClient';
 import { customerRequestApi } from '../../../api/customerRequestApi';
@@ -57,83 +58,72 @@ export function useStatusHistoryPage({
     }
   }, [location.search]);
 
-  useEffect(() => {
-    let ignore = false;
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setError('');
 
-    const fetchData = async () => {
-      setLoading(true);
-      setError('');
+    try {
+      const data = await customerRequestApi.getRequests();
+      const nextRequests = Array.isArray(data) ? data : [];
 
-      try {
-        const data = await customerRequestApi.getRequests();
-        const nextRequests = Array.isArray(data) ? data : [];
+      setRequests(nextRequests);
 
-        if (ignore) return;
-        setRequests(nextRequests);
+      if (!silent && paymentReturnKey && handledPaymentReturnKeyRef.current !== paymentReturnKey) {
+        handledPaymentReturnKeyRef.current = paymentReturnKey;
 
-        if (paymentReturnKey && handledPaymentReturnKeyRef.current !== paymentReturnKey) {
-          handledPaymentReturnKeyRef.current = paymentReturnKey;
+        const registrationNumber = paymentReturnRegistrationId;
+        if (registrationNumber) {
+          setDetailLoadingId(registrationNumber);
 
-          const registrationNumber = paymentReturnRegistrationId;
-          if (registrationNumber) {
-            setDetailLoadingId(registrationNumber);
+          const requestFromList = nextRequests.find(
+            (request) => getHistoryRequestId(request) === registrationNumber
+          );
 
-            const requestFromList = nextRequests.find(
-              (request) => getHistoryRequestId(request) === registrationNumber
-            );
+          const fallbackRequest = requestFromList || {
+            id_registrasi: registrationNumber,
+            status_fppl: paymentReturnStatus === 'success' ? 'Menunggu Sampel' : undefined,
+          };
 
-            const fallbackRequest = requestFromList || {
-              id_registrasi: registrationNumber,
-              status_fppl: paymentReturnStatus === 'success' ? 'Menunggu Sampel' : undefined,
-            };
+          const listPayload = buildHistoryDetailPayload(fallbackRequest, fallbackRequest);
+          onViewDetailRef.current?.(listPayload);
 
-            const listPayload = buildHistoryDetailPayload(fallbackRequest, fallbackRequest);
-            onViewDetailRef.current?.(listPayload);
-
-            try {
-              const detail = await customerRequestApi.getDetail(registrationNumber);
-              if (!ignore) {
-                onViewDetailRef.current?.(buildHistoryDetailPayload(detail, listPayload));
-              }
-            } catch (err) {
-              if (err instanceof ApiError && [401, 403].includes(err.status)) {
-                if (!ignore) {
-                  setError('Sesi login berakhir. Silakan login ulang.');
-                  onSessionExpiredRef.current?.();
-                }
-                return;
-              }
-
-              // Kalau detail gagal dimuat, data dari tabel tetap ditampilkan agar user tidak blank.
-              if (!ignore) {
-                setError(err?.message || 'Gagal memuat detail permohonan setelah pembayaran.');
-              }
-            } finally {
-              if (!ignore) setDetailLoadingId(null);
+          try {
+            const detail = await customerRequestApi.getDetail(registrationNumber);
+            onViewDetailRef.current?.(buildHistoryDetailPayload(detail, listPayload));
+          } catch (err) {
+            if (err instanceof ApiError && [401, 403].includes(err.status)) {
+              setError('Sesi login berakhir. Silakan login ulang.');
+              onSessionExpiredRef.current?.();
+              return;
             }
+
+            // Kalau detail gagal dimuat, data dari tabel tetap ditampilkan agar user tidak blank.
+            setError(err?.message || 'Gagal memuat detail permohonan setelah pembayaran.');
+          } finally {
+            setDetailLoadingId(null);
           }
-
-          onPaymentReturnConsumedRef.current?.();
-        }
-      } catch (err) {
-        if (err instanceof ApiError && [401, 403].includes(err.status)) {
-          setError('Sesi login berakhir. Silakan login ulang.');
-          onSessionExpiredRef.current?.();
-          return;
         }
 
-        setError(err?.message || 'Gagal terhubung ke server.');
-      } finally {
-        if (!ignore) setLoading(false);
+        onPaymentReturnConsumedRef.current?.();
       }
-    };
+    } catch (err) {
+      if (err instanceof ApiError && [401, 403].includes(err.status)) {
+        if (!silent) setError('Sesi login berakhir. Silakan login ulang.');
+        onSessionExpiredRef.current?.();
+        return;
+      }
 
+      if (!silent) setError(err?.message || 'Gagal terhubung ke server.');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [paymentReturnKey, paymentReturnRegistrationId, paymentReturnStatus]);
+
+  useEffect(() => {
     fetchData();
+  }, [fetchData]);
 
-    return () => {
-      ignore = true;
-    };
-  }, [authToken, paymentReturnKey, paymentReturnRegistrationId, paymentReturnStatus]);
+  useAutoRefresh(fetchData);
 
   const handleViewRequestDetail = async (request) => {
     const requestId = getHistoryRequestId(request);

@@ -172,8 +172,6 @@ export const getLhuNumberValue = (lhu) => pickFirstFilledValue(
 );
 
 export const getLhuCreatedDateValue = (lhu) => pickFirstFilledValue(
-  lhu?.diajukan_ke_kalab_pada,
-  lhu?.diajukanKeKalabPada,
   lhu?.qc_approved_at,
   lhu?.qcApprovedAt,
   lhu?.created_at,
@@ -185,8 +183,6 @@ export const getLhuCreatedDateValue = (lhu) => pickFirstFilledValue(
 );
 
 export const getLhuApprovedDateValue = (lhu) => pickFirstFilledValue(
-  lhu?.kalab_at,
-  lhu?.kalabAt,
   lhu?.disahkan_pada,
   lhu?.disahkanPada,
   lhu?.disetujui_pada,
@@ -287,14 +283,14 @@ export const buildLhuTimelineGroupsFromActivityLogs = (requestItem) => {
     const dateValue = getActivityLogDate(log);
 
     if (entityType !== 'LHU' || !nomorLhu || !dateValue) return;
-    if (!['MEMBUAT_LHU', 'QC_MENYETUJUI_LHU', 'KALAB_MENGESAHKAN_LHU'].includes(action)) return;
+    if (!['MEMBUAT_LHU', 'MEMBUAT_LHU_FINAL', 'MEMPERBARUI_LHU_FINAL', 'QC_MENYETUJUI_LHU', 'QC_MENGESAHKAN_LHU'].includes(action)) return;
 
     if (!groups.has(nomorLhu)) {
       groups.set(nomorLhu, {
         nomorLhu,
         lhu: {
           nomor_lhu: nomorLhu,
-          status_lhu: 'Menunggu Persetujuan Kepala Lab',
+          status_lhu: 'Disahkan',
         },
         sampleLabels: ['permohonan ini'],
         sampleText: 'permohonan ini',
@@ -310,10 +306,10 @@ export const buildLhuTimelineGroupsFromActivityLogs = (requestItem) => {
       }
     }
 
-    if (action === 'KALAB_MENGESAHKAN_LHU') {
+    if (['MEMBUAT_LHU_FINAL', 'MEMPERBARUI_LHU_FINAL', 'QC_MENGESAHKAN_LHU'].includes(action)) {
       const previousApprovedDate = getLhuApprovedDateValue(group.lhu);
       if (!previousApprovedDate || getTimestamp(dateValue) >= getTimestamp(previousApprovedDate)) {
-        group.lhu.kalab_at = dateValue;
+        group.lhu.tanggal_penerbitan = dateValue;
         group.lhu.status_lhu = 'Disahkan';
       }
     }

@@ -27,7 +27,6 @@
             if (id.includes('/src/components/penyelia/')) return 'role-penyelia';
             if (id.includes('/src/components/analis/')) return 'role-analis';
             if (id.includes('/src/components/qc/')) return 'role-qc';
-            if (id.includes('/src/components/kalab/')) return 'role-kalab';
             if (id.includes('/src/components/LandingPage')) return 'landing';
             return undefined;
           },

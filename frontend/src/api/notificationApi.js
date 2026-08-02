@@ -37,6 +37,10 @@ export const notificationApi = {
     return requestData('/notifications/push/config', {}, { auth: true, blocking: false });
   },
 
+  pushStatus() {
+    return requestData('/notifications/push/status', {}, { auth: true, blocking: false });
+  },
+
   subscribePush(subscription) {
     return requestData('/notifications/push/subscribe', {
       method: 'POST',

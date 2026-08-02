@@ -730,14 +730,12 @@ export const getSampleTrackingSteps = (actualSample, lhu) => {
       active: sampleStatus === 'Selesai' && !hasLhu,
     },
     {
-      key: 'lhu_approved_kalab',
-      label: 'Disahkan Kepala Lab',
+      key: 'lhu_final',
+      label: 'LHU Disahkan',
       description: lhuFinal
         ? 'LHU sudah disahkan dan siap diberikan ke pelanggan.'
         : 'Menunggu pengesahan LHU.',
       date: pickFirstValue(
-        lhu?.kalab_at,
-        lhu?.kalabAt,
         lhu?.disetujui_pada,
         lhu?.tanggal_penerbitan,
         lhu?.tanggal_lhu

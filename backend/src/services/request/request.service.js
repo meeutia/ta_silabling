@@ -10,6 +10,7 @@ const WorkflowLogService = require('../workflow/workflow-log.service');
 const { buildPenyeliaRequestSummary, deriveCustomerDecisionStatus, deriveCustomerHistoryStatus, getKasiDecisionStatus, resolveSampleQuantity, resolveSamplingLocation, resolveSamplingSchedule, resolveSamplingType } = require('./request-transform.util');
 const { decorateSampleReceiptFields, decorateScheduleFields, stripCustomerSensitiveLhuData, } = require('./request-schedule-fields.util');
 const { toCamelCaseDeep } = require('../../utils/case-transform.util');
+const { ACTIVE_REQUEST_STATUSES, buildDuplicateFingerprint, isDuplicateRequest } = require('./request-duplicate.util');
 
 const sameFpplSampelComposite = (a = {}, b = {}) => {
     const pick = (row, snake, camel) => String(row?.[snake] ?? row?.[camel] ?? '').trim();
@@ -37,6 +38,83 @@ const normalizeRequestFpplSampelGraph = (requestJson = {}) => {
     return requestJson;
 };
 class RequestService {
+    /**
+     * Memeriksa apakah permohonan baru merupakan duplikat dari permohonan aktif.
+     * Jika duplikat ditemukan, melempar Error dengan code 'DUPLICATE_REQUEST'.
+     *
+     * @param {string} idPelanggan  - ID pelanggan yang membuat permohonan baru
+     * @param {Object} newFppl      - Data FPPL baru (plain object, sebelum insert)
+     * @param {Array}  newSampels   - Array entry sampel baru
+     * @param {Array}  newParams    - Array entry parameter baru (flat: {id_jenis_sampel, id_reg_bm, id_parameter}[])
+     */
+    checkDuplicateRequest = async (idPelanggan, newFppl, newSampels, newParams) => {
+        // Ambil semua permohonan aktif milik pelanggan ini
+        const activeFppls = await Fppl.findAll({
+            where: {
+                id_pelanggan: idPelanggan,
+                status_fppl: { [Op.in]: ACTIVE_REQUEST_STATUSES },
+            },
+            attributes: [
+                'id_registrasi',
+                'nomor_fppl',
+                'id_pelanggan',
+                'maksud_pengujian',
+                'lokasi_pengambilan_sampel',
+                'jenis_pengambilan_sampel',
+                'tanggal_rencana_pengambilan_sampel',
+                'tanggal_rencana_pengantaran_sampel',
+                'status_fppl',
+                'tanggal_pendaftaran',
+            ],
+        });
+
+        if (!activeFppls || activeFppls.length === 0) return;
+
+        // Bangun fingerprint permohonan baru
+        const newFingerprint = buildDuplicateFingerprint(newFppl, newSampels, newParams);
+
+        for (const existingFppl of activeFppls) {
+            const existingFpplJson = existingFppl.toJSON();
+
+            // Ambil sampel dan parameter dari permohonan yang sudah ada
+            const [existingSampels, existingParams] = await Promise.all([
+                FpplSampel.findAll({
+                    where: { id_registrasi: existingFpplJson.id_registrasi },
+                    attributes: ['id_jenis_sampel', 'id_reg_bm'],
+                }),
+                FpplParameterMetode.findAll({
+                    where: { id_registrasi: existingFpplJson.id_registrasi },
+                    attributes: ['id_jenis_sampel', 'id_reg_bm', 'id_parameter'],
+                }),
+            ]);
+
+            const existingSampelsJson = existingSampels.map((s) => s.toJSON());
+            const existingParamsJson = existingParams.map((p) => p.toJSON());
+
+            const existingFingerprint = buildDuplicateFingerprint(
+                existingFpplJson,
+                existingSampelsJson,
+                existingParamsJson,
+            );
+
+            if (isDuplicateRequest(newFingerprint, existingFingerprint)) {
+                const err = new Error(
+                    `Permohonan dengan data yang sama sudah pernah dibuat dan masih dalam proses. ` +
+                    `Silakan cek permohonan dengan nomor FPPL: ${existingFpplJson.nomor_fppl || '-'} ` +
+                    `atau ID Registrasi: ${existingFpplJson.id_registrasi}.`
+                );
+                err.code = 'DUPLICATE_REQUEST';
+                err.existingRequest = {
+                    id_registrasi: existingFpplJson.id_registrasi,
+                    nomor_fppl: existingFpplJson.nomor_fppl || null,
+                    status_fppl: existingFpplJson.status_fppl,
+                    tanggal_pendaftaran: existingFpplJson.tanggal_pendaftaran,
+                };
+                throw err;
+            }
+        }
+    };
+
 validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expectedParameterCount, transaction }) => {
         const fpplCount = await Fppl.count({ where: { id_registrasi }, transaction });
         const fpplSampelCount = await FpplSampel.count({ where: { id_registrasi }, transaction });
@@ -99,6 +177,41 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
             if (!Array.isArray(sampleEntries) || sampleEntries.length === 0) {
                 throw new Error('Data sampel dan parameter uji wajib diisi.');
             }
+
+            // --- Validasi anti-duplikasi ---
+            // Susun struktur flat dari sampleEntries untuk fingerprinting
+            const candidateSampels = sampleEntries.map((entry) => ({
+                id_jenis_sampel: entry.idJenisSampel || entry.id_jenis_sampel || entry.jenisSampel,
+                id_reg_bm: entry.idRegBm || entry.id_reg_bm,
+            }));
+            const candidateParams = [];
+            for (const entry of sampleEntries) {
+                const idJs = entry.idJenisSampel || entry.id_jenis_sampel || entry.jenisSampel;
+                const idBm = entry.idRegBm || entry.id_reg_bm;
+                const paramIds = Array.isArray(entry.parameters)
+                    ? entry.parameters.map((p) => (typeof p === 'string' ? p : p?.id_parameter)).filter(Boolean)
+                    : [];
+                for (const idParam of paramIds) {
+                    candidateParams.push({ id_jenis_sampel: idJs, id_reg_bm: idBm, id_parameter: idParam });
+                }
+            }
+            const candidateFppl = {
+                id_pelanggan: pelanggan.id_pelanggan,
+                maksud_pengujian: finalTestPurpose,
+                lokasi_pengambilan_sampel: samplingSiteLocation,
+                jenis_pengambilan_sampel: samplingType,
+                tanggal_rencana_pengambilan_sampel: samplingSchedule.tanggalRencanaPengambilanSampel || null,
+                tanggal_rencana_pengantaran_sampel: samplingSchedule.tanggalRencanaPengantaranSampel || null,
+            };
+            // Jalankan pengecekan duplikasi (di luar transaksi agar tidak deadlock)
+            await this.checkDuplicateRequest(
+                pelanggan.id_pelanggan,
+                candidateFppl,
+                candidateSampels,
+                candidateParams,
+            );
+            // --- Akhir validasi anti-duplikasi ---
+
             await Fppl.create({
                 id_registrasi: idRegistrasi,
                 id_pelanggan: pelanggan.id_pelanggan,
@@ -421,7 +534,7 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
         if (role === Roles.CUSTOMER && pelangganEntity?.nik !== userNik) {
             throw new Error('FORBIDDEN');
         }
-        const responseData = decorateSampleReceiptFields(decorateScheduleFields(requestRecord.toJSON()));
+        const responseData = decorateSampleReceiptFields(decorateScheduleFields(normalizeRequestFpplSampelGraph(requestRecord.toJSON())));
         // Hapus nik dari response pelanggan
         if (responseData.Pelanggan)
             delete responseData.Pelanggan.nik;

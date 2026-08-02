@@ -106,18 +106,6 @@ export const ROLE_PAGE_CONFIG = {
     },
     menu: ['verifikasi'],
   },
-  kalab: {
-    portalTitle: 'SILABLING',
-    portalSubtitle: 'Kepala Laboratorium',
-    portalLogo: uptdLogo,
-    roleLabel: 'Kepala Laboratorium',
-    defaultPage: 'lhu',
-    pages: {
-      lhu: { title: 'Lihat LHU', menuLabel: 'Lihat LHU', icon: FileText },
-      notifikasi: { title: 'Notifikasi', parent: 'lhu' },
-    },
-    menu: ['lhu'],
-  },
 };
 
 export function getRolePageConfig(role) {

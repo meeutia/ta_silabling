@@ -26,7 +26,6 @@ const ROLE_ID_TO_KEY = {
   'RL-004': 'penyelia',
   'RL-005': 'analis',
   'RL-006': 'qc',
-  'RL-007': 'kalab',
 };
 
 class PushNotificationService {
@@ -231,6 +230,19 @@ class PushNotificationService {
     });
   };
 
+  getSubscriptionStatus = async (user) => {
+    try {
+      const nik = this.getCurrentNik(user);
+      const activeRows = await this.getActiveSubscriptionRows(nik);
+      return {
+        active: activeRows.length > 0,
+        count: activeRows.length,
+      };
+    } catch {
+      return { active: false, count: 0 };
+    }
+  };
+
   getNotificationType = (idTipeNotifikasi) => (
     NOTIFICATION_TYPE_DEFINITIONS.find((item) => item.id === idTipeNotifikasi) || null
   );
@@ -294,11 +306,18 @@ class PushNotificationService {
   handleSendError = async (row, error) => {
     const statusCode = Number(error?.statusCode || error?.status || 0);
     const shouldDeactivate = statusCode === 404 || statusCode === 410;
+    const errorMessage = safeString(error?.message || 'Gagal mengirim push notification.').slice(0, 2000);
+    
+    console.error(`[PUSH SEND ERROR] nik_penerima=${row.nik_penerima}, statusCode=${statusCode}, message=${errorMessage}`);
+
     const values = {
-      pesan_error: safeString(error?.message || 'Gagal mengirim push notification.').slice(0, 2000),
+      pesan_error: errorMessage,
     };
 
-    if (shouldDeactivate) values.push_aktif = 0;
+    if (shouldDeactivate) {
+      console.info(`[PUSH DEACTIVATED] nik_penerima=${row.nik_penerima} due to ${statusCode}`);
+      values.push_aktif = 0;
+    }
     await row.update(values);
   };
 

@@ -5,7 +5,7 @@ const { NOTIFICATION_TYPE, STATUS_PENGIRIMAN_EMAIL, } = require('../../constants
 const Roles = require('../../constants/roles');
 const RequestStatus = require('../../constants/request-status');
 const { LHU_STATUS } = require('../../constants/lhu-status.constant');
-const { buildAdminRequestLink, buildAnalisTestingLink, buildKasiMethodsLink, buildKasiReviewLink, buildKalabApprovalLink, buildKasiReviewApprovedToQcEmail, buildLhuNeedsKalabApprovalEmail, buildPenyeliaAssignmentLink, buildPenyeliaReviewLink, buildRequestDetailLink, buildRequestLhusCompleteAdminEmail, safeString, } = require('./notification-format.util');
+const { buildAdminRequestLink, buildAnalisTestingLink, buildKasiMethodsLink, buildKasiReviewLink, buildKasiReviewApprovedToQcEmail, buildPenyeliaAssignmentLink, buildPenyeliaReviewLink, buildRequestDetailLink, buildRequestLhusCompleteAdminEmail, safeString, } = require('./notification-format.util');
 const { addDays, buildEmailLogWhere, createEmailLog, findNotificationTypeById, findOrCreateNotificationTypeById, getPlain, markEmailFailed, markEmailSent, pickArray, pickObject, resolveRecipientEmail, sendNotificationEmail, startOfToday, startOfTomorrow, toDateOnly, } = require('./notification-core.service');
 const { buildJadwalPengambilanLhuEmail, } = require('../../templates/email/jadwal-pengambilan-lhu.template');
 const { buildDeadlineAnalisDekatEmail, } = require('../../templates/email/deadline-analis-dekat.template');
@@ -76,7 +76,7 @@ class NotificationService {
         }
         return results;
     };
-    getLhuKalabNotificationContext = async (lhuNo) => {
+    getLhuSignerNotificationContext = async (lhuNo) => {
         const lhuInstance = await Lhu.findOne({
             where: { nomor_lhu: lhuNo },
             include: [
@@ -111,7 +111,7 @@ class NotificationService {
             order: [[{ model: Sampel, as: 'sampels' }, 'no_sampel', 'ASC']],
         });
         if (!lhuInstance) {
-            const err = new Error('LHU tidak ditemukan untuk notifikasi Kepala Lab.');
+            const err = new Error('LHU tidak ditemukan untuk notifikasi LHU.');
             err.statusCode = 404;
             throw err;
         }
@@ -153,7 +153,7 @@ class NotificationService {
     getRecentQcFinalizedLhus = async ({ since, fallbackLhuNo }) => {
         const rows = await Lhu.findAll({
             where: {
-                status_lhu: LHU_STATUS.WAIT_KALAB,
+                status_lhu: LHU_STATUS.APPROVED_FINAL,
                 qc_at: {
                     [Op.gte]: since,
                 },
@@ -206,7 +206,7 @@ class NotificationService {
             };
         });
         if (!mapped.some((row) => row.nomorLhu === fallbackLhuNo)) {
-            const fallbackContext = await this.getLhuKalabNotificationContext(fallbackLhuNo);
+            const fallbackContext = await this.getLhuSignerNotificationContext(fallbackLhuNo);
             mapped.push({
                 nomorLhu: fallbackLhuNo,
                 idRegistrasi: fallbackContext.lhu.idRegistrasi || fallbackContext.lhu.id_registrasi || fallbackContext.fpplSampel.idRegistrasi || fallbackContext.fpplSampel.id_registrasi || null,
@@ -217,77 +217,6 @@ class NotificationService {
             });
         }
         return mapped;
-    };
-    notifyLhuNeedsKalabApproval = async ({ nomorLhu } = {}) => {
-        const lhuNo = safeString(nomorLhu).trim();
-        if (!lhuNo) {
-            const err = new Error('Nomor LHU wajib dikirim.');
-            err.statusCode = 400;
-            throw err;
-        }
-        const context = await this.getLhuKalabNotificationContext(lhuNo);
-        const tipe = await findOrCreateNotificationTypeById(NOTIFICATION_TYPE.LHU_MENUNGGU_KALAB, {
-            deskripsi: 'LHU menunggu persetujuan Kepala Lab',
-            konteks: 'LHU',
-        });
-        const recipients = await getActiveUsersByRole(Roles.KALAB);
-        const results = [];
-        const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
-        const bundledLhus = await this.getRecentQcFinalizedLhus({
-            since: twentyMinutesAgo,
-            fallbackLhuNo: lhuNo,
-        });
-        for (const penerima of recipients) {
-            const nik = penerima.nik;
-            if (!nik)
-                continue;
-            const existingInWindow = await NotifikasiEmail.findOne({
-                where: {
-                    ...buildEmailLogWhere({
-                        idTipeNotifikasi: tipe.get('id_tipe_notifikasi'),
-                        penerimaUserNik: nik,
-                    }),
-                    dibuat_pada: {
-                        [Op.gte]: twentyMinutesAgo,
-                    },
-                },
-                order: [['dibuat_pada', 'DESC']],
-            });
-            if (existingInWindow) {
-                results.push({
-                    skipped: true,
-                    reason: 'Notifikasi Kalab sudah dikirim dalam rentang 20 menit terakhir.',
-                    nomorLhu: lhuNo,
-                    penerimaUserNik: nik,
-                });
-                continue;
-            }
-            const log = await createEmailLog({
-                idTipeNotifikasi: tipe.get('id_tipe_notifikasi'),
-                penerimaUserNik: nik,
-                penerimaPelangganId: null,
-                idRegistrasi: context.lhu.id_registrasi || context.fpplSampel.id_registrasi || null,
-                idJadwalLhu: null,
-                nomorLhu: lhuNo,
-                idPenugasan: null,
-            });
-            try {
-                const to = await resolveRecipientEmail({ penerimaUserNik: nik, penerimaPelangganId: null });
-                const { subject, body, html } = buildLhuNeedsKalabApprovalEmail({
-                    penerima,
-                    context,
-                    nomorLhu: lhuNo,
-                    lhus: bundledLhus,
-                });
-                await sendNotificationEmail({ to, subject, body, html });
-                results.push(await markEmailSent(log));
-            }
-            catch (error) {
-                results.push(await markEmailFailed(log, error));
-                console.error('Gagal kirim notifikasi LHU ke Kalab:', error);
-            }
-        }
-        return results;
     };
     notifyAdminWhenRequestLhusComplete = async ({ nomorLhu } = {}) => {
         const lhuNo = safeString(nomorLhu).trim();

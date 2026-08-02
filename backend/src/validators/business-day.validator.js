@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Sampel, PenugasanItem, Lhu } = require('../models/Associations');
+const { Sampel, PenugasanItem } = require('../models/Associations');
 const { getHariLibur } = require('../utils/holiday-calendar.util');
 const { fail, asTrimmedText } = require('./common.validator');
 const {
@@ -261,75 +261,9 @@ const validateLhuFinalizationBusinessTimeline = async (req, res, next) => {
   }
 };
 
-async function loadLhuSampleRows(nomorLhu) {
-  const lhuNo = asTrimmedText(nomorLhu);
-  if (!lhuNo) return [];
-
-  return Sampel.findAll({
-    where: { nomor_lhu: lhuNo },
-    attributes: ['nomor_lhu', 'no_sampel'],
-    order: [['no_sampel', 'ASC']],
-  });
-}
-
-const validateKalabApprovalBusinessTimeline = async (req, res, next) => {
-  try {
-    const nomorLhu = asTrimmedText(
-      req.body?.nomorLhu ||
-        req.body?.nomor_lhu ||
-        req.query?.nomorLhu ||
-        req.query?.nomor_lhu ||
-        req.params?.nomorLhu ||
-        req.params?.nomor_lhu
-    );
-    if (!nomorLhu) return next();
-
-    const lhu = await Lhu.findByPk(nomorLhu, { attributes: ['nomor_lhu'] });
-    if (!lhu) return fail(res, `LHU ${nomorLhu} tidak ditemukan.`);
-
-    const lhuSampleRows = await loadLhuSampleRows(nomorLhu);
-    const noSampelList = lhuSampleRows
-      .map((row) => asTrimmedText(row.no_sampel || row.noSampel))
-      .filter(Boolean);
-
-    if (!noSampelList.length) {
-      return fail(res, `LHU ${nomorLhu} belum memiliki sampel terkait.`);
-    }
-
-    const samplesMap = await loadSamplesMap(noSampelList);
-    const holidays = await loadHolidayRows();
-
-    for (const noSampel of noSampelList) {
-      const sample = samplesMap.get(noSampel);
-      if (!sample) return fail(res, `Sampel ${noSampel} tidak ditemukan.`);
-
-      const receivedYmd = getSampleReceivedDate(sample);
-      if (!receivedYmd) return fail(res, `Sampel ${noSampel} belum memiliki tanggal penerimaan.`);
-
-      const message = validateWithinBusinessWindow({
-        value: getWorkflowCurrentYmd(receivedYmd),
-        startYmd: receivedYmd,
-        maxBusinessDay: 12,
-        label: `Tanggal approval LHU sampel ${noSampel}`,
-        holidays,
-      });
-      if (message) return fail(res, message);
-    }
-
-    next();
-  } catch (error) {
-    console.error('validateKalabApprovalBusinessTimeline error:', error);
-    return fail(
-      res,
-      `Gagal memvalidasi timeline approval LHU.${error?.message ? ` ${error.message}` : ''}`,
-      500
-    );
-  }
-};
 
 module.exports = {
   validateAssignmentBusinessTimeline,
-  validateKalabApprovalBusinessTimeline,
   validateLhuFinalizationBusinessTimeline,
   validateSubkontrakBusinessTimeline,
   validateWorksheetBusinessTimeline,

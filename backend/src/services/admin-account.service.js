@@ -12,8 +12,6 @@ const STAFF_ROLE_LABEL_TO_ID = {
     Analis: Roles.ANALIS,
     'Pengendalian Mutu': Roles.QC,
     'Kasi Pengendalian Mutu': Roles.QC,
-    'Kepala Lab': Roles.KALAB,
-    'Kepala Laboratorium': Roles.KALAB,
     PCC: Roles.ADMIN,
 };
 const ROLE_ID_TO_LABEL = {
@@ -22,12 +20,10 @@ const ROLE_ID_TO_LABEL = {
     [Roles.PENYELIA]: 'Penyelia',
     [Roles.ANALIS]: 'Analis',
     [Roles.QC]: 'Pengendalian Mutu',
-    [Roles.KALAB]: 'Kepala Lab',
     [Roles.CUSTOMER]: 'Pelanggan',
 };
 const STAFF_ROLE_ORDER = [
     Roles.ADMIN,
-    Roles.KALAB,
     Roles.KASI,
     Roles.QC,
     Roles.PENYELIA,
@@ -98,8 +94,7 @@ normalizeText = (value) => {
             Roles.PENYELIA,
             Roles.ANALIS,
             Roles.QC,
-            Roles.KALAB,
-        ].includes(roleText)) {
+                ].includes(roleText)) {
             return roleText;
         }
         throw new Error('Role petugas tidak valid.');

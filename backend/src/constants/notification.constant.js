@@ -18,7 +18,6 @@ const NOTIFICATION_TYPE = {
   JADWAL_SAMPEL: 'TN017',
   KASI_METODE_PERLU_DITENTUKAN: 'TN018',
   PENYELIA_PENUGASAN_SAMPEL_MASUK: 'TN019',
-  LHU_MENUNGGU_KALAB: 'TN020',
 
   SCHEDULE_CHANGE_SUBMITTED: 'TN021',
   SCHEDULE_CHANGE_APPROVED: 'TN022',
@@ -53,7 +52,6 @@ const NOTIFICATION_TYPE_DEFINITIONS = [
   { id: NOTIFICATION_TYPE.JADWAL_SAMPEL, deskripsi: 'Jadwal pengantaran/pengambilan sampel telah ditentukan', konteks: 'FPPL' },
   { id: NOTIFICATION_TYPE.KASI_METODE_PERLU_DITENTUKAN, deskripsi: 'Kasi Pengujian perlu menentukan metode pengujian', konteks: 'FPPL' },
   { id: NOTIFICATION_TYPE.PENYELIA_PENUGASAN_SAMPEL_MASUK, deskripsi: 'Penyelia perlu menugaskan pengujian sampel masuk', konteks: 'PENUGASAN' },
-  { id: NOTIFICATION_TYPE.LHU_MENUNGGU_KALAB, deskripsi: 'LHU menunggu persetujuan Kepala Lab', konteks: 'LHU' },
   { id: NOTIFICATION_TYPE.SCHEDULE_CHANGE_SUBMITTED, deskripsi: 'Pelanggan mengajukan perubahan jadwal', konteks: 'JADWAL' },
   { id: NOTIFICATION_TYPE.SCHEDULE_CHANGE_APPROVED, deskripsi: 'Pengajuan perubahan jadwal disetujui admin', konteks: 'JADWAL' },
   { id: NOTIFICATION_TYPE.SCHEDULE_CHANGE_REJECTED, deskripsi: 'Pengajuan perubahan jadwal ditolak admin', konteks: 'JADWAL' },

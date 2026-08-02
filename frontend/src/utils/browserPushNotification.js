@@ -40,11 +40,27 @@ export async function getPushServiceWorkerRegistration() {
   return navigator.serviceWorker.register(SERVICE_WORKER_PATH);
 }
 
+export async function getActiveServiceWorkerRegistration() {
+  if (!isBrowserPushSupported()) return null;
+  return navigator.serviceWorker.getRegistration();
+}
+
 export async function getExistingPushSubscription() {
   if (!isBrowserPushSupported()) return null;
 
-  const registration = await getPushServiceWorkerRegistration();
+  const registration = await getActiveServiceWorkerRegistration();
+  if (!registration) return null;
+  
   return registration.pushManager.getSubscription();
+}
+
+export async function getServerPushStatus() {
+  try {
+    const status = await notificationApi.pushStatus();
+    return Boolean(status?.active);
+  } catch {
+    return false;
+  }
 }
 
 export async function activateBrowserPushNotification() {
@@ -63,6 +79,8 @@ export async function activateBrowserPushNotification() {
   }
 
   const registration = await getPushServiceWorkerRegistration();
+  await navigator.serviceWorker.ready;
+  
   const existing = await registration.pushManager.getSubscription();
   const subscription = existing || await registration.pushManager.subscribe({
     userVisibleOnly: true,
@@ -77,9 +95,16 @@ export async function deactivateBrowserPushNotification() {
   if (!isBrowserPushSupported()) return { active: false };
 
   const subscription = await getExistingPushSubscription();
-  if (!subscription) return { active: false };
+  
+  try {
+    await notificationApi.unsubscribePush(subscription?.endpoint || null);
+  } catch {
+    // Ignore error, proceed to unsubscribe locally
+  }
 
-  await notificationApi.unsubscribePush(subscription.endpoint);
-  await subscription.unsubscribe();
+  if (subscription) {
+    await subscription.unsubscribe();
+  }
+  
   return { active: false };
 }

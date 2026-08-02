@@ -4,7 +4,6 @@
     skinparam sequenceMessageAlign center
     skinparam responseMessageBelowArrow true
     skinparam BoxPadding 10
-    skinparam ParticipantPadding 18
     hide footbox
 
     actor "Penyelia" as Penyelia

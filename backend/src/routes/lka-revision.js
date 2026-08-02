@@ -11,14 +11,14 @@ router.use(verifyToken);
 
 router.get(
   '/lka/:kodeLka',
-  authorizeRoles(Roles.ANALIS, Roles.PENYELIA, Roles.KASI, Roles.QC, Roles.KALAB),
+  authorizeRoles(Roles.ANALIS, Roles.PENYELIA, Roles.KASI, Roles.QC),
   controller.getByKodeLka
 );
 
 // Gunakan query string untuk no_sampel karena format nomor sampel berisi garis miring.
 router.get(
   '/hasil',
-  authorizeRoles(Roles.ANALIS, Roles.PENYELIA, Roles.KASI, Roles.QC, Roles.KALAB),
+  authorizeRoles(Roles.ANALIS, Roles.PENYELIA, Roles.KASI, Roles.QC),
   controller.getByTarget
 );
 

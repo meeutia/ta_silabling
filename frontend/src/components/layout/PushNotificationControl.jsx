@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BellRing, Loader2, ShieldAlert } from 'lucide-react';
 import {
   activateBrowserPushNotification,
+  deactivateBrowserPushNotification,
   getBrowserNotificationPermission,
   getExistingPushSubscription,
+  getServerPushStatus,
   isBrowserPushSupported,
 } from '../../utils/browserPushNotification';
 
@@ -26,8 +28,9 @@ export function PushNotificationControl({ role, compact = false }) {
     if (!isSupported) return;
 
     try {
-      const subscription = await getExistingPushSubscription();
-      setActive(Boolean(subscription));
+      const serverActive = await getServerPushStatus();
+      const localSubscription = await getExistingPushSubscription();
+      setActive(serverActive || Boolean(localSubscription));
     } catch {
       setActive(false);
     }
@@ -68,6 +71,21 @@ export function PushNotificationControl({ role, compact = false }) {
     }
   };
 
+  const handleDeactivate = async () => {
+    setLoading(true);
+    setMessage('');
+
+    try {
+      await deactivateBrowserPushNotification();
+      setActive(false);
+      setMessage('Push notification dinonaktifkan.');
+    } catch (error) {
+      setMessage(error?.message || 'Gagal menonaktifkan push notification.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!shouldShow) return null;
 
   if (compact) {
@@ -78,15 +96,28 @@ export function PushNotificationControl({ role, compact = false }) {
             <p className="silabling-push-compact__title">Browser push</p>
             <p className="silabling-push-compact__desc">{description}</p>
           </div>
-          <button
-            type="button"
-            onClick={handleActivate}
-            disabled={loading || active || !supported || permission === 'denied'}
-            className="silabling-push-compact__button"
-          >
-            {loading ? <Loader2 className="silabling-spin" /> : <BellRing />}
-            <span>{label}</span>
-          </button>
+          {active ? (
+            <button
+              type="button"
+              onClick={handleDeactivate}
+              disabled={loading}
+              className="silabling-push-compact__button"
+              style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}
+            >
+              {loading ? <Loader2 className="silabling-spin" /> : <BellRing />}
+              <span>Nonaktifkan</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleActivate}
+              disabled={loading || !supported || permission === 'denied'}
+              className="silabling-push-compact__button"
+            >
+              {loading ? <Loader2 className="silabling-spin" /> : <BellRing />}
+              <span>{label}</span>
+            </button>
+          )}
         </div>
         {message ? <p className="silabling-push-compact__message">{message}</p> : null}
       </div>
@@ -105,15 +136,30 @@ export function PushNotificationControl({ role, compact = false }) {
         {message ? <span className="silabling-push-card__message">{message}</span> : null}
       </div>
 
-      <button
-        type="button"
-        onClick={handleActivate}
-        disabled={loading || active || !supported || permission === 'denied'}
-        className="silabling-notification-button silabling-notification-button--primary silabling-push-card__button"
-      >
-        {loading ? <Loader2 className="silabling-spin" /> : <BellRing />}
-        <span>{label}</span>
-      </button>
+      <div className="silabling-push-card__actions" style={{ display: 'flex', gap: '8px' }}>
+        {active ? (
+          <button
+            type="button"
+            onClick={handleDeactivate}
+            disabled={loading}
+            className="silabling-notification-button silabling-notification-button--primary silabling-push-card__button"
+            style={{ backgroundColor: '#ef4444' }}
+          >
+            {loading ? <Loader2 className="silabling-spin" /> : <BellRing />}
+            <span>Nonaktifkan</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleActivate}
+            disabled={loading || !supported || permission === 'denied'}
+            className="silabling-notification-button silabling-notification-button--primary silabling-push-card__button"
+          >
+            {loading ? <Loader2 className="silabling-spin" /> : <BellRing />}
+            <span>{label}</span>
+          </button>
+        )}
+      </div>
     </section>
   );
 }

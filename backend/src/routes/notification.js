@@ -6,6 +6,7 @@ const {
   markWebNotificationRead,
   markAllWebNotificationsRead,
   getPushNotificationConfig,
+  getPushNotificationStatus,
   subscribePushNotification,
   unsubscribePushNotification,
 } = require('../controllers/web-notification.controller');
@@ -15,6 +16,7 @@ const router = express.Router();
 router.use(verifyToken);
 
 router.get('/push/config', getPushNotificationConfig);
+router.get('/push/status', getPushNotificationStatus);
 router.post('/push/subscribe', subscribePushNotification);
 router.delete('/push/subscribe', unsubscribePushNotification);
 

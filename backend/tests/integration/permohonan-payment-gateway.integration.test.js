@@ -5,6 +5,7 @@ require('../fixtures/integration-mocks');
 const request = require('supertest');
 const app = require('../../src/app');
 const RequestService = require('../../src/services/request/request.service');
+const RequestListService = require('../../src/services/request/request-list.service');
 const RequestWorkflowService = require('../../src/services/request/request-workflow.service');
 const PaymentService = require('../../src/services/payment/payment.service');
 const {
@@ -106,7 +107,7 @@ describe('Integration Testing - Permohonan dan Payment Gateway', () => {
   });
 
   test('IT-016 Pelanggan melihat riwayat permohonan sendiri', async () => {
-    RequestService.listRequests.mockResolvedValueOnce([
+    RequestListService.listRequests.mockResolvedValueOnce([
       { id_registrasi: 'REG-001', status: 'Menunggu Verifikasi Admin' },
     ]);
 
@@ -117,7 +118,7 @@ describe('Integration Testing - Permohonan dan Payment Gateway', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data).toHaveLength(1);
-    expect(RequestService.listRequests).toHaveBeenCalledWith(nikByRole[Roles.CUSTOMER], Roles.CUSTOMER, undefined);
+    expect(RequestListService.listRequests).toHaveBeenCalledWith(nikByRole[Roles.CUSTOMER], Roles.CUSTOMER, undefined);
   });
 
   test('IT-017 Pelanggan melihat detail permohonan miliknya', async () => {
@@ -153,7 +154,7 @@ describe('Integration Testing - Permohonan dan Payment Gateway', () => {
   });
 
   test('IT-019 Admin melihat daftar permohonan masuk', async () => {
-    RequestService.listRequests.mockResolvedValueOnce([
+    RequestListService.listRequests.mockResolvedValueOnce([
       { id_registrasi: 'REG-001', status: 'Menunggu Verifikasi Admin' },
       { id_registrasi: 'REG-002', status: 'Menunggu Verifikasi Admin' },
     ]);
@@ -165,7 +166,7 @@ describe('Integration Testing - Permohonan dan Payment Gateway', () => {
 
     expect(response.body.success).toBe(true);
     expect(response.body.data).toHaveLength(2);
-    expect(RequestService.listRequests).toHaveBeenCalledWith(nikByRole[Roles.ADMIN], Roles.ADMIN, 'Menunggu Verifikasi Admin');
+    expect(RequestListService.listRequests).toHaveBeenCalledWith(nikByRole[Roles.ADMIN], Roles.ADMIN, 'Menunggu Verifikasi Admin');
   });
 
   test('IT-020 Admin memverifikasi permohonan', async () => {

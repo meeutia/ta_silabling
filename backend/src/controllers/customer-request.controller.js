@@ -31,6 +31,18 @@ class CustomerRequestController {
         }
         catch (error) {
             console.error('this.createRequest error:', error);
+
+            // Tangani error duplikasi permohonan — kembalikan 409 Conflict
+            if (error.code === 'DUPLICATE_REQUEST') {
+                return res.status(409).json({
+                    success: false,
+                    message: error.message,
+                    errors: {
+                        existingRequest: error.existingRequest || null,
+                    },
+                });
+            }
+
             return errorResponse(res, error.message || 'Terjadi kesalahan pada server.', 400);
         }
     };

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { dashboardApi } from '../../api/dashboardApi';
 import { formatDashboardLoadError, loadDashboardSources } from './dashboardFetch';
 import {
@@ -38,39 +39,37 @@ export function useAdminDashboardData() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    let ignore = false;
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setErrorMessage('');
 
-    const load = async () => {
-      setLoading(true);
-      setErrorMessage('');
+    try {
+      const { data, errors, failedAll } = await loadDashboardSources([
+        { key: 'requests', label: 'permohonan', fetcher: () => dashboardApi.getRequests(), fallback: [] },
+        { key: 'pickupRows', label: 'pickup LHU', fetcher: () => dashboardApi.getLhuPickupQueue(), fallback: [] },
+      ]);
 
-      try {
-        const { data, errors, failedAll } = await loadDashboardSources([
-          { key: 'requests', label: 'permohonan', fetcher: () => dashboardApi.getRequests(), fallback: [] },
-          { key: 'pickupRows', label: 'pickup LHU', fetcher: () => dashboardApi.getLhuPickupQueue(), fallback: [] },
-        ]);
-
-        if (ignore) return;
-        setRequests(asArray(data.requests));
-        setPickupRows(asArray(data.pickupRows));
+      setRequests(asArray(data.requests));
+      setPickupRows(asArray(data.pickupRows));
+      if (!silent || errors.length > 0) {
         setErrorMessage(formatDashboardLoadError(errors, 'Dashboard Admin dimuat sebagian.', 'Gagal memuat dashboard Admin.', failedAll));
-      } catch (error) {
-        if (ignore) return;
-        setErrorMessage(error?.message || 'Gagal memuat dashboard Admin.');
+      }
+    } catch (error) {
+      if (!silent) setErrorMessage(error?.message || 'Gagal memuat dashboard Admin.');
+      if (!silent) {
         setRequests([]);
         setPickupRows([]);
-      } finally {
-        if (!ignore) setLoading(false);
       }
-    };
-
-    load();
-
-    return () => {
-      ignore = true;
-    };
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useAutoRefresh(load);
 
   return useMemo(() => {
     const sortedRequests = sortByNewest(requests);

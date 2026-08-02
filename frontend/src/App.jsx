@@ -36,7 +36,6 @@ export default function App() {
   const selectedAdminPermohonanRegistrationId = useMemo(() => getRouteAdminPermohonanRegistrationId(route), [route]);
   const selectedKasiPermohonanRegistrationId = useMemo(() => getRouteKasiPermohonanRegistrationId(route), [route]);
   const selectedQcLhuNumber = useMemo(() => getRouteLhuNumber(route, 'qc'), [route]);
-  const selectedKalabLhuNumber = useMemo(() => getRouteLhuNumber(route, 'kalab'), [route]);
   const directAppLink = useMemo(() => parseDirectAppLink(location.search, route), [location.search, route]);
   const paymentReturnInfo = useMemo(() => {
     if (route.kind !== 'app') return null;
@@ -335,9 +334,6 @@ export default function App() {
       const qcLhuNumber = userRole === 'qc' && nextPage === 'verifikasi'
         ? getRouteLhuNumber(route, 'qc')
         : '';
-      const kalabLhuNumber = userRole === 'kalab' && nextPage === 'lhu'
-        ? getRouteLhuNumber(route, 'kalab')
-        : '';
       const expectedPathSegments = statusRegistrationId
         ? [statusRegistrationId]
         : adminPermohonanRegistrationId
@@ -346,9 +342,7 @@ export default function App() {
             ? [kasiPermohonanRegistrationId]
             : qcLhuNumber
               ? [qcLhuNumber]
-              : kalabLhuNumber
-                ? [kalabLhuNumber]
-                : [];
+              : [];
       const expectedPath = buildAppPath(
         userRole,
         nextPage,
@@ -593,7 +587,6 @@ export default function App() {
         selectedAdminPermohonanRegistrationId={selectedAdminPermohonanRegistrationId}
         selectedKasiPermohonanRegistrationId={selectedKasiPermohonanRegistrationId}
         selectedQcLhuNumber={selectedQcLhuNumber}
-        selectedKalabLhuNumber={selectedKalabLhuNumber}
         selectedPenugasanDetailId={selectedPenugasanDetailId || (directAppLink?.role === userRole ? directAppLink.idPenugasanDetail : null)}
         setSelectedPenugasanDetailId={setSelectedPenugasanDetailId}
         selectedAssignmentId={selectedAssignmentId || (directAppLink?.role === userRole ? directAppLink.idPenugasan : null)}

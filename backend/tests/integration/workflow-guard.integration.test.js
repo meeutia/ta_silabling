@@ -5,9 +5,7 @@ require('../fixtures/integration-mocks');
 const request = require('supertest');
 const app = require('../../src/app');
 const RequestWorkflowService = require('../../src/services/request/request-workflow.service');
-const assignmentService = require('../../src/services/assignment.service');
-const lhuService = require('../../src/services/lhu/lhu.service');
-const pickupService = require('../../src/services/lhu/lhu-pickup.service');
+const assignmentCreateService = require('../../src/services/assignment/assignment-create.service');
 const {
   Roles,
   authHeader,
@@ -50,7 +48,7 @@ describe('Integration Testing - Workflow Guard', () => {
   });
 
   test('IT-070 Sistem menolak penugasan jika sampel belum diterima', async () => {
-    assignmentService.createAssignment.mockRejectedValueOnce(
+    assignmentCreateService.createAssignment.mockRejectedValueOnce(
       new Error('Sampel belum diterima. Penugasan analis belum dapat dibuat.')
     );
 

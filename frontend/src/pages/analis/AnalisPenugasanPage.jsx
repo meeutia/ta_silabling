@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import {
   AlertCircle,
   CheckCircle2,
@@ -258,23 +259,25 @@ export function AnalisPenugasanPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
 
-  const fetchMyAssignments = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetchMyAssignments = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setError('');
 
     try {
       const data = await analisAssignmentApi.getMyAssignments();
       setRows(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Gagal memuat tugas analis.'));
+      if (!silent) setError(getApiErrorMessage(err, 'Gagal memuat tugas analis.'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchMyAssignments();
   }, [fetchMyAssignments]);
+
+  useAutoRefresh(fetchMyAssignments);
 
   const groupedAssignments = useMemo(() => {
     const map = new Map();

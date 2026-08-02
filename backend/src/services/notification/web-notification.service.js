@@ -72,7 +72,6 @@ class WebNotificationService {
     if (referensiTipe === NOTIFICATION_REFERENCE_TYPE.LHU) {
       return {
         qc: { page: 'verifikasi', pathSegments: [id] },
-        kalab: { page: 'lhu', pathSegments: [id] },
         kasi: { page: 'lhu', queryParams: { tab: 'antrean', q: id } },
         admin: { page: 'permohonan', queryParams: { q: id } },
         pelanggan: { page: 'status', queryParams: { q: id } },

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { Bell, CheckCheck, Clock3, Loader2, MailOpen, X } from 'lucide-react';
 import { notificationApi } from '../../api/notificationApi';
 import { PushNotificationControl } from './PushNotificationControl';
@@ -27,7 +28,7 @@ export function NotificationDropdown({ role, onNavigate }) {
     return count;
   }, [unreadCount]);
 
-  const fetchUnreadCount = useCallback(async () => {
+  const fetchUnreadCount = useCallback(async (silent = false) => {
     try {
       const result = await notificationApi.unreadCount();
       setUnreadCount(Number(result?.count || 0));
@@ -36,30 +37,34 @@ export function NotificationDropdown({ role, onNavigate }) {
     }
   }, []);
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetchNotifications = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setError('');
 
     try {
       const result = await notificationApi.list({ limit: 8 });
       setItems(Array.isArray(result) ? result : []);
-      await fetchUnreadCount();
+      await fetchUnreadCount(silent);
     } catch (err) {
-      setError(err?.message || 'Gagal memuat notifikasi.');
+      if (!silent) setError(err?.message || 'Gagal memuat notifikasi.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [fetchUnreadCount]);
 
-  useEffect(() => {
-    fetchUnreadCount();
-    const intervalId = window.setInterval(fetchUnreadCount, 60000);
-    return () => window.clearInterval(intervalId);
-  }, [fetchUnreadCount]);
+  const fetchAll = useCallback(async (silent = false) => {
+    if (open) {
+      await fetchNotifications(silent);
+    } else {
+      await fetchUnreadCount(silent);
+    }
+  }, [open, fetchNotifications, fetchUnreadCount]);
 
   useEffect(() => {
-    if (open) fetchNotifications();
-  }, [fetchNotifications, open]);
+    fetchAll();
+  }, [fetchAll]);
+
+  useAutoRefresh(fetchAll);
 
   useEffect(() => {
     if (!open) return undefined;

@@ -43,8 +43,7 @@ router.get('/:id/activity-logs', authorizeRoles(Roles.CUSTOMER, Roles.ADMIN, Rol
 router.get('/:id/invoice/pdf', authorizeRoles(Roles.CUSTOMER, Roles.ADMIN, Roles.KASI), validateRequestIdParam, CustomerRequestController.downloadInvoicePdf);
 
 router.route('/:id')
-  .get(authorizeRoles(Roles.CUSTOMER, Roles.ADMIN, Roles.KASI, Roles.PENYELIA), validateRequestIdParam, CustomerRequestController.detailRequest)
-  .put(authorizeRoles(Roles.CUSTOMER), validateRequestIdParam, validateCreateRequest, CustomerRequestController.updateRequest);
+  .get(authorizeRoles(Roles.CUSTOMER, Roles.ADMIN, Roles.KASI, Roles.PENYELIA), validateRequestIdParam, CustomerRequestController.detailRequest);
 
 router.post('/:id/schedule-confirmation', authorizeRoles(Roles.CUSTOMER), validateRequestIdParam, validateScheduleConfirmation, ScheduleChangeController.confirmScheduleApproval);
 

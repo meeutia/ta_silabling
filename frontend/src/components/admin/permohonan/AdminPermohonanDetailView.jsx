@@ -385,8 +385,8 @@ export function AdminPermohonanDetailView({
 
       if (nomorLhu && createdDate) {
         items.push(makeTimelineItem({
-          status: 'LHU menunggu persetujuan Kepala Lab',
-          note: `LHU ${nomorLhu} untuk sampel ${sampleText} telah difinalisasi QC dan menunggu persetujuan Kepala Lab.${acuanText ? ` Acuan: ${acuanText}.` : ''}`,
+          status: 'LHU telah difinalisasi QC',
+          note: `LHU ${nomorLhu} untuk sampel ${sampleText} telah difinalisasi QC dan telah disahkan melalui finalisasi QC.${acuanText ? ` Acuan: ${acuanText}.` : ''}`,
           dateValue: createdDate,
           type: 'LHU',
           sortOrder: 100,
@@ -395,8 +395,8 @@ export function AdminPermohonanDetailView({
 
       if (String(lhu?.status_lhu || lhu?.statusLhu || '') === 'Disahkan' || approvedDate) {
         items.push(makeTimelineItem({
-          status: 'LHU disahkan Kepala Lab',
-          note: `LHU ${nomorLhu} untuk sampel ${sampleText} telah disahkan oleh Kepala Lab.`,
+          status: 'LHU disahkan',
+          note: `LHU ${nomorLhu} untuk sampel ${sampleText} telah disahkan melalui finalisasi QC.`,
           dateValue: approvedDate || createdDate,
           type: 'LHU',
           sortOrder: 110,

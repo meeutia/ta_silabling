@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { Bell, CheckCheck, Clock3, Loader2, MailOpen } from 'lucide-react';
 import { notificationApi } from '../../api/notificationApi';
 import { PushNotificationControl } from '../../components/layout/PushNotificationControl';
@@ -45,9 +46,9 @@ export function NotificationPage({ role, onNavigate }) {
     }
   }, []);
 
-  const fetchNotifications = useCallback(async ({ silent = false } = {}) => {
+  const fetchNotifications = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
-    setError('');
+    if (!silent) setError('');
 
     try {
       const result = await notificationApi.list({
@@ -65,13 +66,9 @@ export function NotificationPage({ role, onNavigate }) {
 
   useEffect(() => {
     fetchNotifications();
-
-    const intervalId = window.setInterval(() => {
-      fetchNotifications({ silent: true });
-    }, AUTO_REFRESH_INTERVAL_MS);
-
-    return () => window.clearInterval(intervalId);
   }, [fetchNotifications]);
+
+  useAutoRefresh(fetchNotifications);
 
   const markReadLocally = (idNotifikasi) => {
     setItems((currentItems) => currentItems

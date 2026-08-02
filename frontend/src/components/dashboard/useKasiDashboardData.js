@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { dashboardApi } from '../../api/dashboardApi';
 import { formatDashboardLoadError, loadDashboardSources } from './dashboardFetch';
 import {
@@ -32,40 +33,37 @@ export function useKasiDashboardData() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    let ignore = false;
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setErrorMessage('');
 
-    const load = async () => {
-      setLoading(true);
-      setErrorMessage('');
+    try {
+      const { data, errors, failedAll } = await loadDashboardSources([
+        { key: 'requests', label: 'permohonan', fetcher: () => dashboardApi.getRequests(), fallback: [] },
+        { key: 'lhuQueue', label: 'queue LHU Kasi', fetcher: () => dashboardApi.getKasiLhuQueue(), fallback: [] },
+      ]);
 
-      try {
-        const { data, errors, failedAll } = await loadDashboardSources([
-          { key: 'requests', label: 'permohonan', fetcher: () => dashboardApi.getRequests(), fallback: [] },
-          { key: 'lhuQueue', label: 'queue LHU Kasi', fetcher: () => dashboardApi.getKasiLhuQueue(), fallback: [] },
-        ]);
-
-        if (ignore) return;
-
-        setRequests(asArray(data.requests));
-        setLhuQueue(asArray(data.lhuQueue));
+      setRequests(asArray(data.requests));
+      setLhuQueue(asArray(data.lhuQueue));
+      if (!silent || errors.length > 0) {
         setErrorMessage(formatDashboardLoadError(errors, 'Dashboard Kasi dimuat sebagian.', 'Gagal memuat dashboard Kasi.', failedAll));
-      } catch (error) {
-        if (ignore) return;
-        setErrorMessage(error?.message || 'Gagal memuat dashboard Kasi.');
+      }
+    } catch (error) {
+      if (!silent) setErrorMessage(error?.message || 'Gagal memuat dashboard Kasi.');
+      if (!silent) {
         setRequests([]);
         setLhuQueue([]);
-      } finally {
-        if (!ignore) setLoading(false);
       }
-    };
-
-    load();
-
-    return () => {
-      ignore = true;
-    };
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useAutoRefresh(load);
 
   return useMemo(() => {
     const sortedRequests = sortByNewest(requests);

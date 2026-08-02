@@ -232,7 +232,7 @@ class NotificationCoreService {
         for (let attempt = 1; attempt <= 5; attempt += 1) {
             const id = await generateId(NotifikasiEmail, 'id_notifikasi_email', 'NE', null, 8);
             try {
-                return await NotifikasiEmail.create({
+                const log = await NotifikasiEmail.create({
                     id_notifikasi_email: id,
                     id_tipe_notifikasi: idTipeNotifikasi,
                     nik_penerima: recipient.nik_penerima,
@@ -245,6 +245,20 @@ class NotificationCoreService {
                     dikirim_pada: null,
                     dibuat_pada: new Date(),
                 });
+
+                const isCustomer = await this.isCustomerNotificationLog(log);
+                if (!isCustomer) {
+                    // console.info('[NOTIFIKASI WEB INTERNAL DIBUAT]', {
+                    //     id: log.id_notifikasi_email,
+                    //     tipe: log.id_tipe_notifikasi,
+                    //     penerima: log.nik_penerima,
+                    //     referensi: log.referensi_id,
+                    // });
+                    // TRIGGER PUSH NOTIFICATION UNTUK INTERNAL ROLE
+                    await this.dispatchPushNotification(log);
+                }
+
+                return log;
             }
             catch (error) {
                 lastError = error;
@@ -372,12 +386,12 @@ class NotificationCoreService {
         const isCustomer = await this.isCustomerNotificationLog(log);
 
         if (!this.isEmailDeliveryEnabled() || !isCustomer) {
-            console.info(isCustomer ? '[NOTIFIKASI WEB PELANGGAN DIBUAT]' : '[NOTIFIKASI WEB INTERNAL DIBUAT]', {
-                id: plainBeforeUpdate?.id_notifikasi_email,
-                tipe: plainBeforeUpdate?.id_tipe_notifikasi,
-                penerima: plainBeforeUpdate?.nik_penerima,
-                referensi: plainBeforeUpdate?.referensi_id,
-            });
+            // console.info(isCustomer ? '[NOTIFIKASI WEB PELANGGAN DIBUAT]' : '[NOTIFIKASI WEB INTERNAL DIBUAT]', {
+            //     id: plainBeforeUpdate?.id_notifikasi_email,
+            //     tipe: plainBeforeUpdate?.id_tipe_notifikasi,
+            //     penerima: plainBeforeUpdate?.nik_penerima,
+            //     referensi: plainBeforeUpdate?.referensi_id,
+            // });
             await this.dispatchPushNotification(log);
             return this.getPlain(log) || plainBeforeUpdate;
         }
@@ -388,12 +402,12 @@ class NotificationCoreService {
             dikirim_pada: new Date(),
         });
         const plain = this.getPlain(log);
-        console.info('[EMAIL PELANGGAN TERKIRIM]', {
-            id: plain?.id_notifikasi_email,
-            tipe: plain?.id_tipe_notifikasi,
-            to: plain?.email_tujuan,
-            referensi: plain?.referensi_id,
-        });
+        // console.info('[EMAIL PELANGGAN TERKIRIM]', {
+        //     id: plain?.id_notifikasi_email,
+        //     tipe: plain?.id_tipe_notifikasi,
+        //     to: plain?.email_tujuan,
+        //     referensi: plain?.referensi_id,
+        // });
         await this.dispatchPushNotification(log);
         return this.getPlain(log) || plain;
     };

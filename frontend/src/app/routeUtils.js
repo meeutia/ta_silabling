@@ -75,7 +75,6 @@ export function getRouteKasiPermohonanRegistrationId(route = null) {
 export function getRouteLhuNumber(route = null, expectedRole = '') {
   if (route?.kind !== 'app') return '';
   if (expectedRole && route.role !== expectedRole) return '';
-  if (route.role === 'kalab' && route.page === 'lhu') return String(route.extra?.[0] || '').trim();
   if (route.role === 'qc' && route.page === 'verifikasi') return String(route.extra?.[0] || '').trim();
   return '';
 }

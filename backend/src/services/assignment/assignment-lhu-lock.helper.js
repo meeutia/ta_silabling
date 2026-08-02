@@ -3,11 +3,10 @@ const { Lhu, Sampel, PenugasanItem } = require('../../models/Associations');
 const { LHU_STATUS } = require('../../constants/lhu-status.constant');
 const { uniqueSampleNos } = require('./assignment-revision.helper');
 const LHU_SOURCE_LOCK_STATUSES = Object.freeze([
-    LHU_STATUS.WAIT_KALAB,
     LHU_STATUS.APPROVED_FINAL,
 ]);
 class AssignmentLhuLockHelper {
-getPlain = (instance) => {
+    getPlain = (instance) => {
         if (!instance)
             return null;
         if (typeof instance.get === 'function')
@@ -82,9 +81,9 @@ getPlain = (instance) => {
         });
         const nomorLhus = Array.from(new Set(rows
             .map((row) => {
-            const plain = row.get({ plain: true });
-            return plain.nomor_lhu || plain.lhu?.nomor_lhu;
-        })
+                const plain = row.get({ plain: true });
+                return plain.nomor_lhu || plain.lhu?.nomor_lhu;
+            })
             .filter(Boolean)));
         if (!nomorLhus.length)
             return [];

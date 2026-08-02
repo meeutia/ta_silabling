@@ -17,7 +17,8 @@
     "test:unit": "cross-env NODE_ENV=test jest tests/unit --runInBand",
     "test:integration": "cross-env NODE_ENV=test jest tests/integration --runInBand",
     "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand",
-    "push:keys": "node scripts/generate-vapid-keys.js"
+    "test:system:smoke": "cross-env NODE_ENV=test jest tests/system/system-smoke.test.js --runInBand",
+    "test:verification": "npm run test:unit && npm run test:integration -- --silent && npm run test:system:smoke"
   },
   "keywords": [],
   "author": "",
