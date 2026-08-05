@@ -109,7 +109,10 @@ buildPaymentGatewayRequestData = (payment) => {
     };
     buildXenditPaymentSessionRequestData = ({ requestJson, requestId, invoice, payment, amount, referenceId, paymentMethod = null }) => {
         const pelanggan = requestJson.pelanggan || requestJson.Pelanggan || {};
-        const expiresInMinutes = Number(process.env.XENDIT_SESSION_DURATION_MINUTES || 30);
+        const configuredExpiresInMinutes = Number(process.env.XENDIT_SESSION_DURATION_MINUTES || 30);
+        const expiresInMinutes = Number.isFinite(configuredExpiresInMinutes)
+            ? Math.max(configuredExpiresInMinutes, 15)
+            : 30;
         const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
         const requestData = {
             reference_id: referenceId,

@@ -89,6 +89,8 @@ export function AdminPermohonanDetailView({
   getLhuFilePath,
   getLhuStatusBadge,
   openGeneratedFile,
+  onOpenSignedLhu,
+  onOpenUploadSignedModal,
   getPickupStatusBadge,
   handleDecideScheduleChange,
   scheduleDecisionNotes = {},
@@ -713,6 +715,8 @@ export function AdminPermohonanDetailView({
             getLhuStatusBadge={getLhuStatusBadge}
             formatDate={formatDate}
             openGeneratedFile={openGeneratedFile}
+            onOpenSignedLhu={onOpenSignedLhu}
+            onOpenUploadSignedModal={onOpenUploadSignedModal}
           />
           )}
 

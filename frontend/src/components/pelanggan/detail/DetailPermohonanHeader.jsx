@@ -1,5 +1,6 @@
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Edit } from 'lucide-react';
 import { FPPL_STATUSES } from '../../../utils/fpplStatus';
+import { Link } from 'react-router-dom';
 
 export function DetailPermohonanHeader({
   onBack,
@@ -37,6 +38,15 @@ export function DetailPermohonanHeader({
           <ArrowLeft className="w-5 h-5" />
           <span>Kembali ke Riwayat</span>
         </button>
+        {requestData?.canEditByCustomer && (
+          <Link
+            to={`/pelanggan/register/${requestData.id_registrasi || requestData.idRegistrasi}`}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+          >
+            <Edit className="w-4 h-4" />
+            <span>Edit Permohonan</span>
+          </Link>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-8 mb-6">

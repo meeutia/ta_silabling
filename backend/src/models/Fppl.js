@@ -13,6 +13,7 @@ class Fppl extends Model {
     Fppl.hasMany(models.Invoice, { foreignKey: 'id_registrasi' });
     Fppl.hasOne(models.JadwalPengambilanLhu, {foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'jadwal_pengambilan_lhu',});
     Fppl.hasMany(models.PengajuanPerubahanJadwal, {foreignKey: 'id_registrasi', sourceKey: 'id_registrasi', as: 'pengajuan_perubahan_jadwal',});
+    Fppl.belongsTo(models.User, { foreignKey: 'terakhir_diubah_oleh', as: 'pengubah_terakhir' });
   }
 
   getPrimaryKeyValue() {
@@ -54,6 +55,14 @@ class Fppl extends Model {
 
   usesMandiriSampling() {
     return this.jenis_pengambilan_sampel === 'Mandiri';
+  }
+
+  canBeEditedByCustomer() {
+    return this.status_fppl === 'Menunggu Verifikasi';
+  }
+
+  getDataVersion() {
+    return Number(this.versi_data || 1);
   }
 }
 
@@ -125,6 +134,19 @@ Fppl.init({
     ),
     allowNull: false,
     defaultValue: 'Menunggu Verifikasi',
+  },
+  versi_data: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 1,
+  },
+  terakhir_diubah_pada: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  terakhir_diubah_oleh: {
+    type: DataTypes.STRING(16),
+    allowNull: true,
   },
   catatan_penolakan: {
     type: DataTypes.TEXT,

@@ -30,6 +30,9 @@ const NOTIFICATION_TYPE = {
   HASIL_KASI_MENUNGGU_QC: 'TN031',
   PEMBAYARAN_PELANGGAN_ADMIN: 'TN032',
   PEMBATALAN_PELANGGAN_ADMIN: 'TN033',
+  SUBCONTRACT_REQUEST_ADMIN: 'TN034',
+  SUBCONTRACT_REQUEST_APPROVED_KASI: 'TN035',
+  SUBCONTRACT_REQUEST_REJECTED_KASI: 'TN036',
   PUSH_SUBSCRIPTION_BROWSER: 'TN999',
 };
 
@@ -63,10 +66,11 @@ const NOTIFICATION_TYPE_DEFINITIONS = [
   { id: NOTIFICATION_TYPE.HASIL_KASI_MENUNGGU_QC, deskripsi: 'Hasil yang disetujui Kasi Pengujian menunggu verifikasi QC', konteks: 'LHU' },
   { id: NOTIFICATION_TYPE.PEMBAYARAN_PELANGGAN_ADMIN, deskripsi: 'Pelanggan telah menyelesaikan pembayaran permohonan', konteks: 'FPPL' },
   { id: NOTIFICATION_TYPE.PEMBATALAN_PELANGGAN_ADMIN, deskripsi: 'Pelanggan membatalkan permohonan', konteks: 'FPPL' },
+  { id: NOTIFICATION_TYPE.SUBCONTRACT_REQUEST_ADMIN, deskripsi: 'Admin perlu melengkapi data subkontrak', konteks: 'FPPL' },
+  { id: NOTIFICATION_TYPE.SUBCONTRACT_REQUEST_APPROVED_KASI, deskripsi: 'Data subkontrak telah dilengkapi Admin', konteks: 'FPPL' },
+  { id: NOTIFICATION_TYPE.SUBCONTRACT_REQUEST_REJECTED_KASI, deskripsi: 'Permintaan data subkontrak ditolak Admin', konteks: 'FPPL' },
   { id: NOTIFICATION_TYPE.PUSH_SUBSCRIPTION_BROWSER, deskripsi: 'Registrasi push notification browser', konteks: 'PUSH' },
 ];
-
-
 
 const NOTIFICATION_RECIPIENT_TYPE = {
   USER: 'USER',

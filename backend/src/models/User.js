@@ -18,9 +18,13 @@ class User extends Model {
   as: 'notifikasi_email',
 });
     User.hasMany(models.AktivitasSistemLog, {
-  foreignKey: 'dibuat_oleh',
-  as: 'aktivitas_sistem_log',
-});
+      foreignKey: 'dibuat_oleh',
+      as: 'aktivitas_sistem_log',
+    });
+    User.hasMany(models.Lhu, {
+      foreignKey: 'file_lhu_signed_uploaded_by',
+      as: 'uploaded_signed_lhus',
+    });
   }
 
   getPrimaryKeyValue() {

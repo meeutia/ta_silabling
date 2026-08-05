@@ -3,6 +3,7 @@ import {
   Package,
   TestTube2,
   Truck,
+  FileQuestion,
 } from 'lucide-react';
 import { ConfirmDeleteModal, ConfirmStatusModal } from '../../components/admin/parameter/AdminKelolaParameterFormControls';
 import { ManagePaketParameterModal } from '../../components/admin/parameter/ManagePaketParameterModal';
@@ -10,6 +11,7 @@ import { PaketModal } from '../../components/admin/parameter/PaketModal';
 import { ParameterMetodeModal } from '../../components/admin/parameter/ParameterMetodeModal';
 import { RegulasiModal } from '../../components/admin/parameter/RegulasiModal';
 import { TarifPengambilanModal } from '../../components/admin/parameter/TarifPengambilanModal';
+import { SubcontractRequestModal } from '../../components/admin/parameter/SubcontractRequestModal';
 import { AdminKelolaParameterTabs } from '../../components/admin/parameter/AdminKelolaParameterTabs';
 import { useAdminKelolaParameter } from '../../components/admin/parameter/useAdminKelolaParameter';
 import { ToastNotification } from '../../components/common/ToastNotification';
@@ -35,6 +37,11 @@ const PARAMETER_TABS = [
     label: 'Tarif Pengambilan',
     icon: Truck,
   },
+  {
+    key: 'subcontract_request',
+    label: 'Permintaan Subkontrak',
+    icon: FileQuestion,
+  },
 ];
 
 export function AdminKelolaParameterPage() {
@@ -54,6 +61,7 @@ export function AdminKelolaParameterPage() {
     modalType,
     selectedItem,
     formData,
+    submitError,
     confirmDelete,
     confirmStatusChange,
     paketParamForm,
@@ -79,6 +87,7 @@ export function AdminKelolaParameterPage() {
     handleEditPaketParamChange,
     handleStartEditPaketParameter,
     handleUpdatePaketParameter,
+    openAddParameterModalForSubcontract,
     openDeleteConfirm,
     handleConfirmDelete,
     setSearchQuery,
@@ -86,6 +95,7 @@ export function AdminKelolaParameterPage() {
     setConfirmDelete,
     setConfirmStatusChange,
     setEditingPaketParam,
+    fetchData,
   } = useAdminKelolaParameter();
 
   const isManagingPaketParameter = activeTab === 'paket_baku_mutu' && modalType === 'manage_paket_param' && selectedItem;
@@ -153,6 +163,7 @@ export function AdminKelolaParameterPage() {
           <ParameterMetodeModal
             selectedItem={selectedItem}
             formData={formData}
+            submitError={submitError}
             parametersOption={parametersOption}
             methodsOption={methodsOption}
             kategoriParameterOptions={kategoriParameterOptions}
@@ -192,6 +203,15 @@ export function AdminKelolaParameterPage() {
             onClose={handleCloseModal}
             onChange={handleFormChange}
             onSubmit={handleSubmit}
+          />
+        )}
+
+        {isModalOpen && modalType === 'review_subcontract' && (
+          <SubcontractRequestModal
+            request={selectedItem}
+            onClose={handleCloseModal}
+            onRefresh={fetchData}
+            onGoToAddMethod={openAddParameterModalForSubcontract}
           />
         )}
       </div>

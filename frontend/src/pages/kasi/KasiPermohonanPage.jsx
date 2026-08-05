@@ -311,8 +311,39 @@ export function KasiPermohonanPage({ initialRegistrationId = '', onDetailRouteCh
     }
   };
 
+  const handleRequestSubcontractData = async (fpmId) => {
+    if (!fpmId) return;
 
+    setSubmitting(true);
+    try {
+      await kasiRequestApi.createSubcontractRequest(
+        selectedRequest.noReg,
+        fpmId,
+        capabilityNotes[fpmId] || ''
+      );
+      showSuccess('Permintaan subkontrak berhasil dikirim ke Admin.');
+      await handleViewDetail(selectedRequest); // refresh
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Gagal mengirim permintaan subkontrak.'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
+  const handleCancelSubcontractRequest = async (requestId) => {
+    if (!requestId) return;
+
+    setSubmitting(true);
+    try {
+      await kasiRequestApi.cancelSubcontractRequest(selectedRequest.noReg, requestId);
+      showSuccess('Permintaan subkontrak berhasil dibatalkan.');
+      await handleViewDetail(selectedRequest); // refresh
+    } catch (err) {
+      showError(getApiErrorMessage(err, 'Gagal membatalkan permintaan subkontrak.'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <main className="flex-1 overflow-y-auto bg-gray-50">
@@ -592,9 +623,45 @@ export function KasiPermohonanPage({ initialRegistrationId = '', onDetailRouteCh
                                                 </h6>
 
                                                 {filteredMethods.length === 0 ? (
-                                                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                                                    Belum ada metode {currentCapability === 'TIDAK_MAMPU' ? 'subkontrak' : 'internal'} untuk parameter ini.
-                                                  </p>
+                                                  <div className="space-y-3">
+                                                    <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                                      Belum ada metode {currentCapability === 'TIDAK_MAMPU' ? 'subkontrak' : 'internal'} untuk parameter ini.
+                                                    </p>
+                                                    {currentCapability === 'TIDAK_MAMPU' && (() => {
+                                                      const pendingRequest = (param.subcontractRequests || []).find(
+                                                        (req) => req.status_permintaan === 'PENDING_ADMIN'
+                                                      );
+                                                      
+                                                      if (pendingRequest) {
+                                                        return (
+                                                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-4">
+                                                            <p className="text-sm text-amber-800">
+                                                              <strong>Menunggu Admin:</strong> Permintaan data subkontrak sedang diproses.
+                                                            </p>
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => handleCancelSubcontractRequest(pendingRequest.id_permintaan_subkontrak)}
+                                                              disabled={submitting}
+                                                              className="text-xs font-semibold px-3 py-1.5 bg-white text-red-600 border border-red-200 rounded hover:bg-red-50 disabled:opacity-50"
+                                                            >
+                                                              Batal
+                                                            </button>
+                                                          </div>
+                                                        );
+                                                      }
+
+                                                      return (
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => handleRequestSubcontractData(fpmId)}
+                                                          disabled={submitting}
+                                                          className="text-sm font-semibold px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50 w-full"
+                                                        >
+                                                          Kirim Permintaan Subkontrak ke Admin
+                                                        </button>
+                                                      );
+                                                    })()}
+                                                  </div>
                                                 ) : (
                                                   <div className="space-y-2">
                                                     {filteredMethods.map((method) => {

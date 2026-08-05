@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Truck, X } from 'lucide-react';
 import { stripHtml, normalizeBool } from './parameterFormatters';
 import { ScientificInput } from './AdminKelolaParameterFormControls';
@@ -30,6 +30,7 @@ function StatusBadge({ active, activeLabel, inactiveLabel, activeClass = 'bg-eme
 export function ParameterMetodeModal({
   selectedItem,
   formData,
+  submitError = '',
   parametersOption,
   methodsOption,
   kategoriParameterOptions = [],
@@ -40,6 +41,11 @@ export function ParameterMetodeModal({
   const isEditMode = Boolean(selectedItem);
   const selectedParameterName = selectedItem?.parameter?.nama_parameter || '-';
   const selectedMetodeName = selectedItem?.metode?.nama_metode || '-';
+  const formScrollRef = useRef(null);
+
+  useEffect(() => {
+    formScrollRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [selectedItem, formData?.id_parameter, formData?.id_metode, formData?.is_new_parameter, formData?.is_new_metode, submitError]);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-stretch justify-center z-50 p-4">
@@ -67,8 +73,14 @@ export function ParameterMetodeModal({
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 min-h-0">
+        <div ref={formScrollRef} className="p-6 overflow-y-auto flex-1 min-h-0">
           <form id="form-param-metode" onSubmit={onSubmit} className="space-y-6">
+            {submitError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {submitError}
+              </div>
+            )}
+
             {isEditMode ? (
               <>
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">

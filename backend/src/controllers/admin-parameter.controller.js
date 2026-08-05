@@ -90,6 +90,7 @@ class AdminParameterController {
             }
             const knownErrors = [
                 'Kombinasi Parameter dan Metode ini sudah ada.',
+                'Kombinasi Parameter dan Metode ini sudah ada dan masih aktif.',
                 'Nama parameter baru harus diisi',
                 'Nama metode baru harus diisi',
                 'Parameter harus dipilih atau dibuat baru',

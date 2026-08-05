@@ -188,6 +188,20 @@ export function AdminPermohonanValidationSection({
                 {/* Keputusan Validasi — only for 'Menunggu Verifikasi' */}
                   {normalizeFpplStatus(selectedRequest.status_fppl) === FPPL_STATUSES.MENUNGGU_VERIFIKASI && (                  <div className="border-t border-gray-200 pt-6">
                     <h3 className="font-semibold text-gray-900 mb-4">Keputusan Validasi</h3>
+                    
+                    {Number(selectedRequest.requestVersion || 1) > 1 && (
+                      <div className="mb-4 rounded-lg bg-amber-50 p-4 border border-amber-200 flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-amber-800">
+                            Peringatan Perubahan Data (Versi {selectedRequest.requestVersion})
+                          </p>
+                          <p className="text-sm text-amber-700 mt-1">
+                            Pelanggan telah mengubah data permohonan ini sejak pertama kali diajukan. Pastikan Anda meninjau kembali seluruh rincian permohonan sebelum memberikan keputusan validasi.
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {shouldShowSamplingTariff && (
                       <div className="mb-4">

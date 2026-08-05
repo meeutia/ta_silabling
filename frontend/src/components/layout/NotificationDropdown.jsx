@@ -221,12 +221,11 @@ export function NotificationDropdown({ role, onNavigate }) {
                   const title = getNotificationTitle(item);
                   const message = getNotificationMessage(item);
 
-                  const Wrapper = item.belumDibaca ? 'button' : 'div';
                   return (
-                    <Wrapper
-                      type={item.belumDibaca ? 'button' : undefined}
+                    <button
+                      type="button"
                       key={idNotifikasi}
-                      onClick={item.belumDibaca ? () => handleNotificationClick(item) : undefined}
+                      onClick={() => handleNotificationClick(item)}
                       className={`silabling-notif-item${item.belumDibaca ? ' is-unread' : ' is-read'}`}
                     >
                       <span className={`silabling-notif-item__dot${item.belumDibaca ? ' is-unread' : ''}`} aria-hidden="true" />
@@ -242,7 +241,7 @@ export function NotificationDropdown({ role, onNavigate }) {
                           </span>
                         ) : null}
                       </span>
-                    </Wrapper>
+                    </button>
                   );
                 })}
               </div>

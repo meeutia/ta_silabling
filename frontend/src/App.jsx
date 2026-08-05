@@ -20,6 +20,7 @@ import {
   getRouteAdminPermohonanRegistrationId,
   getRouteKasiPermohonanRegistrationId,
   getRouteStatusRegistrationId,
+  getRoutePelangganRegisterId,
   parseDirectAppLink,
   parseRoute,
 } from './app/routeUtils';
@@ -32,6 +33,7 @@ export default function App() {
   const navigate = useNavigate();
   const route = useMemo(() => parseRoute(location.pathname), [location.pathname]);
   const selectedStatusRegistrationId = useMemo(() => getRouteStatusRegistrationId(route), [route]);
+  const selectedPelangganRegisterId = useMemo(() => getRoutePelangganRegisterId(route), [route]);
 
   const selectedAdminPermohonanRegistrationId = useMemo(() => getRouteAdminPermohonanRegistrationId(route), [route]);
   const selectedKasiPermohonanRegistrationId = useMemo(() => getRouteKasiPermohonanRegistrationId(route), [route]);
@@ -323,6 +325,10 @@ export default function App() {
         userRole === 'pelanggan' && nextPage === 'status'
           ? getRouteStatusRegistrationId(route)
           : '';
+      const pelangganRegisterId =
+        userRole === 'pelanggan' && nextPage === 'register'
+          ? getRoutePelangganRegisterId(route)
+          : '';
       const adminPermohonanRegistrationId =
         userRole === 'admin' && nextPage === 'permohonan'
           ? getRouteAdminPermohonanRegistrationId(route)
@@ -336,13 +342,15 @@ export default function App() {
         : '';
       const expectedPathSegments = statusRegistrationId
         ? [statusRegistrationId]
-        : adminPermohonanRegistrationId
-          ? [adminPermohonanRegistrationId]
-          : kasiPermohonanRegistrationId
-            ? [kasiPermohonanRegistrationId]
-            : qcLhuNumber
-              ? [qcLhuNumber]
-              : [];
+        : pelangganRegisterId
+          ? [pelangganRegisterId]
+          : adminPermohonanRegistrationId
+            ? [adminPermohonanRegistrationId]
+            : kasiPermohonanRegistrationId
+              ? [kasiPermohonanRegistrationId]
+              : qcLhuNumber
+                ? [qcLhuNumber]
+                : [];
       const expectedPath = buildAppPath(
         userRole,
         nextPage,
@@ -584,6 +592,7 @@ export default function App() {
         userData={userData}
         selectedRequest={selectedRequest}
         selectedStatusRegistrationId={selectedStatusRegistrationId}
+        selectedPelangganRegisterId={selectedPelangganRegisterId}
         selectedAdminPermohonanRegistrationId={selectedAdminPermohonanRegistrationId}
         selectedKasiPermohonanRegistrationId={selectedKasiPermohonanRegistrationId}
         selectedQcLhuNumber={selectedQcLhuNumber}

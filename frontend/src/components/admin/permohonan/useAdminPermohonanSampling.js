@@ -15,6 +15,7 @@ import {
   validateSampleReceiptForms,
   validateSamplingScheduleForm,
 } from './adminPermohonanValidators';
+import { getAdminSampleRows } from './adminPermohonanTimeline';
 
 const TIME_OPTIONS = buildTimeOptions();
 
@@ -223,7 +224,13 @@ export function useAdminPermohonanSampling({
     });
 
     const normalizedStatus = normalizeFpplStatus(selectedRequest.status_fppl);
-    if (
+    
+    const adminSampleRows = getAdminSampleRows(selectedRequest);
+    const hasLhuData = adminSampleRows.some((row) => Boolean(row?.lhu));
+
+    if (hasLhuData) {
+      setExpandedSection('dokumen-lhu');
+    } else if (
       normalizedStatus === FPPL_STATUSES.MENUNGGU_VERIFIKASI ||
       normalizedStatus === FPPL_STATUSES.MENUNGGU_VERIFIKASI_PEMBAYARAN
     ) {

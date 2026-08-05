@@ -16,6 +16,18 @@ function buildQuery(params = {}) {
   return qs ? `?${qs}` : '';
 }
 
+function postJson(path, body) {
+  return requestJson(
+    path,
+    {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify(body || {}),
+    },
+    authConfig
+  );
+}
+
 function putJson(path, body) {
   return requestJson(
     path,
@@ -43,5 +55,9 @@ export const kasiRequestApi = {
 
   reject(noReg, alasan) {
     return putJson(`/requests/${encodeURIComponent(noReg)}/reject`, { alasan });
+  },
+
+  createSubcontractRequest(noReg, fpmId) {
+    return postJson(`/requests/${encodeURIComponent(noReg)}/subcontract-requests`, { fpmId });
   },
 };

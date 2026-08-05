@@ -7,6 +7,7 @@ export function RegistrationCustomerStep({
   userData,
   formData,
   handleInputChange,
+  isEditMode,
 }) {
   return (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-8">
@@ -14,9 +15,18 @@ export function RegistrationCustomerStep({
                 <User className="w-6 h-6 text-emerald-600" />
                 <h2 className="text-xl font-semibold text-gray-900">Data Pelanggan</h2>
               </div>
+              
+              {isEditMode && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    Anda sedang dalam mode edit permohonan. Identitas instansi pelanggan tidak dapat diubah untuk menjaga integritas data. Anda hanya dapat mengubah PIC dan detail kontak.
+                  </p>
+                </div>
+              )}
+              
               <fieldset  className={lockedSectionClass}>
               {/* Pilih data pelanggan sebelumnya */}
-              {customerProfiles.length > 0 && (
+              {!isEditMode && customerProfiles.length > 0 && (
                 <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Gunakan data sebelumnya:
@@ -74,7 +84,8 @@ export function RegistrationCustomerStep({
                     value={formData.namaInstansi}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                    disabled={isEditMode}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg outline-none ${isEditMode ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'focus:ring-2 focus:ring-emerald-500 focus:border-transparent'}`}
                     placeholder="Nama Instansi/Perusahaan"
                   />
                 </div>

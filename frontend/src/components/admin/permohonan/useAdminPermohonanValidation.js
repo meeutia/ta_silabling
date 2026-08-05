@@ -84,6 +84,7 @@ export function useAdminPermohonanValidation({
       const data = await adminPermohonanApi.verifyRequest(selectedRequest.id_registrasi, {
         action,
         note: cleanValidationNote,
+        expectedRequestVersion: selectedRequest.requestVersion,
         id_tarif_pengambilan:
           action === 'approve' && selectedRequest.jenis_pengambilan_sampel === 'Petugas'
             ? selectedSamplingTariffId

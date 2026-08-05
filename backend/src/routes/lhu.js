@@ -31,4 +31,32 @@ router.get('/pickup/queue', authorizeRoles(Roles.ADMIN), lhuPickupController.get
 router.post('/pickup/schedule', authorizeRoles(Roles.ADMIN), validateLhuPickupSchedule, lhuPickupController.schedulePickup);
 router.post('/pickup/complete', authorizeRoles(Roles.ADMIN), validateLhuPickupCompletion, lhuPickupController.completePickup);
 
+// Signed LHU Endpoints
+const lhuSignedFileController = require('../controllers/lhu-signed-file.controller');
+const { uploadSignedLhuFile, validateSignedLhuFileSignature, cleanupUploadedSignedLhuFile } = require('../middlewares/upload.middleware');
+
+router.post(
+  '/:nomorLhu/signed-file',
+  authorizeRoles(Roles.ADMIN),
+  uploadSignedLhuFile,
+  validateSignedLhuFileSignature,
+  lhuSignedFileController.upload,
+  cleanupUploadedSignedLhuFile
+);
+
+router.put(
+  '/:nomorLhu/signed-file',
+  authorizeRoles(Roles.ADMIN),
+  uploadSignedLhuFile,
+  validateSignedLhuFileSignature,
+  lhuSignedFileController.replace,
+  cleanupUploadedSignedLhuFile
+);
+
+router.get(
+  '/:nomorLhu/signed-file',
+  authorizeRoles(Roles.ADMIN, Roles.CUSTOMER),
+  lhuSignedFileController.open
+);
+
 module.exports = router;

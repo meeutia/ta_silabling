@@ -1,5 +1,6 @@
-const { sequelize, Fppl, FpplParameterMetode, ParameterMetode, TarifPengambilan, JadwalSampel, Pegawai, FpplSampel, Sampel, SampelParameter, JenisSampel, RegBm, Invoice, Payment } = require('../../models/Associations');
+const { sequelize, Fppl, FpplParameterMetode, ParameterMetode, TarifPengambilan, JadwalSampel, Pegawai, FpplSampel, Sampel, SampelParameter, JenisSampel, RegBm, Invoice, Payment, PermintaanSubkontrak } = require('../../models/Associations');
 const RequestStatus = require('../../constants/request-status');
+const SUBCONTRACT_REQUEST_STATUS = require('../../constants/subcontract-request-status');
 const { generateId, generateNomorFppl } = require('../../utils/id-generator');
 const { getHariLibur } = require('../../utils/holiday-calendar.util');
 const { Op } = require('sequelize');
@@ -116,33 +117,49 @@ const SAMPLE_SCHEDULE_EDITABLE_REQUEST_STATUSES = [
     RequestStatus.WAITING_SAMPLE_DELIVERY,
 ];
 class RequestWorkflowService {
-    verifyRequest = async (requestId, action, rejectionNote, selectedSamplingTariffId, verifiedBy = null) => {
+    verifyRequest = async (requestId, action, rejectionNote, selectedSamplingTariffId, verifiedBy = null, expectedRequestVersion = null) => {
         if (!['approve', 'reject'].includes(action))
             throw new Error('Action harus "approve" atau "reject".');
-        const requestRecord = await Fppl.findByPk(requestId);
-        if (!requestRecord)
-            throw new Error('Permohonan tidak ditemukan.');
-        if (requestRecord.status_fppl !== RequestStatus.WAITING_VERIFICATION) {
-            throw new Error(`Permohonan tidak dalam status "Menunggu Verifikasi". Status saat ini: ${requestRecord.status_fppl}`);
-        }
-        if (action === 'approve') {
-            let samplingTariffId = requestRecord.id_tarif_pengambilan || null;
-            if (requestRecord.jenis_pengambilan_sampel === 'Petugas') {
-                if (!selectedSamplingTariffId)
-                    throw new Error('Keterangan jarak wajib dipilih untuk permohonan dengan pengambilan oleh petugas.');
-                const selectedSamplingTariff = await TarifPengambilan.findByPk(selectedSamplingTariffId);
-                if (!selectedSamplingTariff)
-                    throw new Error('Tarif pengambilan yang dipilih tidak ditemukan.');
-                samplingTariffId = selectedSamplingTariff.id_tarif_pengambilan;
-            }
-            const previousStatus = requestRecord.status_fppl;
-            await requestRecord.update({
-                status_fppl: RequestStatus.WAITING_PARAMETER,
-                id_tarif_pengambilan: samplingTariffId,
-                catatan_penolakan: null,
-                tanggal_verifikasi: new Date(),
-                diverifikasi_oleh: verifiedBy || null,
+            
+        const transaction = await sequelize.transaction();
+        
+        try {
+            const requestRecord = await Fppl.findByPk(requestId, {
+                transaction,
+                lock: transaction.LOCK.UPDATE,
             });
+            
+            if (!requestRecord) {
+                throw Object.assign(new Error('Permohonan tidak ditemukan.'), { code: 'REQUEST_NOT_FOUND', statusCode: 404 });
+            }
+            if (requestRecord.status_fppl !== RequestStatus.WAITING_VERIFICATION) {
+                throw Object.assign(new Error(`Permohonan tidak dalam status "Menunggu Verifikasi". Status saat ini: ${requestRecord.status_fppl}`), { code: 'REQUEST_NOT_EDITABLE', statusCode: 409 });
+            }
+            
+            if (expectedRequestVersion !== null && expectedRequestVersion !== undefined) {
+                if (Number(expectedRequestVersion) !== Number(requestRecord.versi_data || 1)) {
+                    throw Object.assign(new Error('Permohonan telah diperbarui pelanggan. Muat ulang detail sebelum memberikan keputusan.'), { code: 'REQUEST_CHANGED_BEFORE_VERIFICATION', statusCode: 409 });
+                }
+            }
+
+            if (action === 'approve') {
+                let samplingTariffId = requestRecord.id_tarif_pengambilan || null;
+                if (requestRecord.jenis_pengambilan_sampel === 'Petugas') {
+                    if (!selectedSamplingTariffId)
+                        throw new Error('Keterangan jarak wajib dipilih untuk permohonan dengan pengambilan oleh petugas.');
+                    const selectedSamplingTariff = await TarifPengambilan.findByPk(selectedSamplingTariffId, { transaction });
+                    if (!selectedSamplingTariff)
+                        throw new Error('Tarif pengambilan yang dipilih tidak ditemukan.');
+                    samplingTariffId = selectedSamplingTariff.id_tarif_pengambilan;
+                }
+                const previousStatus = requestRecord.status_fppl;
+                await requestRecord.update({
+                    status_fppl: RequestStatus.WAITING_PARAMETER,
+                    id_tarif_pengambilan: samplingTariffId,
+                    catatan_penolakan: null,
+                    tanggal_verifikasi: new Date(),
+                    diverifikasi_oleh: verifiedBy || null,
+                }, { transaction });
             await WorkflowLogService.logStatusTransition({
                 entityType: 'FPPL',
                 entityId: requestRecord.id_registrasi,
@@ -152,16 +169,19 @@ class RequestWorkflowService {
                 source: 'Admin',
                 note: 'Permohonan disetujui admin dan dilanjutkan ke penentuan metode.',
                 actorNik: verifiedBy || null,
+                transaction
             });
+            await transaction.commit();
             return { idRegistrasi: requestRecord.id_registrasi, status: RequestStatus.WAITING_PARAMETER, idTarifPengambilan: samplingTariffId };
         }
+        
         const previousStatus = requestRecord.status_fppl;
         await requestRecord.update({
             status_fppl: RequestStatus.REJECTED_BY_ADMIN,
             catatan_penolakan: rejectionNote ? `[Admin] ${rejectionNote}` : null,
             tanggal_verifikasi: new Date(),
             diverifikasi_oleh: verifiedBy || null,
-        });
+        }, { transaction });
         await WorkflowLogService.logStatusTransition({
             entityType: 'FPPL',
             entityId: requestRecord.id_registrasi,
@@ -171,9 +191,15 @@ class RequestWorkflowService {
             source: 'Admin',
             note: rejectionNote || null,
             actorNik: verifiedBy || null,
+            transaction
         });
+        await transaction.commit();
         return { idRegistrasi: requestRecord.id_registrasi, status: RequestStatus.REJECTED_BY_ADMIN, catatan: rejectionNote || '' };
-    };
+    } catch (error) {
+        await transaction.rollback();
+        throw error;
+    }
+};
     normalizeBoolean01 = (value) => {
         if (value === true || value === 1 || value === '1')
             return 1;
@@ -219,6 +245,20 @@ class RequestWorkflowService {
             ).values());
             if (requestFpms.length === 0)
                 throw new Error('Parameter permohonan tidak ditemukan.');
+
+            const pendingSubcontractRequests = await PermintaanSubkontrak.findAll({
+                where: {
+                    id_registrasi: request.id_registrasi,
+                    status_permintaan: SUBCONTRACT_REQUEST_STATUS.PENDING_ADMIN
+                },
+                transaction: t,
+            });
+
+            if (pendingSubcontractRequests.length > 0) {
+                const error = new Error('Terdapat permintaan data subkontrak yang belum diproses oleh Admin. Anda tidak dapat menetapkan metode.');
+                error.status = 409;
+                throw error;
+            }
 
             const rowByFpmId = new Map(requestFpms.map((fpm) => [String(fpm.id_fppl_parameter_metode), fpm]));
             const requiredGroupByKey = new Map();
@@ -326,27 +366,43 @@ class RequestWorkflowService {
         }
     };
     rejectRequest = async (requestId, alasan, kasiNik = null) => {
-        const request = await Fppl.findByPk(requestId);
-        if (!request)
-            throw new Error('Permohonan tidak ditemukan.');
-        const previousStatus = request.status_fppl;
-        await request.update({ status_fppl: RequestStatus.REJECTED_BY_KASI, catatan_penolakan: alasan ? `[Kasi] ${alasan}` : null });
-        await WorkflowLogService.logStatusTransition({
-            entityType: 'FPPL',
-            entityId: request.id_registrasi,
-            action: 'MENOLAK_PERMOHONAN_KASI',
-            statusBefore: previousStatus,
-            statusAfter: RequestStatus.REJECTED_BY_KASI,
-            source: 'Kasi',
-            note: alasan || null,
-            actorNik: kasiNik || null,
-        });
-        return {
-            idRegistrasi: request.id_registrasi,
-            status: RequestStatus.REJECTED_BY_KASI,
-            catatanPenolakan: request.catatan_penolakan,
-        };
+        const t = await sequelize.transaction();
+        try {
+            const request = await Fppl.findByPk(requestId, { transaction: t });
+            if (!request)
+                throw new Error('Permohonan tidak ditemukan.');
+            
+            await PermintaanSubkontrak.update({
+                status_permintaan: SUBCONTRACT_REQUEST_STATUS.CANCELLED
+            }, {
+                where: {
+                    id_registrasi: request.id_registrasi,
+                    status_permintaan: SUBCONTRACT_REQUEST_STATUS.PENDING_ADMIN
+                },
+                transaction: t
+            });
+
+            const previousStatus = request.status_fppl;
+            await request.update({ status_fppl: RequestStatus.REJECTED_BY_KASI, catatan_penolakan: alasan ? `[Kasi] ${alasan}` : null }, { transaction: t });
+            await WorkflowLogService.logStatusTransition({
+                entityType: 'FPPL',
+                entityId: request.id_registrasi,
+                action: 'MENOLAK_PERMOHONAN_KASI',
+                statusBefore: previousStatus,
+                statusAfter: RequestStatus.REJECTED_BY_KASI,
+                source: 'Kasi',
+                note: alasan || null,
+                actorNik: kasiNik || null,
+                transaction: t
+            });
+            await t.commit();
+            return { idRegistrasi: request.id_registrasi, status: RequestStatus.REJECTED_BY_KASI, catatan: alasan || '' };
+        } catch (error) {
+            await t.rollback();
+            throw error;
+        }
     };
+
     saveSamplingSchedule = async (requestId, scheduleDate, scheduleTime) => {
         const t = await sequelize.transaction();
         try {

@@ -96,7 +96,6 @@ export function useDetailPermohonanPage(request) {
   const [expandedSection, setExpandedSection] = useState('timeline');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('XENDIT_QRIS');
   const [paymentActionLoading, setPaymentActionLoading] = useState(false);
-  const [customerCancelModalOpen, setCustomerCancelModalOpen] = useState(false);
   const [detailRefreshing, setDetailRefreshing] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [scheduleChangeForm, setScheduleChangeForm] = useState({ jenisJadwal: 'SAMPEL', tanggalUsulan: '', jamUsulan: '', alasanPengajuan: '' });
@@ -106,6 +105,7 @@ export function useDetailPermohonanPage(request) {
   const [holidayDateSet, setHolidayDateSet] = useState(new Set());
   const [holidayNameByDate, setHolidayNameByDate] = useState({});
   const [adminContact, setAdminContact] = useState(null);
+  const [paymentClockTick, setPaymentClockTick] = useState(() => Date.now());
 
   const pembayaranRef = useRef(null);
   const hasilRef = useRef(null);
@@ -154,6 +154,16 @@ export function useDetailPermohonanPage(request) {
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [requestedSection, requestedFocus, shouldForceSampleSection, detailRefreshing, expandedSection, requestData?.id_registrasi, requestData?.idRegistrasi]);
+
+  useEffect(() => {
+    if (!requestData?.status_fppl && !requestData?.statusFppl) return undefined;
+
+    const timer = window.setInterval(() => {
+      setPaymentClockTick(Date.now());
+    }, 15000);
+
+    return () => window.clearInterval(timer);
+  }, [requestData?.id_registrasi, requestData?.idRegistrasi, requestData?.status_fppl, requestData?.statusFppl]);
 
   const operationalTimeOptions = useMemo(() => getOperationalTimeOptions(), []);
 
@@ -348,8 +358,11 @@ export function useDetailPermohonanPage(request) {
   const paymentGateway = invoice?.payment?.gateway || null;
   const payment = invoice?.payment || null;
   const gatewayStatus = String(paymentGateway?.status || '').toUpperCase();
+  const gatewayExpiresAt = paymentGateway?.expiresAt || paymentGateway?.expires_at || null;
+  const gatewayExpiresAtMs = gatewayExpiresAt ? new Date(gatewayExpiresAt).getTime() : null;
+  const isGatewayExpiredByTime = Number.isFinite(gatewayExpiresAtMs) && gatewayExpiresAtMs > 0 && paymentClockTick >= gatewayExpiresAtMs;
   const isPaymentRejected = ['FAILED', 'CANCELLED', 'CANCELED'].includes(gatewayStatus);
-  const isGatewayExpired = gatewayStatus === 'EXPIRED';
+  const isGatewayExpired = gatewayStatus === 'EXPIRED' || isGatewayExpiredByTime;
   const shouldCreateOrRefreshPayment = Boolean(
     !payment ||
       isPaymentRejected ||
@@ -550,16 +563,7 @@ export function useDetailPermohonanPage(request) {
     }
   };
 
-  const handleTidakSetujuInvoice = () => {
-    setCustomerCancelModalOpen(true);
-  };
-
-  const handleCloseCustomerCancelModal = () => {
-    if (paymentActionLoading) return;
-    setCustomerCancelModalOpen(false);
-  };
-
-  const handleConfirmCustomerCancel = async () => {
+  const handleTidakSetujuInvoice = async () => {
     setPaymentActionLoading(true);
 
     try {
@@ -567,7 +571,6 @@ export function useDetailPermohonanPage(request) {
         action: 'reject',
       });
 
-      setCustomerCancelModalOpen(false);
       await refreshRequestDetail();
       setExpandedSection('pembayaran');
       showSuccess('Permohonan berhasil dibatalkan.');
@@ -762,6 +765,25 @@ export function useDetailPermohonanPage(request) {
     }
   };
 
+  const handleDownloadSignedLhu = async (nomorLhu) => {
+    try {
+      const blob = await customerRequestApi.getSignedLhuBlob(nomorLhu);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `LHU_Signed_${nomorLhu}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 60_000);
+    } catch (error) {
+      showError(error.message || 'Gagal mengunduh LHU bertanda tangan.');
+    }
+  };
+
   const progressSteps = buildProgressSteps(statusAktif, requestData);
   const activeSchedule = getActiveScheduleFromRequest(requestData);
   const lhuPickupInfo = getLhuPickupInfoFromRequest(requestData);
@@ -832,7 +854,6 @@ export function useDetailPermohonanPage(request) {
     canShowInvoice,
     cleanDecisionNote,
     customerProfile,
-    customerCancelModalOpen,
     detailRefreshing,
     detailError,
     hasLoadedDetailPayload: hasDetailPayload(requestData),
@@ -853,12 +874,11 @@ export function useDetailPermohonanPage(request) {
     handleOpenScheduleChangeForm,
     handleConfirmSchedule,
     handleCancelScheduleChangeForm,
-    handleConfirmCustomerCancel,
+    handleDownloadSignedLhu,
     handleLihatInvoice,
     handleSetujuInvoice,
     handleScheduleChangeSubmit,
     handleTidakSetujuInvoice,
-    handleCloseCustomerCancelModal,
     hasilRef,
     invoice,
     isAdminRejected,

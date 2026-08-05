@@ -6,12 +6,13 @@ import { RegistrationReviewStep } from './RegistrationReviewStep';
 
 export function RegistrationStepContent({
   currentStep,
-    lockedSectionClass,
+  lockedSectionClass,
   lockedInputClass,
   customerProfiles,
   setFormData,
   userData,
   formData,
+  isEditMode,
   handleInputChange,
   handleRadioChange,
   handleMetodeChange,
@@ -43,6 +44,7 @@ export function RegistrationStepContent({
         userData={userData}
         formData={formData}
         handleInputChange={handleInputChange}
+        isEditMode={isEditMode}
       />
     );
   }

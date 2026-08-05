@@ -100,8 +100,22 @@ class RequestScheduleFieldsUtil {
         delete normalizedRequestData.hasilUji;
         delete normalizedRequestData.lhu;
         delete normalizedRequestData.Lhu;
+        delete normalizedRequestData.lhus;
         return normalizedRequestData;
     };
+
+    stripSignedLhuStorageFields = (requestData = {}) => {
+        const normalizedRequestData = this.normalizeRequestData(requestData);
+        const lhus = Array.isArray(normalizedRequestData.lhus) ? normalizedRequestData.lhus : [];
+        lhus.forEach((lhu) => {
+            if (!lhu || typeof lhu !== 'object') return;
+            delete lhu.file_lhu_signed_path;
+            delete lhu.fileLhuSignedPath;
+        });
+
+        return normalizedRequestData;
+    };
+
 
     decorateScheduleFields = (requestData = {}) => {
         const normalizedRequestData = this.normalizeRequestData(requestData);

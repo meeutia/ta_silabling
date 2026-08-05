@@ -7,13 +7,141 @@ const {
 } = require('./common.validator');
 const { validateOperationalTime } = require('../utils/schedule-policy.util');
 
-const validateCreateRequest = (req, res, next) => {
+const validateRequestData = (req, res, requireExpectedVersion = false) => {
   const {
     namaInstansi, pic, emailPic, noTelp, alamat,
     maksudPengujian, maksudLainnya, metodePengambilan,
     tanggalPengambilan, jamPengambilan, alamatPengambilan,
     estimasiDiterima,
-    sampleEntries
+    sampleEntries,
+    expectedRequestVersion
+  } = req.body;
+
+  if (requireExpectedVersion) {
+    if (expectedRequestVersion === undefined || expectedRequestVersion === null) {
+      return 'Versi data permohonan wajib dikirim (expectedRequestVersion).';
+    }
+    const versionNum = Number(expectedRequestVersion);
+    if (isNaN(versionNum) || versionNum <= 0 || !Number.isInteger(versionNum)) {
+      return 'expectedRequestVersion harus berupa bilangan bulat positif.';
+    }
+  }
+
+  const asTrimmed = (val) => (typeof val === 'string' ? val.trim() : '');
+  const sanitizePhone = (val) => String(val ?? '').replace(/\D+/g, '');
+  const isNonEmpty = (val) => asTrimmed(val).length > 0;
+  const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(asTrimmed(val));
+  const isValidPhone = (val) => /^0\d{8,14}$/.test(sanitizePhone(val));
+
+  if (!isNonEmpty(namaInstansi) || !isNonEmpty(pic) || !isNonEmpty(emailPic) || !isNonEmpty(noTelp) || !isNonEmpty(alamat)) {
+    return 'Data pelanggan tidak lengkap.';
+  }
+
+  if (!isValidEmail(emailPic)) {
+    return 'Email PIC harus memakai format email yang benar, misalnya nama@instansi.com.';
+  }
+
+  if (!isValidPhone(noTelp)) {
+    return 'No. Telp / HP hanya boleh berisi angka, harus diawali 0, dan berisi 9–15 digit.';
+  }
+
+  req.body.emailPic = asTrimmed(emailPic).toLowerCase();
+  req.body.noTelp = sanitizePhone(noTelp);
+
+  const cleanedEntries = Array.isArray(sampleEntries) ? sampleEntries : [];
+
+  if (!isNonEmpty(maksudPengujian) || !isNonEmpty(metodePengambilan) || cleanedEntries.length === 0) {
+    return errorResponse(res, 'Data permohonan tidak lengkap.', 400);
+  }
+
+  if (asTrimmed(maksudPengujian).toLowerCase() === 'lainnya' && !isNonEmpty(maksudLainnya)) {
+    return errorResponse(res, 'Maksud pengujian lainnya wajib diisi.', 400);
+  }
+
+  let sampleReferenceDate = '';
+
+  if (asTrimmed(metodePengambilan) === 'laboratorium') {
+    if (!isNonEmpty(tanggalPengambilan) || !isNonEmpty(jamPengambilan) || !isNonEmpty(alamatPengambilan)) {
+      return 'Data pengambilan sampel oleh laboratorium wajib lengkap.';
+    }
+
+    const sampleDateError = validateYmdField({
+      value: tanggalPengambilan,
+      label: 'Tanggal rencana pengambilan sampel',
+      required: true,
+      notBeforeToday: true,
+    });
+    if (sampleDateError) return sampleDateError;
+
+    const sampleTimeError = validateTimeField({
+      value: jamPengambilan,
+      label: 'Jam rencana pengambilan sampel',
+      required: true,
+    });
+    if (sampleTimeError) return sampleTimeError;
+
+    sampleReferenceDate = tanggalPengambilan;
+  } else if (asTrimmed(metodePengambilan) === 'kirim') {
+    if (!isNonEmpty(estimasiDiterima)) {
+      return 'Estimasi tanggal sampel diterima wajib diisi.';
+    }
+
+    const estimateDateError = validateYmdField({
+      value: estimasiDiterima,
+      label: 'Estimasi tanggal sampel diterima',
+      required: true,
+      notBeforeToday: true,
+    });
+    if (estimateDateError) return estimateDateError;
+
+    sampleReferenceDate = estimasiDiterima;
+  } else {
+    return 'Metode pengambilan sampel tidak valid.';
+  }
+
+  const hasInvalidEntry = cleanedEntries.some((e) => {
+    const parameterList = Array.isArray(e?.parameters) ? e.parameters : [];
+    const hasInvalidParameter = parameterList.some((p) => {
+      if (typeof p === 'string') return p.trim().length === 0;
+      if (typeof p === 'object' && p !== null) return !p.id_parameter;
+
+      return true;
+    });
+
+    const standar = e?.idRegBm || e?.id_reg_bm;
+    const idJenisSampel = e?.idJenisSampel || e?.id_jenis_sampel || e?.jenisSampel;
+    return !idJenisSampel || !standar || parameterList.length === 0 || hasInvalidParameter || Number(e?.jumlahSampel || 0) < 1;
+  });
+
+  if (hasInvalidEntry) {
+    return 'Data parameter uji yang dipilih tidak valid.';
+  }
+
+  return null;
+};
+
+const validateCreateRequest = (req, res, next) => {
+  const errorMsg = validateRequestData(req, res, false);
+  if (errorMsg) {
+    return errorResponse(res, errorMsg, 400);
+  }
+  next();
+};
+
+const validateUpdateRequest = (req, res, next) => {
+  const errorMsg = validateRequestData(req, res, true);
+  if (errorMsg) {
+    return errorResponse(res, errorMsg, 400);
+  }
+  next();
+};
+
+const validateStep1Data = (req, res, next) => {
+  const {
+    namaInstansi, pic, emailPic, noTelp, alamat,
+    maksudPengujian, maksudLainnya, metodePengambilan,
+    tanggalPengambilan, jamPengambilan, alamatPengambilan,
+    estimasiDiterima
   } = req.body;
 
   const asTrimmed = (val) => (typeof val === 'string' ? val.trim() : '');
@@ -37,17 +165,13 @@ const validateCreateRequest = (req, res, next) => {
   req.body.emailPic = asTrimmed(emailPic).toLowerCase();
   req.body.noTelp = sanitizePhone(noTelp);
 
-  const cleanedEntries = Array.isArray(sampleEntries) ? sampleEntries : [];
-
-  if (!isNonEmpty(maksudPengujian) || !isNonEmpty(metodePengambilan) || cleanedEntries.length === 0) {
+  if (!isNonEmpty(maksudPengujian) || !isNonEmpty(metodePengambilan)) {
     return errorResponse(res, 'Data permohonan tidak lengkap.', 400);
   }
 
   if (asTrimmed(maksudPengujian).toLowerCase() === 'lainnya' && !isNonEmpty(maksudLainnya)) {
     return errorResponse(res, 'Maksud pengujian lainnya wajib diisi.', 400);
   }
-
-  let sampleReferenceDate = '';
 
   if (asTrimmed(metodePengambilan) === 'laboratorium') {
     if (!isNonEmpty(tanggalPengambilan) || !isNonEmpty(jamPengambilan) || !isNonEmpty(alamatPengambilan)) {
@@ -68,8 +192,6 @@ const validateCreateRequest = (req, res, next) => {
       required: true,
     });
     if (sampleTimeError) return errorResponse(res, sampleTimeError, 400);
-
-    sampleReferenceDate = tanggalPengambilan;
   } else if (asTrimmed(metodePengambilan) === 'kirim') {
     if (!isNonEmpty(estimasiDiterima)) {
       return errorResponse(res, 'Estimasi tanggal sampel diterima wajib diisi.', 400);
@@ -82,38 +204,27 @@ const validateCreateRequest = (req, res, next) => {
       notBeforeToday: true,
     });
     if (estimateDateError) return errorResponse(res, estimateDateError, 400);
-
-    sampleReferenceDate = estimasiDiterima;
   } else {
     return errorResponse(res, 'Metode pengambilan sampel tidak valid.', 400);
-  }
-
-  const hasInvalidEntry = cleanedEntries.some((e) => {
-    const parameterList = Array.isArray(e?.parameters) ? e.parameters : [];
-    const hasInvalidParameter = parameterList.some((p) => {
-      if (typeof p === 'string') return p.trim().length === 0;
-      if (typeof p === 'object' && p !== null) return !p.id_parameter;
-
-      return true;
-    });
-
-    const standar = e?.idRegBm || e?.id_reg_bm;
-    const idJenisSampel = e?.idJenisSampel || e?.id_jenis_sampel || e?.jenisSampel;
-    return !idJenisSampel || !standar || parameterList.length === 0 || hasInvalidParameter || Number(e?.jumlahSampel || 0) < 1;
-  });
-
-  if (hasInvalidEntry) {
-    return errorResponse(res, 'Setiap sampel wajib memiliki jenis sampel, parameter uji, dan jumlah sampel minimal 1.', 400);
   }
 
   next();
 };
 
 const validateVerifyRequest = (req, res, next) => {
-  const { action } = req.body;
+  const { action, expectedRequestVersion } = req.body;
   if (!action || !['approve', 'reject'].includes(action)) {
     return errorResponse(res, 'Action harus "approve" atau "reject".', 400);
   }
+
+  if (expectedRequestVersion === undefined || expectedRequestVersion === null) {
+    return errorResponse(res, 'Versi data permohonan wajib dikirim (expectedRequestVersion).', 400);
+  }
+  const versionNum = Number(expectedRequestVersion);
+  if (isNaN(versionNum) || versionNum <= 0 || !Number.isInteger(versionNum)) {
+    return errorResponse(res, 'expectedRequestVersion harus berupa bilangan bulat positif.', 400);
+  }
+
   next();
 };
 
@@ -136,7 +247,7 @@ const validateAssignMethods = (req, res, next) => {
     const capabilityStatus = String(s.capabilityStatus).toUpperCase();
     if (!['MAMPU', 'TIDAK_MAMPU'].includes(capabilityStatus)) return true;
 
-    if (capabilityStatus === 'MAMPU' && !s.methodId) return true;
+    if (!s.methodId) return true;
 
     const isInsitu = normalizeBoolean01(s.isInsitu ?? s.is_insitu);
     if (![0, 1].includes(isInsitu)) return true;
@@ -147,11 +258,37 @@ const validateAssignMethods = (req, res, next) => {
   if (hasInvalid) {
     return errorResponse(
       res,
-      'Setiap pilihan wajib memiliki fpmId, capabilityStatus, methodId saat status MAMPU, dan status insitu.',
+      'Setiap pilihan wajib memiliki fpmId, capabilityStatus, methodId, dan status insitu.',
       400
     );
   }
 
+  next();
+};
+
+const validateCreateSubcontractRequest = (req, res, next) => {
+  const { fpmId } = req.body;
+  if (!fpmId) {
+    return errorResponse(res, 'fpmId wajib diisi.', 400);
+  }
+  next();
+};
+
+const validateApproveSubcontractRequest = (req, res, next) => {
+  const { createMethodData, existingMethodId } = req.body;
+  if (!existingMethodId && !createMethodData) {
+    return errorResponse(res, 'Pilih metode yang sudah ada atau buat metode baru.', 400);
+  }
+  if (createMethodData) {
+    const { id_metode } = createMethodData;
+    if (!id_metode && !createMethodData.is_new_metode) {
+      return errorResponse(res, 'Metode harus dipilih atau dibuat.', 400);
+    }
+  }
+  next();
+};
+
+const validateRejectSubcontractRequest = (req, res, next) => {
   next();
 };
 
@@ -373,11 +510,16 @@ const validateReceiveSamples = (req, res, next) => {
 
 module.exports = {
   validateCreateRequest,
+  validateUpdateRequest,
+  validateStep1Data,
   validateVerifyRequest,
   validateAssignMethods,
   validateCustomerPaymentAction,
   validateDeferredPaymentNote,
   validateRejectRevision,
+  validateCreateSubcontractRequest,
+  validateApproveSubcontractRequest,
+  validateRejectSubcontractRequest,
   validateSamplingSchedule,
   validateReceiveSamples,
   validateRequestIdParam,

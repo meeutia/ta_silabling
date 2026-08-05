@@ -15,6 +15,28 @@ class CustomerRequestController {
         this.invoicePdfService = invoicePdfService;
         this.notificationService = notificationService;
     }
+
+    validateStep1 = async (req, res) => {
+        try {
+            const result = await this.requestService.validateStep1Duplicate(req.user.nik, req.body);
+            if (result.isDuplicate) {
+                return res.status(409).json({
+                    success: false,
+                    code: 'DUPLICATE_REQUEST',
+                    message: result.message,
+                    errors: {
+                        duplicateScope: result.duplicateScope,
+                        picName: result.picName,
+                        picPhone: result.picPhone
+                    }
+                });
+            }
+            return successResponse(res, 'Validasi tahap 1 berhasil.', { valid: true });
+        } catch (error) {
+            console.error('validateStep1 error:', error);
+            return errorResponse(res, error.message || 'Terjadi kesalahan pada validasi tahap 1.', 400);
+        }
+    };
     createRequest = async (req, res) => {
         try {
             const data = await this.requestService.createRequest(req.user.nik, req.body);
@@ -34,11 +56,16 @@ class CustomerRequestController {
 
             // Tangani error duplikasi permohonan — kembalikan 409 Conflict
             if (error.code === 'DUPLICATE_REQUEST') {
+                const canViewExisting = error.canViewExisting === true;
+
                 return res.status(409).json({
                     success: false,
+                    code: 'DUPLICATE_REQUEST',
                     message: error.message,
                     errors: {
-                        existingRequest: error.existingRequest || null,
+                        duplicateScope: error.duplicateScope || null,
+                        canViewExisting,
+                        existingRequest: canViewExisting ? (error.existingRequest || null) : null,
                     },
                 });
             }
@@ -47,8 +74,12 @@ class CustomerRequestController {
         }
     };
     updateRequest = async (req, res) => {
-        return errorResponse(res, 'Edit permohonan lama sudah tidak digunakan. Jika permohonan ditolak, silakan buat permohonan baru.', 410);
+        return res.status(410).json({
+            success: false,
+            message: 'Edit permohonan lama sudah tidak digunakan. Silakan gunakan alur revisi LKA.'
+        });
     };
+
     listRequests = async (req, res) => {
         try {
             const { status } = req.query;

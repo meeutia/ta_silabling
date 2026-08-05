@@ -5,8 +5,9 @@ import { formatDateOnly, formatDateTime as formatDateTimeLabel } from '../../uti
 import { getCustomerProfile } from '../../components/admin/permohonan/adminPermohonanHelpers';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { AdminPermohonanListView } from '../../components/admin/permohonan/AdminPermohonanListView';
-import { AdminLhuPickupModal } from '../../components/admin/permohonan/AdminLhuPickupModal';
 import { AdminPermohonanDetailView } from '../../components/admin/permohonan/AdminPermohonanDetailView';
+import { AdminLhuPickupModal } from '../../components/admin/permohonan/AdminLhuPickupModal';
+import AdminSignedLhuUploadModal from '../../components/admin/permohonan/AdminSignedLhuUploadModal';
 import { useAdminLhuPickup } from '../../components/admin/permohonan/useAdminLhuPickup';
 import { useAdminPermohonanValidation } from '../../components/admin/permohonan/useAdminPermohonanValidation';
 import {
@@ -74,7 +75,45 @@ export function AdminPermohonanPage({ initialRegistrationId = '', onDetailRouteC
   const [saving, setSaving] = useState(false);
   const [scheduleDecisionNotes, setScheduleDecisionNotes] = useState({});
 
+  const [signedLhuModalOpen, setSignedLhuModalOpen] = useState(false);
+  const [signedLhuTarget, setSignedLhuTarget] = useState({ nomorLhu: '', isReplace: false });
+
   const openGeneratedFile = (filePath) => openFileInNewTab(filePath, API_BASE);
+
+  const handleOpenSignedLhu = async (nomorLhu, isDownload = false) => {
+    const newTab = !isDownload ? window.open('', '_blank') : null;
+    try {
+      setSaving(true);
+      const blob = await adminPermohonanApi.getSignedLhuBlob(nomorLhu);
+      const url = URL.createObjectURL(blob);
+      
+      if (isDownload) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `LHU_Signed_${nomorLhu.replace(/\//g, '_')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        if (newTab) {
+          newTab.location.href = url;
+        }
+      }
+      
+      // Revoke object URL after a delay to ensure the browser has time to process it
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (err) {
+      if (newTab) newTab.close();
+      showError(err?.message || 'Gagal membuka LHU bertanda tangan.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleOpenUploadSignedModal = (nomorLhu, isReplace = false) => {
+    setSignedLhuTarget({ nomorLhu, isReplace });
+    setSignedLhuModalOpen(true);
+  };
 
   const {
     selectedRequest,
@@ -332,6 +371,13 @@ const getPickupScheduleLabel = (row) => getPickupScheduleLabelValue(row, formatD
     try {
       const detail = await fetchRequestDetail(idRegistrasi);
       setSelectedRequest(detail);
+      
+      const adminSampleRows = getAdminSampleRows(detail);
+      const hasLhuData = adminSampleRows.some((row) => Boolean(row?.lhu));
+      if (hasLhuData) {
+        setExpandedSection('dokumen-lhu');
+      }
+      
       onDetailRouteChange?.(idRegistrasi);
     } catch (error) {
       showError(error?.message || 'Gagal mengambil detail permohonan.');
@@ -396,6 +442,7 @@ const getPickupScheduleLabel = (row) => getPickupScheduleLabelValue(row, formatD
   // ===== DETAIL VIEW =====
   if (selectedRequest) {
     return (
+      <>
       <AdminPermohonanDetailView
         selectedRequest={selectedRequest}
         expandedSection={expandedSection}
@@ -447,12 +494,29 @@ const getPickupScheduleLabel = (row) => getPickupScheduleLabelValue(row, formatD
         getLhuFilePath={getLhuFilePath}
         getLhuStatusBadge={getLhuStatusBadge}
         openGeneratedFile={openGeneratedFile}
+        onOpenSignedLhu={handleOpenSignedLhu}
+        onOpenUploadSignedModal={handleOpenUploadSignedModal}
         getPickupStatusBadge={getPickupStatusBadge}
         handleDecideScheduleChange={handleDecideScheduleChange}
         scheduleDecisionNotes={scheduleDecisionNotes}
         onScheduleDecisionNoteChange={handleScheduleDecisionNoteChange}
         onBackToList={handleBackToList}
       />
+      
+      {signedLhuModalOpen && (
+        <AdminSignedLhuUploadModal
+          open={signedLhuModalOpen}
+          nomorLhu={signedLhuTarget.nomorLhu}
+          isReplace={signedLhuTarget.isReplace}
+          onClose={() => setSignedLhuModalOpen(false)}
+          onSuccess={async () => {
+            const refreshed = await fetchRequestDetail(selectedRequest.id_registrasi);
+            setSelectedRequest(refreshed);
+            fetchData(true);
+          }}
+        />
+      )}
+      </>
     );
   }
 

@@ -37,8 +37,9 @@ const JadwalPengambilanLhu = require('./JadwalPengambilanLhu');
 const PengajuanPerubahanJadwal = require('./PengajuanPerubahanJadwal');
 const NotifikasiEmail = require('./NotifikasiEmail');
 const AktivitasSistemLog = require('./AktivitasSistemLog');
+const PermintaanSubkontrak = require('./PermintaanSubkontrak');
 
-const models = { Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, RegBm, PktBm, Klasifikasi, PktBmKelompok, PktBmParam, Satuan, PktBmNilai, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, Lhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, NotifikasiEmail, AktivitasSistemLog };
+const models = { Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, RegBm, PktBm, Klasifikasi, PktBmKelompok, PktBmParam, Satuan, PktBmNilai, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, Lhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, NotifikasiEmail, AktivitasSistemLog, PermintaanSubkontrak };
 
 Object.values(models).forEach((model) => {
   if (model && typeof model.associate === 'function') {
@@ -46,4 +47,4 @@ Object.values(models).forEach((model) => {
   }
 });
 
-module.exports = { sequelize, Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, RegBm, PktBm, Klasifikasi, PktBmKelompok, PktBmParam, Satuan, PktBmNilai, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, Lhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, NotifikasiEmail, AktivitasSistemLog };
+module.exports = { sequelize, Role, User, Pelanggan, Pegawai, TarifPengambilan, Fppl, JadwalSampel, JenisSampel, FpplSampel, KategoriParameter, Parameter, Metode, ParameterMetode, FpplParameterMetode, RegBm, PktBm, Klasifikasi, PktBmKelompok, PktBmParam, Satuan, PktBmNilai, Sampel, SampelParameter, Penugasan, PenugasanDetail, PenugasanItem, Lka, LkaHasil, LkaRevisi, Lhu, Invoice, InvoiceItem, Payment, JadwalPengambilanLhu, PengajuanPerubahanJadwal, NotifikasiEmail, AktivitasSistemLog, PermintaanSubkontrak };

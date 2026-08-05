@@ -63,6 +63,12 @@ export function getRouteAdminPermohonanRegistrationId(route = null) {
   return String(route.extra?.[0] || '').trim();
 }
 
+export function getRoutePelangganRegisterId(route = null) {
+  if (route?.kind !== 'app') return '';
+  if (route.role !== 'pelanggan') return '';
+  if (route.page !== 'register') return '';
+  return String(route.extra?.[0] || '').trim();
+}
 
 export function getRouteKasiPermohonanRegistrationId(route = null) {
   if (route?.kind !== 'app') return '';

@@ -1,4 +1,4 @@
-import { CheckCircle, ChevronDown, ChevronUp, Clock, FileText } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, Clock, FileText, RefreshCw } from 'lucide-react';
 import {
   formatCurrency,
   getAccreditationLabel,
@@ -477,6 +477,8 @@ export function LhuDocumentSection({
   getLhuStatusBadge,
   formatDate,
   openGeneratedFile,
+  onOpenSignedLhu,
+  onOpenUploadSignedModal,
 }) {
   const lhuDocumentRows = buildAdminLhuDocumentRows(adminSampleRows);
 
@@ -508,7 +510,8 @@ export function LhuDocumentSection({
                   <th className="px-4 py-3 text-left font-semibold text-gray-700">Jenis Sampel</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-700">Status LHU</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-700">Tanggal Terbit</th>
-                  <th className="px-4 py-3 text-center font-semibold text-gray-700">File</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-700">File Draft Sistem</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-700">LHU Bertanda Tangan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -520,7 +523,7 @@ export function LhuDocumentSection({
                   </tr>
                 ) : lhuDocumentRows.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                       Belum ada data dokumen LHU.
                     </td>
                   </tr>
@@ -562,14 +565,57 @@ export function LhuDocumentSection({
                             <button
                               type="button"
                               onClick={() => openGeneratedFile(filePath)}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-emerald-700"
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition-all hover:bg-emerald-700"
                             >
                               <FileText className="h-4 w-4" />
-                              Buka PDF
+                              Buka
                             </button>
                           ) : (
-                            <span className="text-gray-400">Belum tersedia</span>
+                            <span className="text-gray-400">Belum ada draft</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {(() => {
+                            const isDisahkan = row.lhu?.status_lhu === 'Disahkan' || row.lhu?.statusLhu === 'Disahkan';
+                            const hasSigned = row.lhu?.file_lhu_signed_path || row.lhu?.fileLhuSignedPath;
+                            
+                            if (hasSigned) {
+                              return (
+                                <div className="flex flex-col items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenSignedLhu(row.nomor_lhu, false)}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 transition-all hover:bg-emerald-100"
+                                    title="Lihat LHU Bertanda Tangan"
+                                  >
+                                    <FileText className="h-4 w-4" /> Lihat
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenUploadSignedModal(row.nomor_lhu, true)}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700 transition-all"
+                                    title="Ganti LHU Bertanda Tangan"
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5" /> Ganti File
+                                  </button>
+                                </div>
+                              );
+                            }
+                            
+                            if (isDisahkan) {
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenUploadSignedModal(row.nomor_lhu, false)}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-600 transition-all hover:bg-emerald-50"
+                                >
+                                  Unggah
+                                </button>
+                              );
+                            }
+
+                            return <span className="text-gray-400 text-sm">Menunggu Disahkan</span>;
+                          })()}
                         </td>
                       </tr>
                     );

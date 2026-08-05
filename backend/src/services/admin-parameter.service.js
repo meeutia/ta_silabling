@@ -331,83 +331,97 @@ generateNextCode = async ({ model, column, prefix, padLength, transaction, }) =>
         });
         return rows.map((row) => this.toApiData(this.toPlainObject(row)));
     };
-    createParameterMetode = async (data) => {
-        const transaction = await sequelize.transaction();
-        try {
-            let parameterId = data.id_parameter;
-            let metodeId = data.id_metode;
-            if (data.is_new_parameter) {
-                if (!data.nama_parameter || !data.nama_parameter.trim()) {
-                    throw new Error('Nama parameter baru harus diisi');
-                }
-                parameterId = await this.generateNextCode({
-                    model: Parameter,
-                    column: 'id_parameter',
-                    prefix: 'PR',
-                    padLength: 4,
-                    transaction,
-                });
-                const resolvedKategori = await this.resolveKategoriParameter({
-                    idKategoriParameter: data.id_kategori_parameter || data.idKategoriParameter,
-                    namaKategori: data.kategori_parameter || data.nama_kategori || data.namaKategori,
-                    transaction,
-                });
-                await Parameter.create({
-                    id_parameter: parameterId,
-                    id_kategori_parameter: resolvedKategori.id_kategori_parameter,
-                    nama_parameter: data.nama_parameter.trim(),
-                }, { transaction });
+    createParameterMethodWithinTransaction = async (data, transaction) => {
+        let parameterId = data.id_parameter;
+        let metodeId = data.id_metode;
+        if (data.is_new_parameter) {
+            if (!data.nama_parameter || !data.nama_parameter.trim()) {
+                throw new Error('Nama parameter baru harus diisi');
             }
-            if (data.is_new_metode) {
-                if (!data.nama_metode || !data.nama_metode.trim()) {
-                    throw new Error('Nama metode baru harus diisi');
-                }
-                metodeId = await this.generateNextCode({
-                    model: Metode,
-                    column: 'id_metode',
-                    prefix: 'M',
-                    padLength: 2,
-                    transaction,
-                });
-                await Metode.create({
-                    id_metode: metodeId,
-                    nama_metode: data.nama_metode.trim(),
-                }, { transaction });
-            }
-            if (!parameterId) {
-                throw new Error('Parameter harus dipilih atau dibuat baru');
-            }
-            if (!metodeId) {
-                throw new Error('Metode harus dipilih atau dibuat baru');
-            }
-            const existingCombination = await ParameterMetode.findOne({
-                where: {
-                    id_parameter: parameterId,
-                    id_metode: metodeId,
-                },
-                transaction,
-            });
-            if (existingCombination) {
-                throw new Error('Kombinasi Parameter dan Metode ini sudah ada.');
-            }
-            const pmId = await this.generateNextCode({
-                model: ParameterMetode,
-                column: 'id_metode_parameter',
-                prefix: 'MP',
+            parameterId = await this.generateNextCode({
+                model: Parameter,
+                column: 'id_parameter',
+                prefix: 'PR',
                 padLength: 4,
                 transaction,
             });
-            const data = {
-                id_metode_parameter: pmId,
+            const resolvedKategori = await this.resolveKategoriParameter({
+                idKategoriParameter: data.id_kategori_parameter || data.idKategoriParameter,
+                namaKategori: data.kategori_parameter || data.nama_kategori || data.namaKategori,
+                transaction,
+            });
+            await Parameter.create({
+                id_parameter: parameterId,
+                id_kategori_parameter: resolvedKategori.id_kategori_parameter,
+                nama_parameter: data.nama_parameter.trim(),
+            }, { transaction });
+        }
+        if (data.is_new_metode) {
+            if (!data.nama_metode || !data.nama_metode.trim()) {
+                throw new Error('Nama metode baru harus diisi');
+            }
+            metodeId = await this.generateNextCode({
+                model: Metode,
+                column: 'id_metode',
+                prefix: 'M',
+                padLength: 2,
+                transaction,
+            });
+            await Metode.create({
+                id_metode: metodeId,
+                nama_metode: data.nama_metode.trim(),
+            }, { transaction });
+        }
+        if (!parameterId) {
+            throw new Error('Parameter harus dipilih atau dibuat baru');
+        }
+        if (!metodeId) {
+            throw new Error('Metode harus dipilih atau dibuat baru');
+        }
+
+        const isSubkontrak = data.is_subkontrak ? 1 : 0;
+        const acuanMetode = data.acuan_metode || null;
+
+        const existingCombination = await ParameterMetode.findOne({
+            where: {
                 id_parameter: parameterId,
                 id_metode: metodeId,
-                tarif: data.tarif || 0,
-                acuan_metode: data.acuan_metode || null,
-                is_terakreditasi: data.is_terakreditasi ? 1 : 0,
-                is_subkontrak: data.is_subkontrak ? 1 : 0,
-                is_active: data.is_active === undefined ? 1 : this.normalizeActiveFlag(data.is_active, 1),
-            };
-            const pm = await ParameterMetode.create(data, { transaction });
+                acuan_metode: acuanMetode,
+                is_subkontrak: isSubkontrak
+            },
+            transaction,
+        });
+
+        if (existingCombination) {
+            const activeText = Number(existingCombination.is_active) === 1 ? ' dan masih aktif' : '';
+            throw new Error(`Kombinasi Parameter dan Metode ini sudah ada${activeText}.`);
+        }
+
+        const pmId = await this.generateNextCode({
+            model: ParameterMetode,
+            column: 'id_metode_parameter',
+            prefix: 'MP',
+            padLength: 4,
+            transaction,
+        });
+
+        const insertData = {
+            id_metode_parameter: pmId,
+            id_parameter: parameterId,
+            id_metode: metodeId,
+            tarif: data.tarif || 0,
+            acuan_metode: acuanMetode,
+            is_terakreditasi: data.is_terakreditasi ? 1 : 0,
+            is_subkontrak: isSubkontrak,
+            is_active: data.is_active === undefined ? 1 : this.normalizeActiveFlag(data.is_active, 1),
+        };
+        const pm = await ParameterMetode.create(insertData, { transaction });
+        return pm;
+    };
+    createParameterMetode = async (data) => {
+        const transaction = await sequelize.transaction();
+        try {
+            const pm = await this.createParameterMethodWithinTransaction(data, transaction);
             await transaction.commit();
             const createdParameterMetode = await ParameterMetode.findByPk(pm.id_metode_parameter, {
                 include: [

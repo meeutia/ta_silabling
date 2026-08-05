@@ -66,6 +66,18 @@ export const createDefaultFormData = (userData) => ({
 });
 
 export const getSampleEntriesFromRequest = (request) => {
+  if (Array.isArray(request?.kelompokSampel) && request.kelompokSampel.length > 0) {
+    const mapped = request.kelompokSampel.map((ks) => {
+      return {
+        jenisSampel: ks.idJenisSampel || '',
+        idRegBm: ks.idRegBm || '',
+        parameters: (ks.parameters || []).map((p) => p.paramId).filter(Boolean),
+        jumlahSampel: Number(ks.jumlahSampel || 1) || 1,
+      };
+    });
+    return normalizeSampleEntries(mapped);
+  }
+
   const requestSamples =
     request?.FpplSampels ||
     request?.fppl_sampels ||
@@ -121,24 +133,24 @@ export const mapRequestToFormData = (request, fallbackUserData) => {
       : '';
 
   const knownPurposes = new Set(KNOWN_TESTING_PURPOSES);
-  const savedPurpose = request?.maksud_pengujian || '';
+  const savedPurpose = request?.maksud_pengujian || request?.maksudPengujian || '';
   const isKnownPurpose = knownPurposes.has(savedPurpose);
 
   return {
     ...createDefaultFormData(fallbackUserData),
-    id_pelanggan: pelanggan?.id_pelanggan || request?.id_pelanggan || '',
-    namaInstansi: pelanggan?.nama_instansi || '',
+    id_pelanggan: pelanggan?.id_pelanggan || pelanggan?.idPelanggan || request?.id_pelanggan || request?.idPelanggan || '',
+    namaInstansi: pelanggan?.nama_instansi || pelanggan?.namaInstansi || '',
     pic: pelanggan?.pic || fallbackUserData?.username || fallbackUserData?.nama_user || '',
-    emailPic: pelanggan?.email_kontak || fallbackUserData?.email || '',
-    noTelp: pelanggan?.no_telp || fallbackUserData?.no_telp || '',
+    emailPic: pelanggan?.email_kontak || pelanggan?.emailKontak || fallbackUserData?.email || '',
+    noTelp: pelanggan?.no_telp || pelanggan?.noTelp || fallbackUserData?.no_telp || '',
     alamat: pelanggan?.alamat || fallbackUserData?.alamat || '',
     maksudPengujian: isKnownPurpose ? savedPurpose : savedPurpose ? 'lainnya' : '',
     maksudLainnya: isKnownPurpose ? '' : savedPurpose,
     metodePengambilan,
-    tanggalPengambilan: isPetugas ? toYmdOrEmpty(request?.tanggal_rencana_pengambilan_sampel) : '',
-    jamPengambilan: isPetugas ? toTimeHHmmOrEmpty(request?.jam_rencana_pengambilan_sampel) : '',
-    estimasiDiterima: isMandiri ? toYmdOrEmpty(request?.tanggal_rencana_pengantaran_sampel) : '',
-    alamatPengambilan: request?.lokasi_pengambilan_sampel || '',
+    tanggalPengambilan: isPetugas ? toYmdOrEmpty(request?.tanggal_rencana_pengambilan_sampel || request?.tanggalRencanaPengambilanSampel) : '',
+    jamPengambilan: isPetugas ? toTimeHHmmOrEmpty(request?.jam_rencana_pengambilan_sampel || request?.jamRencanaPengambilanSampel) : '',
+    estimasiDiterima: isMandiri ? toYmdOrEmpty(request?.tanggal_rencana_pengantaran_sampel || request?.tanggalRencanaPengantaranSampel) : '',
+    alamatPengambilan: request?.lokasi_pengambilan_sampel || request?.lokasiPengambilanSampel || '',
     sampleEntries: getSampleEntriesFromRequest(request),
     parameterLainnya: '',
     acuanBakuMutu: '',

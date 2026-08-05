@@ -57,11 +57,16 @@ class WebNotificationService {
     }
   };
 
-  buildActionTarget = ({ referensiTipe, referensiId } = {}) => {
+  buildActionTarget = ({ referensiTipe, referensiId, idTipeNotifikasi } = {}) => {
     const id = safeString(referensiId).trim();
     if (!id) return null;
 
     if (referensiTipe === NOTIFICATION_REFERENCE_TYPE.FPPL) {
+      if (idTipeNotifikasi === NOTIFICATION_TYPE.SUBCONTRACT_REQUEST_ADMIN) {
+        return {
+          admin: { page: 'kelola-parameter', queryParams: { tab: 'subkontrak' } },
+        };
+      }
       return {
         pelanggan: { page: 'status', pathSegments: [id] },
         admin: { page: 'permohonan', pathSegments: [id] },
@@ -123,6 +128,7 @@ class WebNotificationService {
       target: this.buildActionTarget({
         referensiTipe: data.referensi_tipe,
         referensiId: data.referensi_id,
+        idTipeNotifikasi: data.id_tipe_notifikasi,
       }),
     };
   };

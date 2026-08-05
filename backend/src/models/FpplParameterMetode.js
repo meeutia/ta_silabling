@@ -11,6 +11,7 @@ class FpplParameterMetode extends Model {
     FpplParameterMetode.belongsTo(models.ParameterMetode, { foreignKey: 'id_metode_parameter' });
     FpplParameterMetode.belongsTo(models.User, { foreignKey: 'dipilih_oleh', as: 'PemilihUser' });
     FpplParameterMetode.hasMany(models.SampelParameter, { foreignKey: 'id_fppl_parameter_metode', as: 'sampel_parameters' });
+    FpplParameterMetode.hasMany(models.PermintaanSubkontrak, { foreignKey: 'id_fppl_parameter_metode', as: 'permintaan_subkontrak' });
     FpplParameterMetode.belongsToMany(models.Sampel, { through: models.SampelParameter, foreignKey: 'id_fppl_parameter_metode', otherKey: 'no_sampel', as: 'sampels' });
     FpplParameterMetode.hasMany(models.InvoiceItem, { foreignKey: 'id_fppl_parameter_metode' });
     FpplParameterMetode.belongsToMany(models.Invoice, { through: models.InvoiceItem, foreignKey: 'id_fppl_parameter_metode', otherKey: 'id_invoice', as: 'InvoiceList' });

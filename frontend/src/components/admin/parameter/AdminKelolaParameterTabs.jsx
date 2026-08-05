@@ -597,12 +597,91 @@ function TabBody({
     );
   }
 
+  if (activeTab === 'subcontract_request') {
+    return (
+      <SubcontractRequestTable
+        rows={rowsByTab.subcontractRequests}
+        onReview={(item) => onOpenModal('review_subcontract', item)}
+      />
+    );
+  }
+
   return (
     <TarifPengambilanTable
       rows={rowsByTab.tarifPengambilan}
       onEdit={(item) => onOpenModal('edit_tarif', item)}
       onDelete={(item) => onDeleteConfirm('tarif', item)}
     />
+  );
+}
+
+function SubcontractRequestTable({ rows, onReview }) {
+  return (
+    <TableShell>
+      <table className="w-full text-sm text-left">
+        <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-200">
+          <tr>
+            <th className="px-4 py-3">No. Registrasi</th>
+            <th className="px-4 py-3">Parameter Uji</th>
+            <th className="px-4 py-3">Waktu Permintaan</th>
+            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3 text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {rows.map((item) => (
+            <tr key={item.id_permintaan_subkontrak} className="hover:bg-gray-50 transition-colors">
+              <td className="px-4 py-3 font-medium text-gray-900">
+                {item.id_registrasi || item.fppl?.id_registrasi || '-'}
+              </td>
+              <td className="px-4 py-3 text-gray-700">
+                {item.fppl_parameter_metode?.parameter?.nama_parameter || item.parameter?.nama_parameter || item.parameter_name || '-'}
+              </td>
+              <td className="px-4 py-3 text-gray-500">
+                {new Date(item.diajukan_pada || item.created_at).toLocaleString('id-ID', {
+                  day: 'numeric', month: 'short', year: 'numeric',
+                  hour: '2-digit', minute: '2-digit'
+                })}
+              </td>
+              <td className="px-4 py-3">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                  item.status_permintaan === 'MENUNGGU_ADMIN'
+                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                    : item.status_permintaan === 'SELESAI'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : item.status_permintaan === 'DITOLAK'
+                    ? 'bg-red-50 text-red-800 border-red-200'
+                    : 'bg-gray-50 text-gray-800 border-gray-200'
+                }`}>
+                  {item.status_permintaan === 'MENUNGGU_ADMIN' ? 'Menunggu Admin'
+                    : item.status_permintaan === 'SELESAI' ? 'Selesai'
+                    : item.status_permintaan === 'DITOLAK' ? 'Ditolak'
+                    : item.status_permintaan}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-right">
+                {item.status_permintaan === 'MENUNGGU_ADMIN' ? (
+                  <button
+                    onClick={() => onReview(item)}
+                    className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
+                  >
+                    Proses
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onReview(item)}
+                    className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
+                  >
+                    Detail
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+          {rows.length === 0 && <EmptyRow colSpan="6">Tidak ada data permintaan subkontrak</EmptyRow>}
+        </tbody>
+      </table>
+    </TableShell>
   );
 }
 
@@ -667,7 +746,7 @@ export function AdminKelolaParameterTabs({
           </div>
         ) : (
           <>
-            {activeTab === 'parameter_metode' && (
+            {(activeTab === 'parameter_metode' || activeTab === 'subcontract_request') && (
               <Toolbar
                 searchQuery={searchQuery}
                 searchPlaceholder={searchPlaceholder}
@@ -677,7 +756,9 @@ export function AdminKelolaParameterTabs({
                 onFilterChange={onFilterChange}
               />
             )}
-            <TableHeader count={rowsCount} addButtonLabel={addButtonLabel} onAdd={onAdd} />
+            {activeTab !== 'subcontract_request' && (
+              <TableHeader count={rowsCount} addButtonLabel={addButtonLabel} onAdd={onAdd} />
+            )}
             <TabBody
               activeTab={activeTab}
               rowsByTab={rowsByTab}

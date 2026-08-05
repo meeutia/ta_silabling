@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { adminParameterApi } from '../../../api/adminParameterApi';
 import { normalizeBool, stripHtml } from './parameterFormatters';
 
@@ -238,6 +239,10 @@ function getInitialFormData(type, item) {
   return {};
 }
 
+function isTruthyQueryParam(value) {
+  return value === '1' || value === 'true' || value === 'yes';
+}
+
 function validateParameterMetode(body) {
   if (body.is_new_parameter && !body.nama_parameter?.trim()) {
     throw new Error('Nama parameter baru harus diisi');
@@ -329,7 +334,18 @@ async function deleteByType(type, item) {
 }
 
 export function useAdminKelolaParameter() {
-  const [activeTab, setActiveTab] = useState('parameter_metode');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const initialTab = urlTab === 'subkontrak' ? 'subcontract_request' : (urlTab || 'parameter_metode');
+  const [activeTab, setActiveTab] = useState(initialTab);
+  
+  useEffect(() => {
+    if (urlTab) {
+      const targetTab = urlTab === 'subkontrak' ? 'subcontract_request' : urlTab;
+      setActiveTab(targetTab);
+    }
+  }, [urlTab]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isModalLoading, setIsModalLoading] = useState(false);
 
@@ -347,6 +363,7 @@ export function useAdminKelolaParameter() {
   const [paketData, setPaketData] = useState([]);
   const [paketParameters, setPaketParameters] = useState([]);
   const [tarifPengambilanData, setTarifPengambilanData] = useState([]);
+  const [subcontractRequestsData, setSubcontractRequestsData] = useState([]);
 
   const [jenisSampelOptions, setJenisSampelOptions] = useState([]);
   const [parametersOption, setParametersOption] = useState([]);
@@ -358,11 +375,28 @@ export function useAdminKelolaParameter() {
   const [modalType, setModalType] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [submitError, setSubmitError] = useState('');
 
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmStatusChange, setConfirmStatusChange] = useState(null);
   const [paketParamForm, setPaketParamForm] = useState(EMPTY_PAKET_PARAM_FORM);
   const [editingPaketParam, setEditingPaketParam] = useState(null);
+
+  const clearModalRouteParams = useCallback(() => {
+    const nextParams = new URLSearchParams(searchParams);
+    let changed = false;
+
+    ['modal', 'id_parameter', 'is_subkontrak', 'requestId'].forEach((key) => {
+      if (nextParams.has(key)) {
+        nextParams.delete(key);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -404,6 +438,11 @@ export function useAdminKelolaParameter() {
         const tarifPengambilan = await adminParameterApi.getTarifPengambilan();
         setTarifPengambilanData(tarifPengambilan);
       }
+
+      if (activeTab === 'subcontract_request') {
+        const requests = await adminParameterApi.getSubcontractRequests();
+        setSubcontractRequestsData(requests);
+      }
     } catch (error) {
       showToast(error.message || 'Gagal memuat data', 'error');
     } finally {
@@ -443,35 +482,102 @@ export function useAdminKelolaParameter() {
     setSearchQuery('');
     setFilterStatus('Semua');
     if (tabKey !== 'paket_baku_mutu') {
-      setModalType(null);
-      setSelectedItem(null);
       setPaketParamForm(EMPTY_PAKET_PARAM_FORM);
       setEditingPaketParam(null);
       setPaketParameters([]);
     }
   }, []);
 
-  const handleOpenModal = useCallback((type, item = null) => {
+  const handleOpenModal = useCallback(async (type, item = null, initialOverride = null) => {
+    if (type === 'review_subcontract' && item?.id_permintaan_subkontrak) {
+      setIsModalLoading(true);
+
+      try {
+        const detail = await adminParameterApi.getSubcontractRequestDetail(item.id_permintaan_subkontrak);
+        setModalType(type);
+        setSelectedItem(detail || item);
+        setFormData({});
+        setSubmitError('');
+        setIsModalOpen(true);
+      } catch (err) {
+        console.error('Gagal memuat detail permintaan subkontrak:', err);
+        setModalType(type);
+        setSelectedItem(item);
+        setFormData({});
+        setSubmitError('');
+        setIsModalOpen(true);
+      } finally {
+        setIsModalLoading(false);
+      }
+
+      return;
+    }
+
+    if (type === 'add_param_metode' && typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+
     setModalType(type);
     setSelectedItem(item);
-    setFormData(getInitialFormData(type, item));
+    const baseForm = getInitialFormData(type, item);
+    setFormData(initialOverride ? { ...baseForm, ...initialOverride } : baseForm);
+    setSubmitError('');
     setIsModalOpen(true);
-  }, []);
 
-  const handleCloseModal = useCallback(() => {
+    if (type === 'add_param_metode' && parametersOption.length === 0) {
+      try {
+        const { parameterMetode, parameters, methods, kategoriParameters } = await adminParameterApi.getParameterMethodTabData();
+        setParameterMetodeData(parameterMetode);
+        setParametersOption(parameters);
+        setMethodsOption(methods);
+        setKategoriParameterOptions(kategoriParameters);
+      } catch (err) {
+        console.error('Gagal memuat opsi parameter & metode:', err);
+      }
+    }
+  }, [parametersOption.length]);
+
+  const openAddParameterModalForSubcontract = useCallback((paramInfo = {}) => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+
     setIsModalOpen(false);
     setModalType(null);
     setSelectedItem(null);
     setFormData({});
     setPaketParamForm(EMPTY_PAKET_PARAM_FORM);
     setEditingPaketParam(null);
+    setSubmitError('');
+    setActiveTab('parameter_metode');
+    setSearchQuery('');
+    setFilterStatus('Semua');
+    clearModalRouteParams();
+
+    handleOpenModal('add_param_metode', null, {
+      id_parameter: String(paramInfo.id_parameter || '').trim(),
+      is_subkontrak: true,
+      subcontract_request_id: String(paramInfo.requestId || '').trim(),
+    });
+  }, [clearModalRouteParams, handleOpenModal]);
+
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+    setModalType(null);
+    setSelectedItem(null);
+    setFormData({});
+    setSubmitError('');
+    setPaketParamForm(EMPTY_PAKET_PARAM_FORM);
+    setEditingPaketParam(null);
     setPaketParameters([]);
-  }, []);
+    clearModalRouteParams();
+  }, [clearModalRouteParams]);
 
   const handleFormChange = useCallback((event) => {
     const { name, value, type, checked } = event.target;
 
     if (name === 'is_new_parameter') {
+      setSubmitError('');
       setFormData((prev) => ({
         ...prev,
         is_new_parameter: checked,
@@ -483,6 +589,7 @@ export function useAdminKelolaParameter() {
     }
 
     if (name === 'is_new_metode') {
+      setSubmitError('');
       setFormData((prev) => ({
         ...prev,
         is_new_metode: checked,
@@ -492,6 +599,7 @@ export function useAdminKelolaParameter() {
       return;
     }
 
+    setSubmitError('');
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -526,16 +634,48 @@ export function useAdminKelolaParameter() {
       try {
         const body = { ...formData };
 
-        await saveByModalType(modalType, body, selectedItem);
+        const savedData = await saveByModalType(modalType, body, selectedItem);
+        const savedMethodId = savedData?.data?.id_metode_parameter || savedData?.id_metode_parameter || savedData?.data?.idMetodeParameter || savedData?.idMetodeParameter;
 
-        showToast(`Berhasil ${selectedItem ? 'mengubah' : 'menambahkan'} data`);
+        if (modalType === 'add_param_metode' && formData.subcontract_request_id) {
+          await adminParameterApi.approveSubcontractRequest(formData.subcontract_request_id, {
+            existingMethodId: savedMethodId,
+          });
+
+          setActiveTab('parameter_metode');
+          const nextParams = new URLSearchParams(searchParams);
+          nextParams.set('tab', 'parameter_metode');
+          setSearchParams(nextParams, { replace: true });
+        }
+
+        setSubmitError('');
+
+        showToast(
+          modalType === 'add_param_metode' && formData.subcontract_request_id
+            ? 'Berhasil menambahkan metode dan menyelesaikan permintaan subkontrak'
+            : `Berhasil ${selectedItem ? 'mengubah' : 'menambahkan'} data`
+        );
         handleCloseModal();
         fetchData();
+
+        if (modalType === 'add_param_metode' && formData.subcontract_request_id) {
+          const refreshedRequests = await adminParameterApi.getSubcontractRequests();
+          setSubcontractRequestsData(refreshedRequests);
+        }
       } catch (error) {
-        showToast(error.message || 'Terjadi kesalahan', 'error');
+        const message = error?.message || 'Terjadi kesalahan';
+        const looksLikeDuplicate = modalType === 'add_param_metode' && !selectedItem && /sudah ada|duplicate|unik|kombinasi/i.test(message);
+
+        if (looksLikeDuplicate) {
+          setSubmitError('Parameter, metode, dan acuan ini sudah ada dan masih aktif. Silakan pilih kombinasi lain.');
+          return;
+        }
+
+        setSubmitError('');
+        showToast(message, 'error');
       }
     },
-    [fetchData, formData, handleCloseModal, modalType, selectedItem, showToast]
+    [fetchData, formData, handleCloseModal, modalType, searchParams, selectedItem, setSearchParams, showToast]
   );
 
   const openDeleteConfirm = useCallback((type, item) => {
@@ -761,6 +901,10 @@ export function useAdminKelolaParameter() {
       return ['Semua', 'Aktif', 'Nonaktif', 'Terakreditasi', 'Non-akreditasi'];
     }
 
+    if (activeTab === 'subcontract_request') {
+      return ['Semua', 'Pending', 'Disetujui', 'Ditolak'];
+    }
+
     return [];
   }, [activeTab]);
 
@@ -822,10 +966,30 @@ export function useAdminKelolaParameter() {
 
   const filteredTarifPengambilan = useMemo(() => tarifPengambilanData, [tarifPengambilanData]);
 
+  const filteredSubcontractRequests = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    return subcontractRequestsData.filter((item) => {
+      const paramName = item.parameter?.nama_parameter || '';
+      const noReg = item.fppl?.no_surat || '';
+      const text = `${paramName} ${noReg}`.toLowerCase();
+      const matchSearch = !query || text.includes(query);
+
+      const status = item.status_permintaan;
+      const matchFilter = 
+        filterStatus === 'Semua' ||
+        (filterStatus === 'Pending' && status === 'PENDING_ADMIN') ||
+        (filterStatus === 'Disetujui' && status === 'DISETUJUI') ||
+        (filterStatus === 'Ditolak' && status === 'DITOLAK');
+        
+      return matchSearch && matchFilter;
+    });
+  }, [subcontractRequestsData, searchQuery, filterStatus]);
+
   const currentRowsCount = useMemo(() => {
     if (activeTab === 'parameter_metode') return filteredParameterMetode.length;
     if (activeTab === 'regulasi') return filteredRegulasi.length;
     if (activeTab === 'tarif_pengambilan') return filteredTarifPengambilan.length;
+    if (activeTab === 'subcontract_request') return filteredSubcontractRequests.length;
     return filteredPaket.length;
   }, [
     activeTab,
@@ -833,6 +997,7 @@ export function useAdminKelolaParameter() {
     filteredRegulasi.length,
     filteredPaket.length,
     filteredTarifPengambilan.length,
+    filteredSubcontractRequests.length,
   ]);
 
   const rowsByTab = useMemo(
@@ -841,8 +1006,9 @@ export function useAdminKelolaParameter() {
       regulasi: filteredRegulasi,
       paket: filteredPaket,
       tarifPengambilan: filteredTarifPengambilan,
+      subcontractRequests: filteredSubcontractRequests,
     }),
-    [filteredParameterMetode, filteredRegulasi, filteredPaket, filteredTarifPengambilan]
+    [filteredParameterMetode, filteredRegulasi, filteredPaket, filteredTarifPengambilan, filteredSubcontractRequests]
   );
 
   const handleAddCurrentTab = useCallback(() => {
@@ -891,6 +1057,7 @@ export function useAdminKelolaParameter() {
     modalType,
     selectedItem,
     formData,
+    submitError,
     confirmDelete,
     confirmStatusChange,
     paketParamForm,
@@ -916,6 +1083,7 @@ export function useAdminKelolaParameter() {
     handleEditPaketParamChange,
     handleStartEditPaketParameter,
     handleUpdatePaketParameter,
+    openAddParameterModalForSubcontract,
     openDeleteConfirm,
     handleConfirmDelete,
     setSearchQuery,
@@ -923,5 +1091,7 @@ export function useAdminKelolaParameter() {
     setConfirmDelete,
     setConfirmStatusChange,
     setEditingPaketParam,
+    subcontractRequestsData,
+    fetchData,
   };
 }

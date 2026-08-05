@@ -231,4 +231,38 @@ export const adminParameterApi = {
       { auth: true }
     );
   },
+
+  async getSubcontractRequests(status = '') {
+    const qs = status ? `?status=${status}` : '';
+    const response = await requestData(`/admin/parameters/subcontract-requests${qs}`, {}, { auth: true });
+    return Array.isArray(response) ? response : [];
+  },
+
+  async getSubcontractRequestDetail(requestId) {
+    return requestData(`/admin/parameters/subcontract-requests/${encodeURIComponent(requestId)}`, {}, { auth: true });
+  },
+
+  async approveSubcontractRequest(requestId, payload) {
+    return requestJson(
+      `/admin/parameters/subcontract-requests/${encodeURIComponent(requestId)}/approve`,
+      {
+        method: 'PUT',
+        headers: jsonHeaders,
+        body: JSON.stringify(payload),
+      },
+      { auth: true }
+    );
+  },
+
+  async rejectSubcontractRequest(requestId, payload = {}) {
+    return requestJson(
+      `/admin/parameters/subcontract-requests/${encodeURIComponent(requestId)}/reject`,
+      {
+        method: 'PUT',
+        headers: jsonHeaders,
+        body: JSON.stringify(payload),
+      },
+      { auth: true }
+    );
+  },
 };

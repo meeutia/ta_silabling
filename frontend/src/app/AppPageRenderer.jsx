@@ -46,6 +46,7 @@ export function AppPageRenderer({
   userData,
   selectedRequest,
   selectedStatusRegistrationId,
+  selectedPelangganRegisterId,
   selectedAdminPermohonanRegistrationId,
   selectedKasiPermohonanRegistrationId,
   selectedQcLhuNumber,
@@ -251,12 +252,13 @@ export function AppPageRenderer({
       if (currentPage === 'register') {
         return (
           <PelangganRegistrasiPage
-            key="create-request"
+            key={`create-request-${selectedPelangganRegisterId || 'new'}`}
             onSubmit={onRegistrationSubmit}
             onNavigate={setCurrentPage}
             authToken={authToken}
             userData={userData}
             onSessionExpired={onSessionExpired}
+            editRegistrationId={selectedPelangganRegisterId}
           />
         );
       }

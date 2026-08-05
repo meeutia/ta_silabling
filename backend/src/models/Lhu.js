@@ -44,6 +44,14 @@ class Lhu extends Model {
   hasPublishedFile() {
     return Boolean(this.file_lhu_path);
   }
+
+  hasSignedFile() {
+    return Boolean(this.file_lhu_signed_path);
+  }
+
+  canReceiveSignedFile() {
+    return this.status_lhu === 'Disahkan';
+  }
 }
 
 Lhu.init({
@@ -65,6 +73,10 @@ Lhu.init({
     allowNull: true,
   },
   file_lhu_path: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  file_lhu_signed_path: {
     type: DataTypes.STRING(255),
     allowNull: true,
   },

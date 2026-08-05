@@ -4,12 +4,23 @@ const AdminParameterController = require('../controllers/admin-parameter.control
 const { verifyToken, authorizeRoles } = require('../middlewares/auth');
 const Roles = require('../constants/roles');
 
+const SubcontractRequestController = require('../controllers/subcontract-request.controller');
+const {
+  validateApproveSubcontractRequest,
+  validateRejectSubcontractRequest,
+} = require('../validators/request.validator');
+
 // Protect all routes: only Admin can access
 router.use(verifyToken, authorizeRoles(Roles.ADMIN));
 
 // ==========================================
 // 1. Parameter & Metode Uji
 // ==========================================
+router.get('/subcontract-requests', SubcontractRequestController.getAdminSubcontractRequests);
+router.get('/subcontract-requests/:requestId', SubcontractRequestController.getAdminSubcontractRequestDetail);
+router.put('/subcontract-requests/:requestId/approve', validateApproveSubcontractRequest, SubcontractRequestController.approveSubcontractRequest);
+router.put('/subcontract-requests/:requestId/reject', validateRejectSubcontractRequest, SubcontractRequestController.rejectSubcontractRequest);
+
 router.get('/', AdminParameterController.getAllParameterMetode);
 router.get('/list-kategori-parameter', AdminParameterController.getKategoriParameters);
 router.get('/list-parameters', AdminParameterController.getParameters);

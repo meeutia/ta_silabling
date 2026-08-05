@@ -1,9 +1,9 @@
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useRegistrationPage } from '../../components/pelanggan/registration/useRegistrationPage';
 import { RegistrationStepContent } from '../../components/pelanggan/registration/RegistrationStepContent';
 import { RegistrationTariffModal } from '../../components/pelanggan/registration/RegistrationTariffModal';
 
-export function PelangganRegistrasiPage({ onSubmit, onNavigate, userData, onSessionExpired }) {
+export function PelangganRegistrasiPage({ onSubmit, onNavigate, userData, onSessionExpired, editRegistrationId }) {
   const {
     currentStep,
     totalSteps,
@@ -44,12 +44,23 @@ export function PelangganRegistrasiPage({ onSubmit, onNavigate, userData, onSess
     handleSubmitForm,
     handleViewStatus,
     getRequestDetails,
+    isInitializingEdit,
   } = useRegistrationPage({
     onSubmit,
     onNavigate,
     userData,
     onSessionExpired,
+    editRegistrationId,
   });
+
+  if (isInitializingEdit) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center p-8">
+        <Loader2 className="mb-4 h-8 w-8 animate-spin text-emerald-600" />
+        <p className="text-gray-500">Memuat data permohonan...</p>
+      </div>
+    );
+  }
 
   if (showSuccess) {
     return (
@@ -128,10 +139,10 @@ export function PelangganRegistrasiPage({ onSubmit, onNavigate, userData, onSess
             <span>Kembali ke Dashboard</span>
           </button>
           <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-            Formulir Pendaftaran Pengujian
+            {editRegistrationId ? 'Edit Permohonan Pengujian' : 'Formulir Pendaftaran Pengujian'}
           </h1>
           <p className="text-gray-600">
-            Lengkapi data pengujian laboratorium Anda
+            {editRegistrationId ? 'Perbarui data permohonan pengujian Anda' : 'Lengkapi data pengujian laboratorium Anda'}
           </p>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
@@ -196,7 +207,7 @@ export function PelangganRegistrasiPage({ onSubmit, onNavigate, userData, onSess
           />
 
           {/* Error duplikasi permohonan — tampilan informatif */}
-          {duplicateRequest && (
+          {duplicateRequest && duplicateRequest.scope === 'OWN_ACCOUNT' && duplicateRequest.canViewExisting && (
             <div className="mt-6 mb-2 bg-amber-50 border border-amber-400 rounded-xl p-5 shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-0.5">
@@ -209,33 +220,55 @@ export function PelangganRegistrasiPage({ onSubmit, onNavigate, userData, onSess
                   <p className="text-sm text-amber-700 mb-3">
                     Anda sudah memiliki permohonan dengan data yang sama yang masih dalam proses.
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-                    {duplicateRequest.nomor_fppl && (
+                  {duplicateRequest.existingRequest && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                      {duplicateRequest.existingRequest.nomor_fppl && (
+                        <div className="bg-amber-100 border border-amber-200 rounded-lg px-3 py-2">
+                          <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">No. FPPL</p>
+                          <p className="text-sm font-semibold text-amber-900 mt-0.5">{duplicateRequest.existingRequest.nomor_fppl}</p>
+                        </div>
+                      )}
                       <div className="bg-amber-100 border border-amber-200 rounded-lg px-3 py-2">
-                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">No. FPPL</p>
-                        <p className="text-sm font-semibold text-amber-900 mt-0.5">{duplicateRequest.nomor_fppl}</p>
+                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">ID Registrasi</p>
+                        <p className="text-sm font-semibold text-amber-900 mt-0.5">{duplicateRequest.existingRequest.id_registrasi}</p>
                       </div>
-                    )}
-                    <div className="bg-amber-100 border border-amber-200 rounded-lg px-3 py-2">
-                      <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">ID Registrasi</p>
-                      <p className="text-sm font-semibold text-amber-900 mt-0.5">{duplicateRequest.id_registrasi}</p>
+                      <div className="bg-amber-100 border border-amber-200 rounded-lg px-3 py-2">
+                        <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Status</p>
+                        <p className="text-sm font-semibold text-amber-900 mt-0.5">{duplicateRequest.existingRequest.status_fppl}</p>
+                      </div>
                     </div>
-                    <div className="bg-amber-100 border border-amber-200 rounded-lg px-3 py-2">
-                      <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Status</p>
-                      <p className="text-sm font-semibold text-amber-900 mt-0.5">{duplicateRequest.status_fppl}</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('status', { pathSegments: [duplicateRequest.id_registrasi] })}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    Lihat Detail Permohonan
-                  </button>
+                  )}
+                  {duplicateRequest.existingRequest?.id_registrasi && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('status', { pathSegments: [duplicateRequest.existingRequest.id_registrasi] })}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Lihat Detail Permohonan
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {duplicateRequest && duplicateRequest.scope === 'SAME_COMPANY_OTHER_ACCOUNT' && (
+            <div className="mt-6 mb-2 bg-red-50 border border-red-300 rounded-xl p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-red-800 mb-1">Permohonan Serupa Sudah Terdaftar</p>
+                  <p className="text-sm text-red-700">
+                    {duplicateRequest.message}
+                  </p>
                 </div>
               </div>
             </div>

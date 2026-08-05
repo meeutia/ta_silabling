@@ -90,7 +90,16 @@ async function assertWorksheetFileSignature(filePath, originalName = '') {
   }
 }
 
+async function assertPdfFileSignature(filePath) {
+  const buffer = await readSignature(filePath);
+
+  if (!looksLikePdf(buffer)) {
+    throw new Error('Isi file tidak sesuai format PDF.');
+  }
+}
+
 module.exports = {
   assertWorksheetFileSignature,
   isAllowedWorksheetSignature,
+  assertPdfFileSignature,
 };

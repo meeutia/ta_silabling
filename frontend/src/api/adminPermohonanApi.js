@@ -1,4 +1,4 @@
-import { requestData, requestJson } from './httpClient';
+import { requestData, requestJson, requestBlob } from './httpClient';
 
 const authConfig = { auth: true };
 const jsonHeaders = { 'Content-Type': 'application/json' };
@@ -89,4 +89,20 @@ export const adminPermohonanApi = {
     return jsonRequest(`/requests/schedule-changes/${idPengajuan}/decision`, 'POST', body);
   },
 
+  uploadSignedLhu(nomorLhu, body) {
+    // Note: body here is FormData
+    const encoded = encodeURIComponent(nomorLhu);
+    return requestJson(`/lhu/${encoded}/signed-file`, { method: 'POST', body }, authConfig);
+  },
+
+  replaceSignedLhu(nomorLhu, body) {
+    // Note: body here is FormData
+    const encoded = encodeURIComponent(nomorLhu);
+    return requestJson(`/lhu/${encoded}/signed-file`, { method: 'PUT', body }, authConfig);
+  },
+
+  getSignedLhuBlob(nomorLhu) {
+    const encoded = encodeURIComponent(nomorLhu);
+    return requestBlob(`/lhu/${encoded}/signed-file`, { method: 'GET' }, authConfig);
+  }
 };

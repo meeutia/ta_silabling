@@ -68,4 +68,12 @@ export const customerRequestApi = {
     );
   },
 
+  getSignedLhuBlob(nomorLhu) {
+    const encoded = encodeURIComponent(nomorLhu);
+    return requestBlob(
+      `/lhu/${encoded}/signed-file`,
+      { method: 'GET' },
+      { auth: true }
+    );
+  },
 };

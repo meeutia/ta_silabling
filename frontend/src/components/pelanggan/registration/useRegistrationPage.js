@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { registrationApi } from '../../../api/registrationApi';
+import { customerRequestApi } from '../../../api/customerRequestApi';
 import { compareYmd, getTodayYmd } from '../../../utils/businessDays';
 import { showWarning } from '../../../utils/feedback';
 import {
@@ -18,6 +19,7 @@ import {
   mapEntryStandardsToOptions,
   mapHolidaysToLookup,
   mapParametersToOptions,
+  mapRequestToFormData,
   mapSampleTypesToOptions,
   normalizeSampleEntries,
 } from './registrationMappers';
@@ -33,9 +35,10 @@ export function useRegistrationPage({
   onNavigate,
   userData,
   onSessionExpired,
+  editRegistrationId,
 }) {
   const userId = userData?.nik || 'guest';
-  const isEditMode = false;
+  const isEditMode = !!editRegistrationId;
   const storageKey = STORAGE_PREFIX + userId;
   const defaultFormData = createDefaultFormData(userData);
 
@@ -59,11 +62,22 @@ export function useRegistrationPage({
   const [holidayDateSet, setHolidayDateSet] = useState(new Set());
   const [holidayNameByDate, setHolidayNameByDate] = useState({});
   const [dateErrors, setDateErrors] = useState({});
+  const [expectedRequestVersion, setExpectedRequestVersion] = useState(1);
+  const [isInitializingEdit, setIsInitializingEdit] = useState(isEditMode);
 
   const timeOptions = buildTimeOptions();
   const totalSteps = TOTAL_REGISTRATION_STEPS;
 
   const [formData, setFormData] = useState(() => {
+    if (isEditMode) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        // Ignore errors
+      }
+      return defaultFormData;
+    }
+
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
@@ -142,6 +156,34 @@ export function useRegistrationPage({
 
     fetchHolidays();
   }, []);
+
+  useEffect(() => {
+    const fetchExistingRequest = async () => {
+      if (!isEditMode || !editRegistrationId) return;
+
+      try {
+        const response = await customerRequestApi.getDetail(editRegistrationId);
+        
+        // Cek permission
+        if (!response?.canEditByCustomer) {
+          showWarning('Permohonan ini tidak dapat diubah lagi karena sudah melewati batas waktu edit.');
+          onNavigate('status');
+          return;
+        }
+
+        setExpectedRequestVersion(response?.requestVersion || 1);
+        
+        const mappedData = mapRequestToFormData(response, userData);
+        setFormData(mappedData);
+        setIsInitializingEdit(false);
+      } catch (err) {
+        showWarning(err?.message || 'Gagal memuat detail permohonan.');
+        onNavigate('status');
+      }
+    };
+
+    fetchExistingRequest();
+  }, [isEditMode, editRegistrationId, onNavigate, userData]);
 
   const fetchParametersForEntry = useCallback(async (index, jenisSampelId, idRegBm) => {
     if (!jenisSampelId || !idRegBm) {
@@ -351,7 +393,7 @@ export function useRegistrationPage({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const normalizedFormData = trimRegistrationTextFields(formData);
     const validationMessage = validateRegistrationStep(currentStep, normalizedFormData, {
       dateErrors,
@@ -364,6 +406,31 @@ export function useRegistrationPage({
 
     if (normalizedFormData !== formData) {
       setFormData(normalizedFormData);
+    }
+
+    if (currentStep === 3) {
+      try {
+        setSubmitting(true);
+        const payload = buildRegistrationPayload(normalizedFormData);
+        
+        if (isEditMode) {
+          payload.expectedRequestVersion = expectedRequestVersion;
+          payload.editRegistrationId = editRegistrationId; // To exclude duplicate check
+        }
+        
+        await registrationApi.validateStep1(payload);
+        setSubmitting(false);
+      } catch (error) {
+        setSubmitting(false);
+        const errData = error.response?.data || error.data;
+        if (errData?.code === 'DUPLICATE_REQUEST') {
+            const { picName, picPhone } = errData.errors || {};
+            showWarning(`Permohonan dengan jadwal, lokasi, dan metode yang sama sudah terdaftar. PIC yang menangani: ${picName || '-'} (${picPhone || '-'}).`);
+            return;
+        }
+        showWarning(errData?.message || error.message || 'Gagal memvalidasi data tahap 1.');
+        return;
+      }
     }
 
     if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
@@ -396,7 +463,12 @@ export function useRegistrationPage({
     try {
       const payload = buildRegistrationPayload(normalizedFormData);
 
-      await registrationApi.createRequest(payload);
+      if (isEditMode) {
+        payload.expectedRequestVersion = expectedRequestVersion;
+        await registrationApi.updateRequest(editRegistrationId, payload);
+      } else {
+        await registrationApi.createRequest(payload);
+      }
 
       localStorage.removeItem(storageKey);
 
@@ -405,11 +477,19 @@ export function useRegistrationPage({
       if (err?.status === 401 || err?.status === 403) {
         setSubmitError('Sesi login berakhir. Silakan login ulang.');
         onSessionExpired?.();
-      } else if (err?.status === 409) {
-        // Duplikasi permohonan — ambil data permohonan lama dari response
-        const existing = err?.data?.errors?.existingRequest || err?.data?.data?.existingRequest || null;
-        setDuplicateRequest(existing);
-        setSubmitError(err?.message || 'Permohonan dengan data yang sama sudah pernah dibuat.');
+      } else if (err?.status === 409 || err?.data?.code === 'DUPLICATE_REQUEST') {
+        // Duplikasi permohonan
+        const duplicateData = {
+          scope: err?.data?.errors?.duplicateScope || null,
+          canViewExisting: err?.data?.errors?.canViewExisting === true,
+          existingRequest: err?.data?.errors?.canViewExisting === true 
+            ? (err?.data?.errors?.existingRequest || err?.data?.data?.existingRequest || null) 
+            : null,
+          message: err?.data?.message || err?.message || 'Permohonan serupa masih aktif.',
+        };
+        
+        setDuplicateRequest(duplicateData);
+        setSubmitError(duplicateData.message);
       } else {
         setSubmitError(err?.message || 'Tidak bisa menghubungi server.');
       }
@@ -451,6 +531,7 @@ export function useRegistrationPage({
     formData,
     setFormData,
     isEditMode,
+    isInitializingEdit,
     isRequestEditDisabled,
     lockedSectionClass,
     lockedInputClass,

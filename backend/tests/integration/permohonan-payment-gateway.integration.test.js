@@ -178,7 +178,7 @@ describe('Integration Testing - Permohonan dan Payment Gateway', () => {
     const response = await request(app)
       .put('/requests/REG-001/verify')
       .set(authHeader(Roles.ADMIN))
-      .send({ action: 'approve', catatan: 'Data lengkap.' })
+      .send({ action: 'approve', catatan: 'Data lengkap.', expectedRequestVersion: 1 })
       .expect(200);
 
     expect(response.body.success).toBe(true);
@@ -196,7 +196,7 @@ describe('Integration Testing - Permohonan dan Payment Gateway', () => {
     const response = await request(app)
       .put('/requests/REG-001/verify')
       .set(authHeader(Roles.ADMIN))
-      .send({ action: 'reject', catatan: 'Dokumen permohonan belum lengkap.' })
+      .send({ action: 'reject', catatan: 'Dokumen permohonan belum lengkap.', expectedRequestVersion: 1 })
       .expect(200);
 
     expect(response.body.success).toBe(true);
@@ -208,7 +208,7 @@ describe('Integration Testing - Permohonan dan Payment Gateway', () => {
     const response = await request(app)
       .put('/requests/REG-001')
       .set(authHeader(Roles.CUSTOMER))
-      .send(validRequestPayload())
+      .send(validRequestPayload({ expectedRequestVersion: 1 }))
       .expect(410);
 
     expect(response.body.success).toBe(false);
