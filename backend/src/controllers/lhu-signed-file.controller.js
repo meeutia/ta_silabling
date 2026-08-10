@@ -1,5 +1,7 @@
 const LhuSignedFileService = require('../services/lhu/lhu-signed-file.service');
 const fs = require('fs');
+const { addWatermarkToPdf } = require('../utils/pdf-watermark.util');
+
 
 class LhuSignedFileController {
   upload = async (req, res) => {
@@ -75,18 +77,49 @@ class LhuSignedFileController {
       res.setHeader('Content-Type', fileData.mimeType);
       res.setHeader('Content-Disposition', `inline; filename="${fileData.originalName}"`);
 
-      const fileStream = fs.createReadStream(fileData.absolutePath);
-
-      fileStream.on('error', (err) => {
-        if (!res.headersSent) {
-          res.status(500).json({
-            success: false,
-            message: 'Gagal membaca file fisik LHU bertanda tangan.',
+      if (role === 'RL-001') {
+        // Jika pelanggan, baca file, tambahkan watermark, lalu kirim
+        fs.promises.readFile(fileData.absolutePath)
+          .then(async (buffer) => {
+            try {
+              const watermarkedBuffer = await addWatermarkToPdf(buffer);
+              res.setHeader('Content-Length', watermarkedBuffer.length);
+              res.send(watermarkedBuffer);
+            } catch (err) {
+              console.error('Error adding watermark:', err);
+              if (!res.headersSent) {
+                res.status(500).json({
+                  success: false,
+                  message: 'Gagal memproses dokumen LHU.',
+                });
+              }
+            }
+          })
+          .catch((err) => {
+             console.error('Error reading PDF file:', err);
+             if (!res.headersSent) {
+               res.status(500).json({
+                 success: false,
+                 message: 'Gagal membaca file fisik LHU bertanda tangan.',
+               });
+             }
           });
-        }
-      });
+      } else {
+        // Jika admin, stream file asli
+        const fileStream = fs.createReadStream(fileData.absolutePath);
 
-      fileStream.pipe(res);
+        fileStream.on('error', (err) => {
+          if (!res.headersSent) {
+            res.status(500).json({
+              success: false,
+              message: 'Gagal membaca file fisik LHU bertanda tangan.',
+            });
+          }
+        });
+
+        fileStream.pipe(res);
+      }
+
     } catch (error) {
       if (error.code === 'SIGNED_LHU_ACCESS_DENIED') {
         return res.status(403).json({

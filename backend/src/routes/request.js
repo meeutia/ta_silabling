@@ -22,6 +22,7 @@ const {
   validateScheduleConfirmation,
   validateCreateSubcontractRequest,
   validateStep1Data,
+  validateStep2Data,
 } = require('../validators/request.validator');
 
 router.get('/schedule/holidays', RequestWorkflowController.getScheduleHolidays);
@@ -41,6 +42,7 @@ router.route('/')
   .get(authorizeRoles(Roles.CUSTOMER, Roles.ADMIN, Roles.KASI, Roles.PENYELIA), CustomerRequestController.listRequests);
 
 router.post('/validate-step1', authorizeRoles(Roles.CUSTOMER), validateStep1Data, CustomerRequestController.validateStep1);
+router.post('/validate-step2', authorizeRoles(Roles.CUSTOMER), validateStep2Data, CustomerRequestController.validateStep2);
 
 router.get('/analysts/options', authorizeRoles(Roles.PENYELIA), RequestWorkflowController.getAnalystOptions);
 

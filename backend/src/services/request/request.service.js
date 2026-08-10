@@ -89,33 +89,67 @@ class RequestService {
 
         if (!activeFppls || activeFppls.length === 0) return;
 
-        // Filter memori berdasarkan nama perusahaan yang dinormalisasi
-        const targetCompanyKey = normalizeCompanyName(companyName);
-        
+        const normalizedCompany = normalizeCompanyName(companyName);
         const sameCompanyFppls = activeFppls.filter(f => {
-            const customer = f.pelanggan || f.Pelanggan;
-            return customer && normalizeCompanyName(customer.nama_instansi) === targetCompanyKey;
+            const fCustomer = f.pelanggan || f.Pelanggan;
+            return normalizeCompanyName(fCustomer.nama_instansi) === normalizedCompany;
         });
-
-        if (sameCompanyFppls.length === 0) return;
 
         const registrationIds = sameCompanyFppls.map(f => f.id_registrasi);
 
-        const newFingerprint = buildDuplicateFingerprint(companyName, candidateFppl);
+        // Ambil data sampel dan parameter untuk permohonan yang ada (untuk perbandingan komposisi)
+        const [existingSampels, existingParams] = await Promise.all([
+            FpplSampel.findAll({
+                where: { id_registrasi: { [Op.in]: registrationIds } },
+                attributes: ['id_registrasi', 'id_jenis_sampel', 'id_reg_bm', 'jumlah_sampel'],
+                transaction
+            }),
+            FpplParameterMetode.findAll({
+                where: { id_registrasi: { [Op.in]: registrationIds } },
+                attributes: ['id_registrasi', 'id_jenis_sampel', 'id_reg_bm', 'id_parameter'],
+                transaction
+            })
+        ]);
+
+        // Buat lookup per id_registrasi
+        const sampelsByReg = {};
+        const paramsByReg = {};
+        for (const s of existingSampels) {
+            const id = s.id_registrasi;
+            if (!sampelsByReg[id]) sampelsByReg[id] = [];
+            sampelsByReg[id].push(s.toJSON());
+        }
+        for (const p of existingParams) {
+            const id = p.id_registrasi;
+            if (!paramsByReg[id]) paramsByReg[id] = [];
+            paramsByReg[id].push(p.toJSON());
+        }
+
+        // Fingerprint kandidat baru — include komposisi sampel & parameter
+        const newFingerprint = buildDuplicateFingerprint(
+            companyName,
+            candidateFppl,
+            candidateSampels || [],
+            candidateParams || []
+        );
 
         for (const existingFppl of sameCompanyFppls) {
             const existingFpplJson = existingFppl.toJSON();
             const existingCustomer = existingFpplJson.pelanggan || existingFpplJson.Pelanggan;
+            const regId = existingFpplJson.id_registrasi;
+
             const existingFingerprint = buildDuplicateFingerprint(
                 existingCustomer.nama_instansi,
-                existingFpplJson
+                existingFpplJson,
+                sampelsByReg[regId] || [],
+                paramsByReg[regId] || []
             );
 
             if (isDuplicateRequest(newFingerprint, existingFingerprint)) {
                 const isSameAccount = String(existingCustomer.nik) === String(userNik);
 
                 if (isSameAccount) {
-                    const error = new Error('Anda masih memiliki permohonan aktif dengan data pengujian yang sama.');
+                    const error = new Error('Anda masih memiliki permohonan aktif dengan data pengujian yang sama (jenis air, standar, parameter, dan jumlah identik).');
                     error.code = 'DUPLICATE_REQUEST';
                     error.duplicateScope = 'OWN_ACCOUNT';
                     error.canViewExisting = true;
@@ -136,7 +170,7 @@ class RequestService {
                 } else {
                     const picName = existingCustomer.pic || 'PIC Perusahaan';
                     const picPhone = existingCustomer.no_telp || '-';
-                    const error = new Error(`Permohonan dengan jadwal, lokasi, dan metode yang sama sudah didaftarkan pada sistem oleh akun lain. PIC yang memegang permohonan tersebut adalah ${picName} (${picPhone}).`);
+                    const error = new Error(`Permohonan dengan jenis air, standar baku mutu, parameter, dan jumlah yang sama sudah didaftarkan pada sistem oleh akun lain. PIC yang memegang permohonan tersebut adalah ${picName} (${picPhone}).`);
                     error.code = 'DUPLICATE_REQUEST';
                     error.duplicateScope = 'SAME_COMPANY_OTHER_ACCOUNT';
                     error.canViewExisting = false;
@@ -150,51 +184,138 @@ class RequestService {
     };
 
     validateStep1Duplicate = async (userNik, data) => {
-        const { namaInstansi, metodePengambilan, tanggalPengambilan, jamPengambilan, lokasiPengambilan, alamatPengambilan, estimasiDiterima } = data;
-        
-        const samplingType = resolveSamplingType(metodePengambilan);
-        const samplingSchedule = resolveSamplingSchedule({
-            metodePengambilan,
-            tanggalPengambilan,
-            jamPengambilan,
-            estimasiDiterima,
-        });
-        const samplingSiteLocation = resolveSamplingLocation({
-            metodePengambilan,
-            lokasiPengambilan,
-            alamatPengambilan,
-        });
-
-        const candidateFppl = {
-            lokasi_pengambilan_sampel: samplingSiteLocation,
-            jenis_pengambilan_sampel: samplingType,
-            tanggal_rencana_pengambilan_sampel: samplingSchedule.tanggalRencanaPengambilanSampel || null,
-            jam_rencana_pengambilan_sampel: samplingSchedule.jamRencanaPengambilanSampel || null,
-            tanggal_rencana_pengantaran_sampel: samplingSchedule.tanggalRencanaPengantaranSampel || null,
-        };
-
-        try {
-            await this.checkDuplicateRequest({
-                userNik,
-                companyName: namaInstansi,
-                candidateFppl,
-                candidateSampels: [],
-                candidateParams: []
-            });
-            return { isDuplicate: false };
-        } catch (error) {
-            if (error.code === 'DUPLICATE_REQUEST') {
-                return {
-                    isDuplicate: true,
-                    message: error.message,
-                    duplicateScope: error.duplicateScope,
-                    picName: error.picName,
-                    picPhone: error.picPhone
-                };
-            }
-            throw error;
-        }
+        // Pengecekan duplikasi di Step 1/3 UI ditiadakan karena belum ada parameter.
+        // Pengecekan duplikasi yang sebenarnya dilakukan di Step 2/4 UI (via validateStep2Duplicate) 
+        // dan saat final submission.
+        return { isDuplicate: false };
     };
+
+
+    /**
+     * Cek apakah komposisi sampel+parameter dari form Step 2 sudah ada
+     * di permohonan aktif manapun (lintas semua perusahaan).
+     *
+     * Hanya membandingkan: jenis air (id_jenis_sampel) + standar (id_reg_bm)
+     * + parameter (id_parameter) + jumlah (jumlah_sampel).
+     * Tidak membandingkan nama perusahaan, lokasi, atau jadwal.
+     *
+     * Mengembalikan daftar permohonan yang cocok beserta info PIC-nya.
+     * Tidak melempar error — caller memutuskan bagaimana menanganinya.
+     */
+    validateStep2Duplicate = async (userNik, sampleEntries, excludeRegistrationId = null) => {
+        // Bangun candidateSampels dan candidateParams dari input
+        const candidateSampels = [];
+        const candidateParams = [];
+
+        for (const entry of sampleEntries) {
+            const idJenisSampel = entry.idJenisSampel || entry.id_jenis_sampel;
+            const idRegBm = entry.idRegBm || entry.id_reg_bm;
+            const jumlahSampel = parseInt(entry.jumlahSampel || entry.jumlah_sampel, 10) || 1;
+            const parameters = Array.isArray(entry.parameters) ? entry.parameters : [];
+
+            if (idJenisSampel && idRegBm && parameters.length > 0) {
+                candidateSampels.push({ id_jenis_sampel: idJenisSampel, id_reg_bm: idRegBm, jumlah_sampel: jumlahSampel });
+                for (const idParameter of parameters) {
+                    if (idParameter) {
+                        candidateParams.push({ id_jenis_sampel: idJenisSampel, id_reg_bm: idRegBm, id_parameter: idParameter });
+                    }
+                }
+            }
+        }
+
+        if (candidateSampels.length === 0) return { found: false };
+
+        // Buat key set kandidat (sorted)
+        const { normalizeText } = require('./request-duplicate.util');
+        const candidateSampelKeys = Array.from(new Set(
+            candidateSampels.map(s => `${normalizeText(s.id_jenis_sampel)}|${normalizeText(s.id_reg_bm)}|${parseInt(s.jumlah_sampel, 10) || 1}`)
+        )).sort();
+        const candidateParamKeys = Array.from(new Set(
+            candidateParams.map(p => `${normalizeText(p.id_jenis_sampel)}|${normalizeText(p.id_reg_bm)}|${normalizeText(p.id_parameter)}`)
+        )).sort();
+
+        // Ambil semua permohonan aktif
+        const whereClause = { status_fppl: { [Op.in]: ACTIVE_REQUEST_STATUSES } };
+        if (excludeRegistrationId) {
+            whereClause.id_registrasi = { [Op.ne]: excludeRegistrationId };
+        }
+
+        const activeFppls = await Fppl.findAll({
+            where: whereClause,
+            attributes: ['id_registrasi', 'id_pelanggan'],
+            include: [{
+                model: Pelanggan,
+                as: 'pelanggan',
+                attributes: ['id_pelanggan', 'nik', 'nama_instansi', 'pic', 'no_telp'],
+                required: true
+            }]
+        });
+
+        if (!activeFppls || activeFppls.length === 0) return { found: false };
+
+        const allRegIds = activeFppls.map(f => f.id_registrasi);
+
+        // Ambil sampel dan parameter dari semua permohonan aktif
+        const [existingSampels, existingParams] = await Promise.all([
+            FpplSampel.findAll({
+                where: { id_registrasi: { [Op.in]: allRegIds } },
+                attributes: ['id_registrasi', 'id_jenis_sampel', 'id_reg_bm', 'jumlah_sampel']
+            }),
+            FpplParameterMetode.findAll({
+                where: { id_registrasi: { [Op.in]: allRegIds } },
+                attributes: ['id_registrasi', 'id_jenis_sampel', 'id_reg_bm', 'id_parameter']
+            })
+        ]);
+
+        // Buat lookup per id_registrasi
+        const sampelsByReg = {};
+        const paramsByReg = {};
+        for (const s of existingSampels) {
+            if (!sampelsByReg[s.id_registrasi]) sampelsByReg[s.id_registrasi] = [];
+            sampelsByReg[s.id_registrasi].push(s);
+        }
+        for (const p of existingParams) {
+            if (!paramsByReg[p.id_registrasi]) paramsByReg[p.id_registrasi] = [];
+            paramsByReg[p.id_registrasi].push(p);
+        }
+
+        // Bandingkan tiap permohonan aktif
+        const matches = [];
+        for (const fppl of activeFppls) {
+            const regId = fppl.id_registrasi;
+            const pelanggan = fppl.pelanggan || fppl.Pelanggan;
+            const mySampels = sampelsByReg[regId] || [];
+            const myParams = paramsByReg[regId] || [];
+
+            if (mySampels.length === 0 || myParams.length === 0) continue;
+
+            const existSampelKeys = Array.from(new Set(
+                mySampels.map(s => `${normalizeText(s.id_jenis_sampel)}|${normalizeText(s.id_reg_bm)}|${parseInt(s.jumlah_sampel, 10) || 1}`)
+            )).sort();
+            const existParamKeys = Array.from(new Set(
+                myParams.map(p => `${normalizeText(p.id_jenis_sampel)}|${normalizeText(p.id_reg_bm)}|${normalizeText(p.id_parameter)}`)
+            )).sort();
+
+            const sampelMatch = JSON.stringify(candidateSampelKeys) === JSON.stringify(existSampelKeys);
+            const paramMatch = JSON.stringify(candidateParamKeys) === JSON.stringify(existParamKeys);
+
+            if (sampelMatch && paramMatch) {
+                const isOwnAccount = String(pelanggan?.nik) === String(userNik);
+                matches.push({
+                    id_registrasi: regId,
+                    isOwnAccount,
+                    namaInstansi: pelanggan?.nama_instansi || '-',
+                    pic: pelanggan?.pic || '-',
+                    noTelp: pelanggan?.no_telp || '-',
+                });
+            }
+        }
+
+        if (matches.length === 0) return { found: false };
+
+        return { found: true, matches };
+    };
+
 
 validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expectedParameterCount, transaction }) => {
         const fpplCount = await Fppl.count({ where: { id_registrasi }, transaction });

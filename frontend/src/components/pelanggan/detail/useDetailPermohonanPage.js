@@ -769,18 +769,15 @@ export function useDetailPermohonanPage(request) {
     try {
       const blob = await customerRequestApi.getSignedLhuBlob(nomorLhu);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `LHU_Signed_${nomorLhu}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      
+      // Buka di tab baru agar pelanggan bisa langsung melihat (view)
+      window.open(url, '_blank', 'noopener,noreferrer');
       
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 60_000);
     } catch (error) {
-      showError(error.message || 'Gagal mengunduh LHU bertanda tangan.');
+      showError(error.message || 'Gagal membuka LHU bertanda tangan.');
     }
   };
 

@@ -197,6 +197,9 @@ export function PelangganDetailPermohonanPage({ request, onBack }) {
             toggleSection={page.toggleSection}
             requestData={page.requestData}
             onDownloadSignedLhu={page.handleDownloadSignedLhu}
+            getSampleTypeName={page.getSampleTypeName}
+            formatDate={page.formatDate}
+            requestSamples={page.requestSamples}
           />
         </div>
       </div>

@@ -190,7 +190,7 @@ describe('Customer Request Duplication Integration', () => {
     });
 
     it('Skenario 12 - Permohonan lama selesai -> 201 Created', async () => {
-        await setupExistingRequest(nikA, 'PT. JAYA MAKMUR', 'Lokasi A', ['PR0001', 'PR0002'], RequestStatus.FINISHED);
+        await setupExistingRequest(nikA, 'PT. JAYA MAKMUR', 'Lokasi A', ['PR0001', 'PR0002'], RequestStatus.COMPLETED);
         
         const res = await request(app)
             .post('/requests')

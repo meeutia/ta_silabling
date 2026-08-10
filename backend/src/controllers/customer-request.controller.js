@@ -37,6 +37,28 @@ class CustomerRequestController {
             return errorResponse(res, error.message || 'Terjadi kesalahan pada validasi tahap 1.', 400);
         }
     };
+
+    validateStep2 = async (req, res) => {
+        try {
+            const { sampleEntries, editRegistrationId } = req.body;
+            const result = await this.requestService.validateStep2Duplicate(
+                req.user.nik,
+                sampleEntries || [],
+                editRegistrationId || null
+            );
+
+            // Selalu sukses (200), tapi bisa sertakan peringatan jika ada permohonan yang cocok
+            return successResponse(res, 'Validasi tahap 2 selesai.', {
+                valid: true,
+                hasDuplicateComposition: result.found,
+                matches: result.found ? result.matches : [],
+            });
+        } catch (error) {
+            console.error('validateStep2 error:', error);
+            return errorResponse(res, error.message || 'Terjadi kesalahan pada validasi tahap 2.', 400);
+        }
+    };
+
     createRequest = async (req, res) => {
         try {
             const data = await this.requestService.createRequest(req.user.nik, req.body);

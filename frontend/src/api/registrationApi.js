@@ -48,6 +48,13 @@ export const registrationApi = {
     }, { auth: true });
   },
 
+  validateStep2(payload) {
+    return requestJson('/requests/validate-step2', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }, { auth: true });
+  },
+
   updateRequest(id, payload) {
     return requestJson(`/requests/${id}`, {
       method: 'PUT',

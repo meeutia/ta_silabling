@@ -408,32 +408,62 @@ export function useRegistrationPage({
       setFormData(normalizedFormData);
     }
 
+    // Pengecekan komposisi sampel dan parameter di Step 4
+    if (currentStep === 4) {
+      try {
+        setSubmitting(true);
+        const payload = buildRegistrationPayload(normalizedFormData);
+        const result = await registrationApi.validateStep2({
+          sampleEntries: payload.sampleEntries,
+          editRegistrationId: isEditMode ? editRegistrationId : undefined,
+        });
+        setSubmitting(false);
+
+        const data = result?.data || result;
+        if (data?.hasDuplicateComposition && Array.isArray(data.matches) && data.matches.length > 0) {
+          const firstMatch = data.matches.find(m => !m.isOwnAccount) || data.matches[0];
+          if (firstMatch.isOwnAccount) {
+            showWarning(
+              'Anda sudah memiliki permohonan aktif dengan jenis air, standar baku mutu, parameter, dan jumlah sampel yang sama. Pastikan ini bukan pengajuan ulang yang tidak disengaja.',
+              { title: 'Perlu dicek' }
+            );
+          } else {
+            showWarning(
+              `Permohonan dengan jenis air, standar baku mutu, parameter, dan jumlah yang sama sudah terdaftar oleh akun lain. PIC yang menangani: ${firstMatch.pic || '-'} (${firstMatch.noTelp || '-'}).`,
+              { title: 'Perlu dicek', duration: 8000 }
+            );
+          }
+          // Berhenti di sini, user harus merevisi parameternya
+          return;
+        }
+      } catch {
+        setSubmitting(false);
+      }
+    }
+
+    // Pengecekan lokasi+jadwal di Step 3
     if (currentStep === 3) {
       try {
         setSubmitting(true);
         const payload = buildRegistrationPayload(normalizedFormData);
-        
+
         if (isEditMode) {
           payload.expectedRequestVersion = expectedRequestVersion;
-          payload.editRegistrationId = editRegistrationId; // To exclude duplicate check
+          payload.editRegistrationId = editRegistrationId;
         }
-        
+
         await registrationApi.validateStep1(payload);
         setSubmitting(false);
       } catch (error) {
         setSubmitting(false);
         const errData = error.response?.data || error.data;
-        if (errData?.code === 'DUPLICATE_REQUEST') {
-            const { picName, picPhone } = errData.errors || {};
-            showWarning(`Permohonan dengan jadwal, lokasi, dan metode yang sama sudah terdaftar. PIC yang menangani: ${picName || '-'} (${picPhone || '-'}).`);
-            return;
-        }
-        showWarning(errData?.message || error.message || 'Gagal memvalidasi data tahap 1.');
+        showWarning(errData?.message || error.message || 'Gagal memvalidasi data permohonan.');
         return;
       }
     }
 
     if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
+
   };
 
   const handleBack = () => {

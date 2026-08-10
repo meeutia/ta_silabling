@@ -276,13 +276,22 @@ class LhuSignedFileService {
 
   buildAdminSignedLhuDocuments(responseData) {
     const documents = [];
-    if (!responseData || !responseData.lhus) return documents;
+    if (!responseData) return documents;
 
-    for (const lhu of responseData.lhus) {
-      documents.push({
-        nomorLhu: lhu.nomor_lhu,
-        hasSignedFile: Boolean(lhu.file_lhu_signed_path),
-      });
+    const fpplSampels = Array.isArray(responseData.fpplSampels) 
+      ? responseData.fpplSampels 
+      : (Array.isArray(responseData.fppl_sampels) ? responseData.fppl_sampels : []);
+
+    for (const fs of fpplSampels) {
+      const sampels = Array.isArray(fs.sampels) ? fs.sampels : [];
+      for (const sampel of sampels) {
+        if (sampel.lhu) {
+          documents.push({
+            nomorLhu: sampel.lhu.nomor_lhu || sampel.lhu.nomorLhu,
+            hasSignedFile: Boolean(sampel.lhu.file_lhu_signed_path || sampel.lhu.fileLhuSignedPath),
+          });
+        }
+      }
     }
 
     return this._deduplicateLhuDocuments(documents);
@@ -290,17 +299,24 @@ class LhuSignedFileService {
 
   buildCustomerSignedLhuDocuments(responseData) {
     const documents = [];
-    if (!responseData || !responseData.lhus) return documents;
+    if (!responseData) return documents;
 
-    for (const lhu of responseData.lhus) {
-      const sampleNos = Array.isArray(lhu.sampels) ? lhu.sampels.map(s => s.no_sampel) : [];
-
-      documents.push({
-        nomorLhu: lhu.nomor_lhu,
-        sampleNos,
-        tanggalPenerbitan: lhu.tanggal_penerbitan || null,
-        hasSignedFile: Boolean(lhu.file_lhu_signed_path),
-      });
+    const fpplSampels = Array.isArray(responseData.fpplSampels) 
+      ? responseData.fpplSampels 
+      : (Array.isArray(responseData.fppl_sampels) ? responseData.fppl_sampels : []);
+    
+    for (const fs of fpplSampels) {
+      const sampels = Array.isArray(fs.sampels) ? fs.sampels : [];
+      for (const sampel of sampels) {
+        if (sampel.lhu) {
+          documents.push({
+            nomorLhu: sampel.lhu.nomor_lhu || sampel.lhu.nomorLhu,
+            sampleNos: [sampel.no_sampel || sampel.noSampel],
+            tanggalPenerbitan: sampel.lhu.tanggal_penerbitan || sampel.lhu.tanggalPenerbitan || null,
+            hasSignedFile: Boolean(sampel.lhu.file_lhu_signed_path || sampel.lhu.fileLhuSignedPath),
+          });
+        }
+      }
     }
 
     return this._deduplicateLhuDocuments(documents, true);

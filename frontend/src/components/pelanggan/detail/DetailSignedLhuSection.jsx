@@ -1,10 +1,13 @@
-import { FileText, ChevronUp, ChevronDown, Download } from 'lucide-react';
+import { FileText, ChevronUp, ChevronDown, Eye } from 'lucide-react';
 
 export function DetailSignedLhuSection({
   expandedSection,
   toggleSection,
   requestData,
   onDownloadSignedLhu,
+  getSampleTypeName,
+  formatDate,
+  requestSamples,
 }) {
   const signedDocuments = (requestData?.lhu_signed_documents || []).filter(
     (doc) => doc.hasSignedFile
@@ -15,23 +18,16 @@ export function DetailSignedLhuSection({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-emerald-100 overflow-hidden mt-4">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 transition-all mt-4">
       <button
         onClick={() => toggleSection('lhu-signed')}
-        className="w-full flex items-center justify-between p-6 text-left bg-emerald-50/50 hover:bg-emerald-50 transition-colors"
+        className="w-full flex items-center justify-between p-6 text-left"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700">
-            <FileText className="w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Dokumen LHU Resmi
-            </h2>
-            <p className="text-sm text-emerald-700 mt-1">
-              File Laporan Hasil Uji (LHU) yang telah ditandatangani oleh Kepala Laboratorium.
-            </p>
-          </div>
+          <FileText className="w-6 h-6 text-emerald-600" />
+          <h2 className="text-xl font-semibold text-gray-900">
+            Dokumen LHU Resmi
+          </h2>
         </div>
 
         {expandedSection === 'lhu-signed' ? (
@@ -42,47 +38,88 @@ export function DetailSignedLhuSection({
       </button>
 
       {expandedSection === 'lhu-signed' && (
-        <div className="p-6 border-t border-emerald-100">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {signedDocuments.map((doc, idx) => (
-              <div
-                key={`${doc.nomorLhu}-${idx}`}
-                className="bg-white border border-gray-200 rounded-xl p-5 hover:border-emerald-300 hover:shadow-md transition-all"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-semibold text-lg text-gray-900 mb-1">
-                      {doc.nomorLhu || '-'}
-                    </h3>
-                    <p className="text-xs text-emerald-600 font-medium">
-                      Dokumen resmi tersedia
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onDownloadSignedLhu(doc.nomorLhu)}
-                    className="p-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors flex-shrink-0"
-                    title="Unduh LHU Resmi"
-                  >
-                    <Download className="w-5 h-5" />
-                  </button>
-                </div>
+        <div className="px-6 pb-6">
+          <div className="mb-3 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Dokumen LHU ditampilkan berdasarkan <span className="font-semibold">Nomor LHU</span>. Satu LHU dapat memuat lebih dari satu sampel selama masih dalam permohonan/FPPL yang sama.
+          </div>
 
-                {doc.sampleNos && doc.sampleNos.length > 0 && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs font-semibold text-gray-700 mb-2">Sampel yang Dicakup:</p>
-                    <ul className="space-y-1.5">
-                      {doc.sampleNos.map((no, sIdx) => (
-                        <li key={sIdx} className="text-sm text-gray-700 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                          <span className="font-medium">{no}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full min-w-[700px] text-sm">
+              <thead className="bg-emerald-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Nomor LHU</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">No. Sampel</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Jenis Sampel</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Tanggal Terbit</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-700">Dokumen LHU</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {signedDocuments.map((doc, idx) => {
+                  const sampleTypes = [];
+                  if (requestSamples && doc.sampleNos?.length) {
+                    const types = new Set();
+                    doc.sampleNos.forEach(no => {
+                      let foundJenisFs = null;
+                      for (const fs of requestSamples) {
+                        const innerSampels = Array.isArray(fs.sampels) ? fs.sampels : (Array.isArray(fs.Sampels) ? fs.Sampels : []);
+                        if (innerSampels.some(is => is.no_sampel === no || is.noSampel === no)) {
+                          foundJenisFs = fs;
+                          break;
+                        }
+                      }
+                      
+                      if (foundJenisFs && getSampleTypeName) {
+                        types.add(getSampleTypeName(foundJenisFs));
+                      }
+                    });
+                    sampleTypes.push(...types);
+                  }
+                  if (sampleTypes.length === 0) sampleTypes.push('-');
+
+                  return (
+                    <tr key={`${doc.nomorLhu}-${idx}`} className="align-top hover:bg-emerald-50/50 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">
+                        {doc.nomorLhu || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-gray-800">
+                        <div className="space-y-1">
+                          {(doc.sampleNos || []).map((no) => (
+                            <div key={no} className="font-medium">
+                              {no || '-'}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        <div className="space-y-1">
+                          {sampleTypes.map((jenis) => (
+                            <div key={jenis}>
+                              {jenis}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {doc.tanggalPenerbitan && formatDate ? formatDate(doc.tanggalPenerbitan) : (doc.tanggalPenerbitan ? new Date(doc.tanggalPenerbitan).toLocaleDateString('id-ID') : '-')}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => onDownloadSignedLhu(doc.nomorLhu)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 transition-all hover:bg-emerald-100"
+                            title="Lihat Dokumen LHU"
+                          >
+                            <Eye className="w-4 h-4" /> Lihat
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

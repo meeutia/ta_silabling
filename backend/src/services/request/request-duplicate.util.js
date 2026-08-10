@@ -159,7 +159,7 @@ function buildDuplicateFingerprint(companyName, fppl = {}, fpplSampels = [], fpp
         return js && bm && param;
     });
 
-    // Sampel Key: JS|BM|JUMLAH
+    // Sampel Key: JS|BM|JUMLAH — mencakup jenis air, standar baku mutu, dan jumlah sampel
     const sampelKeysSet = new Set(
         validSampels.map(s => {
             const js = normalizeText(s.id_jenis_sampel || s.idJenisSampel);
@@ -170,7 +170,7 @@ function buildDuplicateFingerprint(companyName, fppl = {}, fpplSampels = [], fpp
     );
     const sampelKeys = Array.from(sampelKeysSet).sort();
 
-    // Param Key: JS|BM|PARAM
+    // Param Key: JS|BM|PARAM — mencakup parameter uji per jenis sampel dan standar
     const paramKeysSet = new Set(
         validParams.map(p => {
             const js = normalizeText(p.id_jenis_sampel || p.idJenisSampel);
@@ -190,6 +190,9 @@ function buildDuplicateFingerprint(companyName, fppl = {}, fpplSampels = [], fpp
             jamPengambilan,
             tanggalPengantaran,
         },
+        // Komposisi sampel: jenis air + standar + jumlah + parameter
+        sampelKeys,
+        parameterKeys,
     };
 }
 
@@ -210,6 +213,9 @@ function serializeDuplicateFingerprint(fingerprint) {
         lokasiPengambilan: fingerprint.lokasiPengambilan,
         jenisPengambilan: fingerprint.jenisPengambilan,
         schedule: fingerprint.schedule,
+        // Komposisi pengujian: jenis air, standar, jumlah, dan parameter
+        sampelKeys: fingerprint.sampelKeys || [],
+        parameterKeys: fingerprint.parameterKeys || [],
     };
     return JSON.stringify(data);
 }
@@ -224,11 +230,33 @@ function serializeDuplicateFingerprint(fingerprint) {
  */
 function isDuplicateRequest(a, b) {
     if (!a || !b) return false;
-    
-    const strA = serializeDuplicateFingerprint(a);
-    const strB = serializeDuplicateFingerprint(b);
-    
-    return strA === strB;
+
+    // Bandingkan data dasar (perusahaan, lokasi, jenis pengambilan, jadwal)
+    if (a.companyKey !== b.companyKey) return false;
+    if (a.lokasiPengambilan !== b.lokasiPengambilan) return false;
+    if (a.jenisPengambilan !== b.jenisPengambilan) return false;
+
+    const scheduleA = JSON.stringify(a.schedule || {});
+    const scheduleB = JSON.stringify(b.schedule || {});
+    if (scheduleA !== scheduleB) return false;
+
+    // Bandingkan komposisi sampel (jenis air + standar + jumlah)
+    // hanya jika kedua sisi memiliki data sampel
+    const sampelA = (a.sampelKeys || []).slice().sort();
+    const sampelB = (b.sampelKeys || []).slice().sort();
+    if (sampelA.length > 0 && sampelB.length > 0) {
+        if (JSON.stringify(sampelA) !== JSON.stringify(sampelB)) return false;
+    }
+
+    // Bandingkan komposisi parameter
+    // hanya jika kedua sisi memiliki data parameter
+    const paramA = (a.parameterKeys || []).slice().sort();
+    const paramB = (b.parameterKeys || []).slice().sort();
+    if (paramA.length > 0 && paramB.length > 0) {
+        if (JSON.stringify(paramA) !== JSON.stringify(paramB)) return false;
+    }
+
+    return true;
 }
 
 module.exports = {

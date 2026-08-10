@@ -56,10 +56,16 @@ describe('LhuSignedFileService', () => {
     describe('buildAdminSignedLhuDocuments', () => {
         it('should build document list with hasSignedFile flag', () => {
             const mockRequestData = {
-                lhus: [
+                fpplSampels: [
                     {
-                        nomor_lhu: '123/LHU',
-                        file_lhu_signed_path: 'path/to/file.pdf',
+                        sampels: [
+                            {
+                                lhu: {
+                                    nomor_lhu: '123/LHU',
+                                    file_lhu_signed_path: 'path/to/file.pdf'
+                                }
+                            }
+                        ]
                     }
                 ]
             };
@@ -79,11 +85,24 @@ describe('LhuSignedFileService', () => {
     describe('buildCustomerSignedLhuDocuments', () => {
         it('should include sample numbers and not expose file path', () => {
             const mockRequestData = {
-                lhus: [
+                fpplSampels: [
                     {
-                        nomor_lhu: '123/LHU',
-                        file_lhu_signed_path: 'path/to/file.pdf',
-                        sampels: [{ no_sampel: 'SMP-1' }, { no_sampel: 'SMP-2' }]
+                        sampels: [
+                            {
+                                no_sampel: 'SMP-1',
+                                lhu: {
+                                    nomor_lhu: '123/LHU',
+                                    file_lhu_signed_path: 'path/to/file.pdf'
+                                }
+                            },
+                            {
+                                no_sampel: 'SMP-2',
+                                lhu: {
+                                    nomor_lhu: '123/LHU',
+                                    file_lhu_signed_path: 'path/to/file.pdf'
+                                }
+                            }
+                        ]
                     }
                 ]
             };

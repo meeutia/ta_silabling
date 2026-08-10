@@ -140,7 +140,7 @@ describe('request-duplicate.util.js', () => {
             expect(isDuplicateRequest(fp1, fp2)).toBe(false);
         });
 
-        it('Jenis sampel berbeda tidak mengubah fingerprint (disederhanakan)', () => {
+        it('Jenis sampel berbeda membuat fingerprint berbeda', () => {
             const data1 = createDummyData();
             const data2 = createDummyData();
             data2.sampels[0].id_jenis_sampel = 'JS3';
@@ -150,10 +150,10 @@ describe('request-duplicate.util.js', () => {
             const fp1 = buildDuplicateFingerprint(data1.companyName, data1.fppl, data1.sampels, data1.params);
             const fp2 = buildDuplicateFingerprint(data2.companyName, data2.fppl, data2.sampels, data2.params);
 
-            expect(isDuplicateRequest(fp1, fp2)).toBe(true);
+            expect(isDuplicateRequest(fp1, fp2)).toBe(false);
         });
 
-        it('Baku mutu berbeda tidak mengubah fingerprint (disederhanakan)', () => {
+        it('Baku mutu berbeda membuat fingerprint berbeda', () => {
             const data1 = createDummyData();
             const data2 = createDummyData();
             data2.sampels[0].id_reg_bm = 'BM3';
@@ -164,10 +164,10 @@ describe('request-duplicate.util.js', () => {
             const fp1 = buildDuplicateFingerprint(data1.companyName, data1.fppl, data1.sampels, data1.params);
             const fp2 = buildDuplicateFingerprint(data2.companyName, data2.fppl, data2.sampels, data2.params);
 
-            expect(isDuplicateRequest(fp1, fp2)).toBe(true);
+            expect(isDuplicateRequest(fp1, fp2)).toBe(false);
         });
 
-        it('Jumlah sampel berbeda tidak mengubah fingerprint (disederhanakan)', () => {
+        it('Jumlah sampel berbeda membuat fingerprint berbeda', () => {
             const data1 = createDummyData();
             const data2 = createDummyData();
             data2.sampels[0].jumlah_sampel = 3;
@@ -175,10 +175,10 @@ describe('request-duplicate.util.js', () => {
             const fp1 = buildDuplicateFingerprint(data1.companyName, data1.fppl, data1.sampels, data1.params);
             const fp2 = buildDuplicateFingerprint(data2.companyName, data2.fppl, data2.sampels, data2.params);
 
-            expect(isDuplicateRequest(fp1, fp2)).toBe(true);
+            expect(isDuplicateRequest(fp1, fp2)).toBe(false);
         });
 
-        it('Parameter berbeda tidak mengubah fingerprint (disederhanakan)', () => {
+        it('Parameter berbeda membuat fingerprint berbeda', () => {
             const data1 = createDummyData();
             const data2 = createDummyData();
             data2.params[0].id_parameter = 'P99';
@@ -186,7 +186,7 @@ describe('request-duplicate.util.js', () => {
             const fp1 = buildDuplicateFingerprint(data1.companyName, data1.fppl, data1.sampels, data1.params);
             const fp2 = buildDuplicateFingerprint(data2.companyName, data2.fppl, data2.sampels, data2.params);
 
-            expect(isDuplicateRequest(fp1, fp2)).toBe(true);
+            expect(isDuplicateRequest(fp1, fp2)).toBe(false);
         });
 
         it('Urutan sampel berbeda menghasilkan fingerprint yang sama', () => {

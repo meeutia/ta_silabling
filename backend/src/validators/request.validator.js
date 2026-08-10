@@ -508,10 +508,37 @@ const validateReceiveSamples = (req, res, next) => {
   next();
 };
 
+/**
+ * Validator untuk endpoint POST /validate-step2
+ * Memvalidasi sampleEntries yang dikirim dari Step 2 form.
+ * Hanya memerlukan minimal 1 entry valid dengan parameter.
+ */
+const validateStep2Data = (req, res, next) => {
+  const { sampleEntries } = req.body;
+
+  if (!Array.isArray(sampleEntries) || sampleEntries.length === 0) {
+    return errorResponse(res, 'Data sampel tidak boleh kosong.', 400);
+  }
+
+  const validEntries = sampleEntries.filter(e => {
+    const js = e.idJenisSampel || e.id_jenis_sampel;
+    const bm = e.idRegBm || e.id_reg_bm;
+    const params = Array.isArray(e.parameters) ? e.parameters : [];
+    return js && bm && params.length > 0;
+  });
+
+  if (validEntries.length === 0) {
+    return errorResponse(res, 'Minimal satu data sampel harus memiliki jenis, standar, dan parameter.', 400);
+  }
+
+  next();
+};
+
 module.exports = {
   validateCreateRequest,
   validateUpdateRequest,
   validateStep1Data,
+  validateStep2Data,
   validateVerifyRequest,
   validateAssignMethods,
   validateCustomerPaymentAction,

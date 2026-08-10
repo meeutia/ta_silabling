@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Aug 02, 2026 at 02:50 PM
+-- Generation Time: Aug 07, 2026 at 12:10 PM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -223,7 +223,84 @@ INSERT INTO `aktivitas_sistem_log` (`id_aktivitas_log`, `entity_type`, `entity_i
 ('LOG-000000176', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-02 18:04:24'),
 ('LOG-000000177', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-02 18:04:24'),
 ('LOG-000000178', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-02 18:04:24'),
-('LOG-000000179', 'FPPL', 'REG-001', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-02 18:04:25');
+('LOG-000000179', 'FPPL', 'REG-001', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-02 18:04:25'),
+('LOG-000000180', 'FPPL', 'REG-001', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3172346877989832', '2026-08-03 08:47:57'),
+('LOG-000000181', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '1146658392983864', '2026-08-03 08:56:44'),
+('LOG-000000182', 'FPPL', 'REG-001', 'MENGUBAH_PERMOHONAN', 'Menunggu Verifikasi', 'Menunggu Verifikasi', 'Pelanggan', 'Pelanggan memperbarui data permohonan pengujian.', '3172346877989832', '2026-08-03 11:30:33'),
+('LOG-000000183', 'FPPL', 'REG-001', 'MEMVERIFIKASI_PERMOHONAN', 'Menunggu Verifikasi', 'Menunggu Penentuan Metode', 'Admin', 'Permohonan disetujui admin dan dilanjutkan ke penentuan metode.', '3171075704040002', '2026-08-03 11:33:35'),
+('LOG-000000184', 'FPPL', 'REG-001', 'MENGAJUKAN_SUBKONTRAK', 'Menunggu Penentuan Metode', 'Menunggu Penentuan Metode', 'Kasi', 'Mengajukan permintaan subkontrak untuk parameter Amoniak', NULL, '2026-08-03 11:51:56'),
+('LOG-000000185', 'FPPL', 'REG-001', 'MENGAJUKAN_SUBKONTRAK', 'Menunggu Penentuan Metode', 'Menunggu Penentuan Metode', 'Kasi', 'Mengajukan permintaan subkontrak untuk parameter Arsen (As)', NULL, '2026-08-03 12:09:27'),
+('LOG-000000186', 'FPPL', 'REG-001', 'MENGAJUKAN_SUBKONTRAK', 'Menunggu Penentuan Metode', 'Menunggu Penentuan Metode', 'Kasi', 'Mengajukan permintaan subkontrak untuk parameter Amoniak', NULL, '2026-08-03 12:50:07'),
+('LOG-000000187', 'FPPL', 'REG-001', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3172346877989832', '2026-08-03 13:21:29'),
+('LOG-000000188', 'FPPL', 'REG-001', 'MEMVERIFIKASI_PERMOHONAN', 'Menunggu Verifikasi', 'Menunggu Penentuan Metode', 'Admin', 'Permohonan disetujui admin dan dilanjutkan ke penentuan metode.', '3171075704040002', '2026-08-03 13:22:02'),
+('LOG-000000189', 'FPPL', 'REG-001', 'MENGAJUKAN_SUBKONTRAK', 'Menunggu Penentuan Metode', 'Menunggu Penentuan Metode', 'Kasi', 'Mengajukan permintaan subkontrak untuk parameter Arsen (As)', NULL, '2026-08-03 13:22:38'),
+('LOG-000000190', 'FPPL', 'REG-001', 'MENYETUJUI_SUBKONTRAK', NULL, NULL, 'Admin', 'Admin melengkapi data subkontrak untuk parameter Arsen (As)', '3171075704040002', '2026-08-03 13:48:06'),
+('LOG-000000191', 'FPPL', 'REG-001', 'MENGAJUKAN_SUBKONTRAK', 'Menunggu Penentuan Metode', 'Menunggu Penentuan Metode', 'Kasi', 'Mengajukan permintaan subkontrak untuk parameter Amoniak', NULL, '2026-08-03 13:52:24'),
+('LOG-000000192', 'FPPL', 'REG-001', 'MENYETUJUI_SUBKONTRAK', NULL, NULL, 'Admin', 'Admin melengkapi data subkontrak untuk parameter Amoniak', '3171075704040002', '2026-08-03 13:53:45'),
+('LOG-000000193', 'FPPL', 'REG-001', 'MENETAPKAN_METODE_DAN_INVOICE', 'Menunggu Penentuan Metode', 'Menunggu Pembayaran', 'Kasi', 'Kasi Pengujian menetapkan metode uji dan sistem menerbitkan invoice.', '3171075704040009', '2026-08-03 14:28:31'),
+('LOG-000000194', 'INVOICE', 'INV-001', 'MEMBUAT_INVOICE', NULL, 'Belum Dibayar', 'Sistem', 'Invoice dibuat untuk permohonan.', NULL, '2026-08-03 14:28:32'),
+('LOG-000000195', 'INVOICE', 'INV-001', 'MEMPERBARUI_INVOICE', NULL, 'Belum Dibayar', 'Sistem', 'Invoice diperbarui untuk permohonan.', NULL, '2026-08-03 14:28:32'),
+('LOG-000000196', 'INVOICE', 'INV-001', 'MEMPERBARUI_INVOICE', NULL, 'Belum Dibayar', 'Sistem', 'Invoice diperbarui untuk permohonan.', NULL, '2026-08-03 14:28:32'),
+('LOG-000000197', 'INVOICE', 'INV-001', 'MEMPERBARUI_INVOICE', NULL, 'Belum Dibayar', 'Sistem', 'Invoice diperbarui untuk permohonan.', NULL, '2026-08-03 14:28:32'),
+('LOG-000000198', 'INVOICE', 'INV-001', 'MEMPERBARUI_INVOICE', NULL, 'Belum Dibayar', 'Sistem', 'Invoice diperbarui untuk permohonan.', NULL, '2026-08-03 14:28:32'),
+('LOG-000000199', 'SAMPEL', '1/AHS/VIII/2026', 'MENERIMA_SAMPEL', NULL, 'Diterima', 'Admin', 'Sampel diterima oleh laboratorium.', '3171075704040002', '2026-08-04 20:20:45'),
+('LOG-000000200', 'SAMPEL', '2/AM/VIII/2026', 'MENERIMA_SAMPEL', NULL, 'Diterima', 'Admin', 'Sampel diterima oleh laboratorium.', '3171075704040002', '2026-08-04 20:20:45'),
+('LOG-000000201', 'JADWAL_SAMPEL', 'JDW-001', 'MENYELESAIKAN_JADWAL_SAMPEL', 'Terjadwal', 'Selesai', 'Admin', 'Jadwal sampel diselesaikan saat sampel diterima.', '3171075704040002', '2026-08-04 20:20:45'),
+('LOG-000000202', 'FPPL', 'REG-001', 'MENERIMA_SAMPEL', 'Menunggu Pengambilan Sampel', 'Proses Pengujian', 'Admin', 'Sampel diterima dan nomor sampel dibuat.', '3171075704040002', '2026-08-04 20:20:45'),
+('LOG-000000203', 'PENUGASAN', 'PNG-0005', 'MEMBUAT_PENUGASAN', NULL, 'Aktif', 'Penyelia', 'Penugasan pengujian dibuat.', '3171075704040004', '2026-08-04 21:04:58'),
+('LOG-000000204', 'PENUGASAN_DETAIL', 'PD-00011', 'MEMBUAT_DETAIL_PENUGASAN', NULL, 'Ditugaskan', 'Penyelia', 'Detail penugasan dibuat untuk 1 sampel.', '3171075704040004', '2026-08-04 21:04:58'),
+('LOG-000000205', 'PENUGASAN_DETAIL', 'PD-00012', 'MEMBUAT_DETAIL_PENUGASAN', NULL, 'Ditugaskan', 'Penyelia', 'Detail penugasan dibuat untuk 1 sampel.', '3171075704040004', '2026-08-04 21:04:58'),
+('LOG-000000206', 'PENUGASAN', 'PNG-0006', 'MEMBUAT_PENUGASAN_SUBKONTRAK', NULL, 'Selesai', 'Penyelia', 'Penugasan subkontrak dibuat.', '3171075704040004', '2026-08-04 21:05:13'),
+('LOG-000000207', 'PENUGASAN_DETAIL', 'PD-00013', 'MEMBUAT_DETAIL_SUBKONTRAK', NULL, 'Disetujui', 'Penyelia', 'Detail penugasan subkontrak dibuat.', '3171075704040004', '2026-08-04 21:05:13'),
+('LOG-000000208', 'PENUGASAN', 'PNG-0007', 'MEMBUAT_PENUGASAN_SUBKONTRAK', NULL, 'Selesai', 'Penyelia', 'Penugasan subkontrak dibuat.', '3171075704040004', '2026-08-04 21:05:32'),
+('LOG-000000209', 'PENUGASAN_DETAIL', 'PD-00014', 'MEMBUAT_DETAIL_SUBKONTRAK', NULL, 'Disetujui', 'Penyelia', 'Detail penugasan subkontrak dibuat.', '3171075704040004', '2026-08-04 21:05:32'),
+('LOG-000000210', 'PENUGASAN', 'PNG-0006', 'MEMBUAT_PENUGASAN', NULL, 'Selesai', 'Penyelia', 'Penugasan pengujian dibuat.', '3171075704040004', '2026-08-04 21:05:13'),
+('LOG-000000211', 'PENUGASAN', 'PNG-0007', 'MEMBUAT_PENUGASAN', NULL, 'Selesai', 'Penyelia', 'Penugasan pengujian dibuat.', '3171075704040004', '2026-08-04 21:05:32'),
+('LOG-000000212', 'LKA', 'LKA-00009', 'MELAPORKAN_LKA', NULL, 'Disetujui Penyelia', 'Analis', 'Analis mengirim LKA.', '3171075704040004', '2026-08-04 07:00:00'),
+('LOG-000000213', 'LKA', 'LKA-00009', 'MEMERIKSA_LKA', NULL, 'Disetujui Penyelia', 'Penyelia', 'Penyelia memeriksa LKA.', '3171075704040004', '2026-08-04 07:00:00'),
+('LOG-000000214', 'LKA', 'LKA-00010', 'MELAPORKAN_LKA', NULL, 'Disetujui Penyelia', 'Analis', 'Analis mengirim LKA.', '3171075704040004', '2026-08-04 07:00:00'),
+('LOG-000000215', 'LKA', 'LKA-00010', 'MEMERIKSA_LKA', NULL, 'Disetujui Penyelia', 'Penyelia', 'Penyelia memeriksa LKA.', '3171075704040004', '2026-08-04 07:00:00'),
+('LOG-000000216', 'LKA', 'LKA-00011', 'MELAPORKAN_LKA', NULL, 'Menunggu Verifikasi Penyelia', 'Analis', 'Analis mengirim LKA ke Penyelia.', '3171075704040005', '2026-08-05 01:32:50'),
+('LOG-000000217', 'LKA', 'LKA-00012', 'MELAPORKAN_LKA', NULL, 'Menunggu Verifikasi Penyelia', 'Analis', 'Analis mengirim LKA ke Penyelia.', '3171075704040005', '2026-08-05 01:34:06'),
+('LOG-000000218', 'LHU', '01/LHU/VIII/LAB-2026', 'MENYIMPAN_URUTAN_DETAIL_LHU', NULL, NULL, 'QC', '{\"detailOrder\":[{\"urutanLhu\":1,\"detailKey\":\"FPM-001-01-02\",\"idFpplParameterMetode\":\"FPM-001-01-02\",\"idMetodeParameter\":\"MP9004\",\"idParameter\":\"PR0033\",\"namaParameter\":\"Arsen (As)\",\"namaMetode\":\"Spektrofotometri (AAS)-GF\",\"acuanMetode\":\"SNI 06-6989.54-2005\"},{\"urutanLhu\":2,\"detailKey\":\"FPM-001-01-01\",\"idFpplParameterMetode\":\"FPM-001-01-01\",\"idMetodeParameter\":\"MP9005\",\"idParameter\":\"PR0011\",\"namaParameter\":\"Amoniak\",\"namaMetode\":\"Spektrofotometri (UV-Vis)\",\"acuanMetode\":\"SNI 06-6989.30-2005\"}]}', '312131131415759', '2026-08-05 01:40:37'),
+('LOG-000000219', 'LHU', '01/LHU/VIII/LAB-2026', 'MEMBUAT_LHU_FINAL', NULL, 'Disahkan', 'QC', 'LHU multi-sampel dibuat dan langsung disahkan oleh QC.', '312131131415759', '2026-08-05 01:40:38'),
+('LOG-000000220', 'FPPL', 'REG-001', 'MENUNGGU_PENJADWALAN_LHU', 'Proses Pengujian', 'Menunggu Penjadwalan LHU', 'Sistem', 'Semua LHU pada permohonan sudah disahkan. Menunggu admin menjadwalkan pengambilan LHU.', NULL, '2026-08-05 01:40:38'),
+('LOG-000000221', 'LHU', '02/LHU/VIII/LAB-2026', 'MENYIMPAN_URUTAN_DETAIL_LHU', NULL, NULL, 'QC', '{\"detailOrder\":[{\"urutanLhu\":1,\"detailKey\":\"FPM-001-02-04\",\"idFpplParameterMetode\":\"FPM-001-02-04\",\"idMetodeParameter\":\"MP0018\",\"idParameter\":\"PR0017\",\"namaParameter\":\"Bau\",\"namaMetode\":\"Organoleptis\",\"acuanMetode\":\"-\"},{\"urutanLhu\":2,\"detailKey\":\"FPM-001-02-03\",\"idFpplParameterMetode\":\"FPM-001-02-03\",\"idMetodeParameter\":\"MP0041\",\"idParameter\":\"PR0033\",\"namaParameter\":\"Arsen (As)\",\"namaMetode\":\"Spektrofotometri (AAS)-GF\",\"acuanMetode\":\"SNI 06-6989.54-2005\"}]}', '312131131415759', '2026-08-05 01:41:29'),
+('LOG-000000222', 'LHU', '02/LHU/VIII/LAB-2026', 'MEMBUAT_LHU_FINAL', NULL, 'Disahkan', 'QC', 'LHU multi-sampel dibuat dan langsung disahkan oleh QC.', '312131131415759', '2026-08-05 01:41:29'),
+('LOG-000000223', 'LKA', 'LKA-00011', 'MEMERIKSA_LKA', NULL, 'Disetujui Kasi Pengujian', 'Penyelia', 'Penyelia memeriksa LKA.', '3171075704040004', '2026-08-05 07:00:00'),
+('LOG-000000224', 'LKA', 'LKA-00012', 'MEMERIKSA_LKA', NULL, 'Disetujui Kasi Pengujian', 'Penyelia', 'Penyelia memeriksa LKA.', '3171075704040004', '2026-08-05 07:00:00'),
+('LOG-000000225', 'LHU', '01/LHU/VIII/LAB-2026', 'MEMBUAT_LHU', NULL, 'Disahkan', 'Sistem', 'Draft/finalisasi LHU dibuat.', NULL, '2026-08-05 01:40:37'),
+('LOG-000000226', 'LHU', '01/LHU/VIII/LAB-2026', 'QC_MENYETUJUI_LHU', NULL, 'Disahkan', 'QC', 'LHU disetujui oleh Pengendalian Mutu.', '312131131415759', '2026-08-05 01:40:37'),
+('LOG-000000227', 'LHU', '02/LHU/VIII/LAB-2026', 'MEMBUAT_LHU', NULL, 'Disahkan', 'Sistem', 'Draft/finalisasi LHU dibuat.', NULL, '2026-08-05 01:41:29'),
+('LOG-000000228', 'LHU', '02/LHU/VIII/LAB-2026', 'QC_MENYETUJUI_LHU', NULL, 'Disahkan', 'QC', 'LHU disetujui oleh Pengendalian Mutu.', '312131131415759', '2026-08-05 01:41:29'),
+('LOG-000000229', 'LHU', '01/LHU/VIII/LAB-2026', 'MENGUNGGAH_LHU_BERTANDA_TANGAN', 'Disahkan', 'Disahkan', 'Admin', 'Dokumen LHU bertanda tangan telah diunggah.', '3171075704040002', '2026-08-05 02:20:30'),
+('LOG-000000230', 'LHU', '01/LHU/VIII/LAB-2026', 'MENGGANTI_LHU_BERTANDA_TANGAN', 'Disahkan', 'Disahkan', 'Admin', 'Dokumen LHU bertanda tangan diperbarui.', '3171075704040002', '2026-08-05 02:35:39'),
+('LOG-000000231', 'LHU', '02/LHU/VIII/LAB-2026', 'MENGUNGGAH_LHU_BERTANDA_TANGAN', 'Disahkan', 'Disahkan', 'Admin', 'Dokumen LHU bertanda tangan telah diunggah.', '3171075704040002', '2026-08-05 02:39:06'),
+('LOG-000000232', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 03:59:41'),
+('LOG-000000233', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 03:59:42'),
+('LOG-000000234', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 03:59:42'),
+('LOG-000000235', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 03:59:42'),
+('LOG-000000236', 'FPPL', 'REG-001', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 03:59:43'),
+('LOG-000000237', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:07:50'),
+('LOG-000000238', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:07:51'),
+('LOG-000000239', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:07:51'),
+('LOG-000000240', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:07:51'),
+('LOG-000000241', 'FPPL', 'REG-001', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:07:52'),
+('LOG-000000242', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:10:01'),
+('LOG-000000243', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:10:01'),
+('LOG-000000244', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:10:01'),
+('LOG-000000245', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:10:01'),
+('LOG-000000246', 'FPPL', 'REG-001', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-06 04:10:02'),
+('LOG-000000247', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-07 14:09:10');
+INSERT INTO `aktivitas_sistem_log` (`id_aktivitas_log`, `entity_type`, `entity_id`, `aksi`, `status_sebelumnya`, `status_baru`, `sumber_aksi`, `catatan`, `dibuat_oleh`, `dibuat_pada`) VALUES
+('LOG-000000248', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-07 14:09:11'),
+('LOG-000000249', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-07 14:09:11'),
+('LOG-000000250', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-07 14:09:11'),
+('LOG-000000251', 'FPPL', 'REG-001', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3271000000000001', '2026-08-07 14:09:12'),
+('LOG-000000252', 'FPPL', 'REG-001', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3172346877989832', '2026-08-07 14:18:33'),
+('LOG-000000253', 'FPPL', 'REG-001', 'MEMVERIFIKASI_PERMOHONAN', 'Menunggu Verifikasi', 'Menunggu Penentuan Metode', 'Admin', 'Permohonan disetujui admin dan dilanjutkan ke penentuan metode.', '3171075704040002', '2026-08-07 14:27:13'),
+('LOG-000000254', 'FPPL', 'REG-002', 'MEMBUAT_PERMOHONAN', NULL, 'Menunggu Verifikasi', 'Pelanggan', 'Permohonan dibuat oleh pelanggan.', '3172346877989832', '2026-08-07 14:30:41'),
+('LOG-000000255', 'FPPL', 'REG-002', 'MEMVERIFIKASI_PERMOHONAN', 'Menunggu Verifikasi', 'Menunggu Penentuan Metode', 'Admin', 'Permohonan disetujui admin dan dilanjutkan ke penentuan metode.', '3171075704040002', '2026-08-07 14:30:55');
 
 -- --------------------------------------------------------
 
@@ -244,10 +321,21 @@ CREATE TABLE `fppl` (
   `jam_rencana_pengambilan_sampel` time DEFAULT NULL,
   `tanggal_rencana_pengantaran_sampel` date DEFAULT NULL,
   `status_fppl` enum('Menunggu Verifikasi','Perlu Revisi','Menunggu Penentuan Metode','Menunggu Pembayaran','Menunggu Verifikasi Pembayaran','Menunggu Sampel','Menunggu Pengambilan Sampel','Menunggu Pengantaran Sampel','Proses Pengujian','Menunggu Penjadwalan LHU','Menunggu Pengambilan LHU','Selesai','Dibatalkan','Dibatalkan Pelanggan','Ditolak Admin','Ditolak Kasi','Ditolak Penyelia') NOT NULL DEFAULT 'Menunggu Verifikasi',
+  `versi_data` int UNSIGNED NOT NULL DEFAULT '1',
+  `terakhir_diubah_pada` datetime DEFAULT NULL,
+  `terakhir_diubah_oleh` varchar(16) DEFAULT NULL,
   `catatan_penolakan` text,
   `tanggal_verifikasi` datetime DEFAULT NULL,
   `diverifikasi_oleh` varchar(16) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `fppl`
+--
+
+INSERT INTO `fppl` (`id_registrasi`, `nomor_fppl`, `id_pelanggan`, `tanggal_pendaftaran`, `maksud_pengujian`, `lokasi_pengambilan_sampel`, `jenis_pengambilan_sampel`, `id_tarif_pengambilan`, `tanggal_rencana_pengambilan_sampel`, `jam_rencana_pengambilan_sampel`, `tanggal_rencana_pengantaran_sampel`, `status_fppl`, `versi_data`, `terakhir_diubah_pada`, `terakhir_diubah_oleh`, `catatan_penolakan`, `tanggal_verifikasi`, `diverifikasi_oleh`) VALUES
+('REG-001', NULL, 'PL-001', '2026-08-07 14:18:33', 'Pemantauan rutin kualitas lingkungan', 'Jalan OKEH', 'Petugas', 'TA-002', '2026-08-07', '11:30:00', NULL, 'Menunggu Penentuan Metode', 1, NULL, NULL, NULL, '2026-08-07 14:27:13', '3171075704040002'),
+('REG-002', NULL, 'PL-001', '2026-08-07 14:30:41', 'Pemantauan rutin kualitas lingkungan', 'jLAN', 'Mandiri', NULL, NULL, NULL, '2026-08-12', 'Menunggu Penentuan Metode', 1, NULL, NULL, NULL, '2026-08-07 14:30:55', '3171075704040002');
 
 -- --------------------------------------------------------
 
@@ -269,6 +357,19 @@ CREATE TABLE `fppl_parameter_metode` (
   `is_insitu` tinyint(1) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+--
+-- Dumping data for table `fppl_parameter_metode`
+--
+
+INSERT INTO `fppl_parameter_metode` (`id_fppl_parameter_metode`, `id_registrasi`, `id_jenis_sampel`, `id_reg_bm`, `id_parameter`, `id_metode_parameter`, `status_kemampuan_lab`, `catatan_kemampuan`, `dipilih_oleh`, `dipilih_pada`, `is_insitu`) VALUES
+('FPM-001-01-01', 'REG-001', 'JS02', 'RBM001', 'PR0011', NULL, 'MAMPU', NULL, NULL, NULL, 0),
+('FPM-001-01-02', 'REG-001', 'JS02', 'RBM001', 'PR0033', NULL, 'MAMPU', NULL, NULL, NULL, 0),
+('FPM-001-01-03', 'REG-001', 'JS02', 'RBM001', 'PR0030', NULL, 'MAMPU', NULL, NULL, NULL, 0),
+('FPM-001-02-04', 'REG-001', 'JS08', 'RBM005', 'PR0030', NULL, 'MAMPU', NULL, NULL, NULL, 0),
+('FPM-001-02-05', 'REG-001', 'JS08', 'RBM005', 'PR0017', NULL, 'MAMPU', NULL, NULL, NULL, 0),
+('FPM-001-02-06', 'REG-001', 'JS08', 'RBM005', 'PR0033', NULL, 'MAMPU', NULL, NULL, NULL, 0),
+('FPM-002-01-01', 'REG-002', 'JS04', 'RBM003', 'PR0022', NULL, 'MAMPU', NULL, NULL, NULL, 0);
+
 -- --------------------------------------------------------
 
 --
@@ -281,6 +382,15 @@ CREATE TABLE `fppl_sampel` (
   `id_reg_bm` varchar(6) NOT NULL,
   `jumlah_sampel` int UNSIGNED NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `fppl_sampel`
+--
+
+INSERT INTO `fppl_sampel` (`id_registrasi`, `id_jenis_sampel`, `id_reg_bm`, `jumlah_sampel`) VALUES
+('REG-001', 'JS02', 'RBM001', 1),
+('REG-001', 'JS08', 'RBM005', 1),
+('REG-002', 'JS04', 'RBM003', 1);
 
 -- --------------------------------------------------------
 
@@ -495,7 +605,11 @@ INSERT INTO `lka` (`kode_lka`, `id_penugasan_detail`, `tanggal_mulai_pengujian`,
 ('LKA-00005', 'PD-00007', '2026-07-10', '2026-07-13', '2,3', '[{\"path\":\"/worksheets/worksheet_PD-00007_3171075704040005_1783646786588_210467731_1700022618_PergubNo13Th2023.pdf\",\"secureUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDdfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjQ2Nzg2NTg4XzIxMDQ2NzczMV8xNzAwMDIyNjE4X1Blcmd1Yk5vMTNUaDIwMjMucGRmIiwiZXhwIjoxNzgzNjUxNzA4LCJtZXRhIjp7fX0.G0zkTq3i-TWkbPpFeJM-Dn8joD7Z10AHBqw5he8BOwE\",\"secure_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDdfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjQ2Nzg2NTg4XzIxMDQ2NzczMV8xNzAwMDIyNjE4X1Blcmd1Yk5vMTNUaDIwMjMucGRmIiwiZXhwIjoxNzgzNjUxNzA4LCJtZXRhIjp7fX0.G0zkTq3i-TWkbPpFeJM-Dn8joD7Z10AHBqw5he8BOwE\",\"downloadUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDdfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjQ2Nzg2NTg4XzIxMDQ2NzczMV8xNzAwMDIyNjE4X1Blcmd1Yk5vMTNUaDIwMjMucGRmIiwiZXhwIjoxNzgzNjUxNzA4LCJtZXRhIjp7fX0.G0zkTq3i-TWkbPpFeJM-Dn8joD7Z10AHBqw5he8BOwE&download=1\",\"download_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDdfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjQ2Nzg2NTg4XzIxMDQ2NzczMV8xNzAwMDIyNjE4X1Blcmd1Yk5vMTNUaDIwMjMucGRmIiwiZXhwIjoxNzgzNjUxNzA4LCJtZXRhIjp7fX0.G0zkTq3i-TWkbPpFeJM-Dn8joD7Z10AHBqw5he8BOwE&download=1\",\"originalName\":\"1700022618_PergubNo13Th2023.pdf\",\"mimeType\":\"application/pdf\",\"size\":72525,\"ext\":\"pdf\",\"uploadedAt\":\"2026-07-10T01:26:26.602Z\"}]', '3171075704040005', '2026-07-10', '3171075704040004', '2026-07-10', 'Disetujui Kasi Pengujian'),
 ('LKA-00006', 'PD-00006', '2026-07-10', '2026-07-13', '3,9', '[{\"path\":\"/worksheets/worksheet_PD-00006_3171075704040005_1783651137486_706417324_927356474-20250723154645.pdf\",\"secureUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDZfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjUxMTM3NDg2XzcwNjQxNzMyNF85MjczNTY0NzQtMjAyNTA3MjMxNTQ2NDUucGRmIiwiZXhwIjoxNzgzNjUxNzQzLCJtZXRhIjp7fX0.NYf2uf9t-uQsInQ-xMj-NKtOJsW4xE8AoVOEbsRB38o\",\"secure_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDZfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjUxMTM3NDg2XzcwNjQxNzMyNF85MjczNTY0NzQtMjAyNTA3MjMxNTQ2NDUucGRmIiwiZXhwIjoxNzgzNjUxNzQzLCJtZXRhIjp7fX0.NYf2uf9t-uQsInQ-xMj-NKtOJsW4xE8AoVOEbsRB38o\",\"downloadUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDZfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjUxMTM3NDg2XzcwNjQxNzMyNF85MjczNTY0NzQtMjAyNTA3MjMxNTQ2NDUucGRmIiwiZXhwIjoxNzgzNjUxNzQzLCJtZXRhIjp7fX0.NYf2uf9t-uQsInQ-xMj-NKtOJsW4xE8AoVOEbsRB38o&download=1\",\"download_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDZfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjUxMTM3NDg2XzcwNjQxNzMyNF85MjczNTY0NzQtMjAyNTA3MjMxNTQ2NDUucGRmIiwiZXhwIjoxNzgzNjUxNzQzLCJtZXRhIjp7fX0.NYf2uf9t-uQsInQ-xMj-NKtOJsW4xE8AoVOEbsRB38o&download=1\",\"originalName\":\"927356474-20250723154645.pdf\",\"mimeType\":\"application/pdf\",\"size\":478694,\"ext\":\"pdf\",\"uploadedAt\":\"2026-07-10T02:38:57.514Z\"}]', '3171075704040005', '2026-07-10', '3171075704040004', '2026-07-10', 'Disetujui Kasi Pengujian'),
 ('LKA-00007', 'PD-00005', '2026-07-10', '2026-07-13', '9,8', '[{\"path\":\"/worksheets/worksheet_PD-00005_3171075704040005_1783651236469_636997239_1700022618_PergubNo13Th2023.pdf\",\"secureUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDVfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjUxMjM2NDY5XzYzNjk5NzIzOV8xNzAwMDIyNjE4X1Blcmd1Yk5vMTNUaDIwMjMucGRmIiwiZXhwIjoxNzgzNjUxODQxLCJtZXRhIjp7fX0.cEBQdoqZwJ7PokvU9Hr0WCLn4vIL0qqtekgs2IkUJwk\",\"secure_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDVfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjUxMjM2NDY5XzYzNjk5NzIzOV8xNzAwMDIyNjE4X1Blcmd1Yk5vMTNUaDIwMjMucGRmIiwiZXhwIjoxNzgzNjUxODQxLCJtZXRhIjp7fX0.cEBQdoqZwJ7PokvU9Hr0WCLn4vIL0qqtekgs2IkUJwk\",\"downloadUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDVfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjUxMjM2NDY5XzYzNjk5NzIzOV8xNzAwMDIyNjE4X1Blcmd1Yk5vMTNUaDIwMjMucGRmIiwiZXhwIjoxNzgzNjUxODQxLCJtZXRhIjp7fX0.cEBQdoqZwJ7PokvU9Hr0WCLn4vIL0qqtekgs2IkUJwk&download=1\",\"download_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDVfMzE3MTA3NTcwNDA0MDAwNV8xNzgzNjUxMjM2NDY5XzYzNjk5NzIzOV8xNzAwMDIyNjE4X1Blcmd1Yk5vMTNUaDIwMjMucGRmIiwiZXhwIjoxNzgzNjUxODQxLCJtZXRhIjp7fX0.cEBQdoqZwJ7PokvU9Hr0WCLn4vIL0qqtekgs2IkUJwk&download=1\",\"originalName\":\"1700022618_PergubNo13Th2023.pdf\",\"mimeType\":\"application/pdf\",\"size\":72525,\"ext\":\"pdf\",\"uploadedAt\":\"2026-07-10T02:40:36.476Z\"}]', '3171075704040005', '2026-07-10', '3171075704040004', '2026-07-10', 'Disetujui Kasi Pengujian'),
-('LKA-00008', 'PD-00008', '2026-07-17', '2026-07-20', '2,3', '[{\"path\":\"/worksheets/worksheet_PD-00008_3171075704040005_1784167603364_130794951_BERITA-ACARA.pdf\",\"secureUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDhfMzE3MTA3NTcwNDA0MDAwNV8xNzg0MTY3NjAzMzY0XzEzMDc5NDk1MV9CRVJJVEEtQUNBUkEucGRmIiwiZXhwIjoxNzg0MTkxNzM3LCJtZXRhIjp7fX0.2fSLKRfrmzL-gMrV_fFylzHVcVASkGtfIeU9BG6DJLc\",\"secure_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDhfMzE3MTA3NTcwNDA0MDAwNV8xNzg0MTY3NjAzMzY0XzEzMDc5NDk1MV9CRVJJVEEtQUNBUkEucGRmIiwiZXhwIjoxNzg0MTkxNzM3LCJtZXRhIjp7fX0.2fSLKRfrmzL-gMrV_fFylzHVcVASkGtfIeU9BG6DJLc\",\"downloadUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDhfMzE3MTA3NTcwNDA0MDAwNV8xNzg0MTY3NjAzMzY0XzEzMDc5NDk1MV9CRVJJVEEtQUNBUkEucGRmIiwiZXhwIjoxNzg0MTkxNzM3LCJtZXRhIjp7fX0.2fSLKRfrmzL-gMrV_fFylzHVcVASkGtfIeU9BG6DJLc&download=1\",\"download_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDhfMzE3MTA3NTcwNDA0MDAwNV8xNzg0MTY3NjAzMzY0XzEzMDc5NDk1MV9CRVJJVEEtQUNBUkEucGRmIiwiZXhwIjoxNzg0MTkxNzM3LCJtZXRhIjp7fX0.2fSLKRfrmzL-gMrV_fFylzHVcVASkGtfIeU9BG6DJLc&download=1\",\"originalName\":\"BERITA ACARA.pdf\",\"mimeType\":\"application/pdf\",\"size\":135186,\"ext\":\"pdf\",\"uploadedAt\":\"2026-07-16T02:06:43.384Z\"}]', '3171075704040005', '2026-07-16', '3171075704040004', '2026-07-16', 'Disetujui Penyelia');
+('LKA-00008', 'PD-00008', '2026-07-17', '2026-07-20', '2,3', '[{\"path\":\"/worksheets/worksheet_PD-00008_3171075704040005_1784167603364_130794951_BERITA-ACARA.pdf\",\"secureUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDhfMzE3MTA3NTcwNDA0MDAwNV8xNzg0MTY3NjAzMzY0XzEzMDc5NDk1MV9CRVJJVEEtQUNBUkEucGRmIiwiZXhwIjoxNzg0MTkxNzM3LCJtZXRhIjp7fX0.2fSLKRfrmzL-gMrV_fFylzHVcVASkGtfIeU9BG6DJLc\",\"secure_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDhfMzE3MTA3NTcwNDA0MDAwNV8xNzg0MTY3NjAzMzY0XzEzMDc5NDk1MV9CRVJJVEEtQUNBUkEucGRmIiwiZXhwIjoxNzg0MTkxNzM3LCJtZXRhIjp7fX0.2fSLKRfrmzL-gMrV_fFylzHVcVASkGtfIeU9BG6DJLc\",\"downloadUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDhfMzE3MTA3NTcwNDA0MDAwNV8xNzg0MTY3NjAzMzY0XzEzMDc5NDk1MV9CRVJJVEEtQUNBUkEucGRmIiwiZXhwIjoxNzg0MTkxNzM3LCJtZXRhIjp7fX0.2fSLKRfrmzL-gMrV_fFylzHVcVASkGtfIeU9BG6DJLc&download=1\",\"download_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMDhfMzE3MTA3NTcwNDA0MDAwNV8xNzg0MTY3NjAzMzY0XzEzMDc5NDk1MV9CRVJJVEEtQUNBUkEucGRmIiwiZXhwIjoxNzg0MTkxNzM3LCJtZXRhIjp7fX0.2fSLKRfrmzL-gMrV_fFylzHVcVASkGtfIeU9BG6DJLc&download=1\",\"originalName\":\"BERITA ACARA.pdf\",\"mimeType\":\"application/pdf\",\"size\":135186,\"ext\":\"pdf\",\"uploadedAt\":\"2026-07-16T02:06:43.384Z\"}]', '3171075704040005', '2026-07-16', '3171075704040004', '2026-07-16', 'Disetujui Penyelia'),
+('LKA-00009', 'PD-00013', '2026-08-04', '2026-08-04', NULL, NULL, '3171075704040004', '2026-08-04', '3171075704040004', '2026-08-04', 'Disetujui Kasi Pengujian'),
+('LKA-00010', 'PD-00014', '2026-08-04', '2026-08-04', NULL, NULL, '3171075704040004', '2026-08-04', '3171075704040004', '2026-08-04', 'Disetujui Kasi Pengujian'),
+('LKA-00011', 'PD-00011', '2026-08-05', '2026-08-06', '2,8', '[{\"path\":\"/worksheets/worksheet_PD-00011_3171075704040005_1785868355646_794419516_Google-Cloud-Fundamentals.pdf\",\"secureUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMTFfMzE3MTA3NTcwNDA0MDAwNV8xNzg1ODY4MzU1NjQ2Xzc5NDQxOTUxNl9Hb29nbGUtQ2xvdWQtRnVuZGFtZW50YWxzLnBkZiIsImV4cCI6MTc4NTg2ODk3MCwibWV0YSI6e319.pFU1lakuXP-3hWo3MAZOUtA_3DpqaTrHx9BoCFVMVjg\",\"secure_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMTFfMzE3MTA3NTcwNDA0MDAwNV8xNzg1ODY4MzU1NjQ2Xzc5NDQxOTUxNl9Hb29nbGUtQ2xvdWQtRnVuZGFtZW50YWxzLnBkZiIsImV4cCI6MTc4NTg2ODk3MCwibWV0YSI6e319.pFU1lakuXP-3hWo3MAZOUtA_3DpqaTrHx9BoCFVMVjg\",\"downloadUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMTFfMzE3MTA3NTcwNDA0MDAwNV8xNzg1ODY4MzU1NjQ2Xzc5NDQxOTUxNl9Hb29nbGUtQ2xvdWQtRnVuZGFtZW50YWxzLnBkZiIsImV4cCI6MTc4NTg2ODk3MCwibWV0YSI6e319.pFU1lakuXP-3hWo3MAZOUtA_3DpqaTrHx9BoCFVMVjg&download=1\",\"download_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMTFfMzE3MTA3NTcwNDA0MDAwNV8xNzg1ODY4MzU1NjQ2Xzc5NDQxOTUxNl9Hb29nbGUtQ2xvdWQtRnVuZGFtZW50YWxzLnBkZiIsImV4cCI6MTc4NTg2ODk3MCwibWV0YSI6e319.pFU1lakuXP-3hWo3MAZOUtA_3DpqaTrHx9BoCFVMVjg&download=1\",\"originalName\":\"Google Cloud Fundamentals.pdf\",\"mimeType\":\"application/pdf\",\"size\":15723,\"ext\":\"pdf\",\"uploadedAt\":\"2026-08-04T18:32:35.742Z\"}]', '3171075704040005', '2026-08-05', '3171075704040004', '2026-08-05', 'Disetujui Kasi Pengujian'),
+('LKA-00012', 'PD-00012', '2026-08-05', '2026-08-06', '2,7', '[{\"path\":\"/worksheets/worksheet_PD-00012_3171075704040005_1785868426045_118333998_Preparing-for-Your-Associate-Cloud.pdf\",\"secureUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMTJfMzE3MTA3NTcwNDA0MDAwNV8xNzg1ODY4NDI2MDQ1XzExODMzMzk5OF9QcmVwYXJpbmctZm9yLVlvdXItQXNzb2NpYXRlLUNsb3VkLnBkZiIsImV4cCI6MTc4NTg2OTA0NSwibWV0YSI6e319.5ImMBLnoev0G795HKGCdexR-EYBDCmM_3Y4cR-Rlppw\",\"secure_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMTJfMzE3MTA3NTcwNDA0MDAwNV8xNzg1ODY4NDI2MDQ1XzExODMzMzk5OF9QcmVwYXJpbmctZm9yLVlvdXItQXNzb2NpYXRlLUNsb3VkLnBkZiIsImV4cCI6MTc4NTg2OTA0NSwibWV0YSI6e319.5ImMBLnoev0G795HKGCdexR-EYBDCmM_3Y4cR-Rlppw\",\"downloadUrl\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMTJfMzE3MTA3NTcwNDA0MDAwNV8xNzg1ODY4NDI2MDQ1XzExODMzMzk5OF9QcmVwYXJpbmctZm9yLVlvdXItQXNzb2NpYXRlLUNsb3VkLnBkZiIsImV4cCI6MTc4NTg2OTA0NSwibWV0YSI6e319.5ImMBLnoev0G795HKGCdexR-EYBDCmM_3Y4cR-Rlppw&download=1\",\"download_url\":\"/files/worksheet?token=eyJzY29wZSI6IndvcmtzaGVldCIsInBhdGgiOiIvd29ya3NoZWV0cy93b3Jrc2hlZXRfUEQtMDAwMTJfMzE3MTA3NTcwNDA0MDAwNV8xNzg1ODY4NDI2MDQ1XzExODMzMzk5OF9QcmVwYXJpbmctZm9yLVlvdXItQXNzb2NpYXRlLUNsb3VkLnBkZiIsImV4cCI6MTc4NTg2OTA0NSwibWV0YSI6e319.5ImMBLnoev0G795HKGCdexR-EYBDCmM_3Y4cR-Rlppw&download=1\",\"originalName\":\"Preparing for Your Associate Cloud.pdf\",\"mimeType\":\"application/pdf\",\"size\":5093,\"ext\":\"pdf\",\"uploadedAt\":\"2026-08-04T18:33:46.055Z\"}]', '3171075704040005', '2026-08-05', '3171075704040004', '2026-08-05', 'Disetujui Kasi Pengujian');
 
 -- --------------------------------------------------------
 
@@ -637,8 +751,8 @@ INSERT INTO `notifikasi_email` (`id_notifikasi_email`, `id_tipe_notifikasi`, `ni
 ('NE00000034', 'TN032', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-09 22:47:31'),
 ('NE00000035', 'TN999', '3171075704040002', NULL, '3171075704040002', NULL, NULL, 'TERKIRIM', NULL, '2026-07-09 22:48:02', 'https://fcm.googleapis.com/fcm/send/dTdsbu-YF2k:APA91bFv_B7J0uEdUmc8IVJwa4vhnPbMZgktsUS_7GncKi1Jf7xNJ-cA3PyuYUzi7kd_FsMjC2r2COJClojfqWYWEAskQDDJX72lrbrpGPfVevoNA7oDnm6WBVoj9-iet_7P_fuurvis', 'BMy-hRyRUy3epI73ZmX4n6peOt1lcbArE3k3Fn3JF4OF4Mx26y6PCx5RIlRU-SmKdYW_eJ1LOAkoFhQgAnFqZJQ', 'hUSb2UghVkkOfD00njNUSA', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 0, '2026-07-09 22:48:02', '2026-07-10 05:41:17', '2026-07-09 22:48:02'),
 ('NE00000036', 'TN017', '1146658392983864', 'raniiii@gmail.com', 'Rani Mandiri', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-07-09 22:52:21', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-09 22:48:32'),
-('NE00000037', 'TN006', '1146658392983864', 'rekamanpjj@gmail.com', 'Rani Mandiri', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-09 22:51:35'),
-('NE00000038', 'TN003', '1146658392983864', 'rekamanpjj@gmail.com', 'Rani Mandiri', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-09 22:51:35'),
+('NE00000037', 'TN006', '1146658392983864', 'rekamanpjj@gmail.com', 'Rani Mandiri', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 08:54:30', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-09 22:51:35'),
+('NE00000038', 'TN003', '1146658392983864', 'rekamanpjj@gmail.com', 'Rani Mandiri', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 08:54:30', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-09 22:51:35'),
 ('NE00000039', 'TN019', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-07-10 06:39:33', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-09 22:51:35'),
 ('NE00000040', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-003', 'TERKIRIM', NULL, '2026-07-10 05:41:38', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 05:41:17', '2026-07-10 05:41:14'),
 ('NE00000041', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-003', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-10 05:41:18'),
@@ -657,16 +771,16 @@ INSERT INTO `notifikasi_email` (`id_notifikasi_email`, `id_tipe_notifikasi`, `ni
 ('NE00000054', 'TN010', '3171075704040005', 'meutiad6@gmail.com', 'rina', 'PENUGASAN', 'PNG-0002', 'TERKIRIM', NULL, '2026-07-10 08:24:31', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 08:23:58', '2026-07-10 08:23:58'),
 ('NE00000055', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0002', 'TERKIRIM', NULL, '2026-07-10 08:27:06', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 08:26:39', '2026-07-10 08:26:38'),
 ('NE00000056', 'TN012', '3171075704040005', 'meutiad6@gmail.com', 'rina', 'PENUGASAN', 'PNG-0002', 'TERKIRIM', NULL, '2026-07-10 09:38:16', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 08:27:39', '2026-07-10 08:27:39'),
-('NE00000057', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:38:28', '2026-07-10 09:38:28'),
-('NE00000058', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:39:04', '2026-07-10 09:39:03'),
-('NE00000059', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:40:42', '2026-07-10 09:40:41'),
+('NE00000057', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0002', 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:38:28', '2026-07-10 09:38:28'),
+('NE00000058', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0002', 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:39:04', '2026-07-10 09:39:03'),
+('NE00000059', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0002', 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:40:42', '2026-07-10 09:40:41'),
 ('NE00000060', 'TN024', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'PENUGASAN', '1/DN/VII/2026', 'TERKIRIM', NULL, '2026-07-10 09:50:22', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-10 09:43:38'),
 ('NE00000061', 'TN024', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'PENUGASAN', '2/DN/VII/2026', 'TERKIRIM', NULL, '2026-07-10 09:50:22', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-10 09:43:39'),
 ('NE00000062', 'TN024', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'PENUGASAN', '3/DN/VII/2026', 'TERKIRIM', NULL, '2026-07-10 09:50:22', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-10 09:43:43'),
 ('NE00000063', 'TN024', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'PENUGASAN', '4/LT/VII/2026', 'TERKIRIM', NULL, '2026-07-10 09:50:22', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-10 09:43:52'),
 ('NE00000064', 'TN999', '3171075704040009', NULL, '3171075704040009', NULL, NULL, 'TERKIRIM', NULL, '2026-07-10 09:44:09', 'https://fcm.googleapis.com/fcm/send/dVoAv8G405w:APA91bH5eIaaCS3i5__HM6--EPgd7wI7Qruiy0tfiwPp0rJpMYF1EZBBnGXaXJf2bWELSlvBj8H4aOJzocVk_AaFj1-ylGmMhgHexXgWyLUJunP_W5z2TMKrWyPK_ZqdVi5k9tahQfqf', 'BKENKjvk_I5M4gN34yqdEsvi5RBpcrGDPpnG3DmdIuVM7G-WZSb3KQTLplr7k-PZAa6FTcsmtrGxQIza47JSsLc', 'RTblkNnanQ5FBSUdKY18eA', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36', 0, '2026-07-10 09:44:09', NULL, '2026-07-10 09:44:09'),
 ('NE00000065', 'TN031', '312131131415759', 'milkyambis@gmail.com', 'sandiaga0', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-07-10 09:53:37', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-10 09:44:54'),
-('NE00000066', 'TN026', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:45:34', '2026-07-10 09:45:34'),
+('NE00000066', 'TN026', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0001', 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:45:34', '2026-07-10 09:45:34'),
 ('NE00000067', 'TN013', '3171075704040005', 'meutiad6@gmail.com', 'rina', 'PENUGASAN', 'PNG-0001', 'TERKIRIM', NULL, '2026-07-10 09:48:54', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:48:44', '2026-07-10 09:48:44'),
 ('NE00000068', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0001', 'TERKIRIM', NULL, '2026-07-10 09:49:38', NULL, NULL, NULL, NULL, 0, NULL, '2026-07-10 09:49:08', '2026-07-10 09:49:08'),
 ('NE00000069', 'TN028', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'PENUGASAN', '2/DN/VII/2026', 'TERKIRIM', NULL, '2026-07-10 09:50:22', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-10 09:50:06'),
@@ -695,90 +809,176 @@ INSERT INTO `notifikasi_email` (`id_notifikasi_email`, `id_tipe_notifikasi`, `ni
 ('NE00000092', 'TN017', '3171803823927329', 'mdd.kartika@gmail.com', 'Jayanti Kusuma', 'FPPL', 'REG-004', 'TERKIRIM', NULL, '2026-07-16 08:56:15', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 08:56:02'),
 ('NE00000093', 'TN003', '3171803823927329', 'mdd.kartika@gmail.com', 'Jayanti Kusuma', 'FPPL', 'REG-004', 'TERKIRIM', NULL, '2026-07-16 08:58:59', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 08:58:45'),
 ('NE00000094', 'TN006', '3171803823927329', 'mdd.kartika@gmail.com', 'Jayanti Kusuma', 'FPPL', 'REG-004', 'TERKIRIM', NULL, '2026-07-16 08:58:58', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 08:58:45'),
-('NE00000095', 'TN019', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'FPPL', 'REG-004', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 08:58:45'),
+('NE00000095', 'TN019', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'FPPL', 'REG-004', 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 08:58:45'),
 ('NE00000096', 'TN006', '1146658392983864', 'mdd.kartika@gmail.com', 'ganjar', 'FPPL', 'REG-003', 'TERKIRIM', NULL, '2026-07-16 09:01:41', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:01:28'),
-('NE00000097', 'TN019', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'FPPL', 'REG-003', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:01:28'),
+('NE00000097', 'TN019', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'FPPL', 'REG-003', 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:01:28'),
 ('NE00000098', 'TN003', '1146658392983864', 'mdd.kartika@gmail.com', 'ganjar', 'FPPL', 'REG-003', 'TERKIRIM', NULL, '2026-07-16 09:01:42', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:01:28'),
 ('NE00000099', 'TN010', '3171075704040005', 'meutiad6@gmail.com', 'rina', 'PENUGASAN', 'PNG-0003', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:04:12'),
-('NE00000100', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0003', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:06:46'),
+('NE00000100', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0003', 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:06:46'),
 ('NE00000101', 'TN012', '3171075704040005', 'meutiad6@gmail.com', 'rina', 'PENUGASAN', 'PNG-0003', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:07:23'),
 ('NE00000102', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-005', 'TERKIRIM', NULL, '2026-07-16 12:29:41', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:14:09'),
 ('NE00000103', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-005', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 09:14:09'),
 ('NE00000104', 'TN001', '1146658392983864', 'mdd.kartika@gmail.com', 'ganjar', 'FPPL', 'REG-005', 'TERKIRIM', NULL, '2026-07-16 12:28:03', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 12:27:49'),
-('NE00000105', 'TN018', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-005', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 12:28:03'),
-('NE00000106', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-006', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 14:36:19'),
+('NE00000105', 'TN018', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-005', 'TERKIRIM', NULL, '2026-08-03 11:51:46', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 12:28:03'),
+('NE00000106', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-006', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 14:36:19'),
 ('NE00000107', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-006', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 14:36:19'),
 ('NE00000108', 'TN004', '1146658392983864', 'mdd.kartika@gmail.com', 'ganjar', 'FPPL', 'REG-005', 'TERKIRIM', NULL, '2026-07-16 14:48:24', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 14:47:53'),
 ('NE00000109', 'TN005', '1146658392983864', 'mdd.kartika@gmail.com', 'ganjar', 'FPPL', 'REG-005', 'TERKIRIM', NULL, '2026-07-16 14:49:38', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 14:49:23'),
-('NE00000110', 'TN032', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-005', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 14:49:23'),
+('NE00000110', 'TN032', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-005', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 14:49:23'),
 ('NE00000111', 'TN032', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-005', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 14:49:23'),
 ('NE00000112', 'TN007', '1146658392983864', 'rekamanpjj@gmail.com', 'Rani Mandiri', 'JADWAL_LHU', 'JPL-000002', 'TERKIRIM', NULL, '2026-07-16 15:01:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:00:59'),
 ('NE00000113', 'TN001', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-006', 'TERKIRIM', NULL, '2026-07-16 15:29:07', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:28:53'),
-('NE00000114', 'TN018', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-006', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:29:07'),
+('NE00000114', 'TN018', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-006', 'TERKIRIM', NULL, '2026-08-03 11:51:46', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:29:07'),
 ('NE00000115', 'TN004', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-006', 'TERKIRIM', NULL, '2026-07-16 15:29:50', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:29:36'),
-('NE00000116', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0003', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:38:57'),
+('NE00000116', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0003', 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:38:57'),
 ('NE00000117', 'TN010', '3171075704040005', 'meutiad6@gmail.com', 'rina', 'PENUGASAN', 'PNG-0004', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:42:44'),
 ('NE00000118', 'TN005', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-006', 'TERKIRIM', NULL, '2026-07-16 15:45:49', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:45:34'),
-('NE00000119', 'TN032', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-006', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:45:34'),
+('NE00000119', 'TN032', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-006', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:45:34'),
 ('NE00000120', 'TN032', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-006', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-07-16 15:45:34'),
-('NE00000121', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:03'),
+('NE00000121', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:03'),
 ('NE00000122', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:03'),
-('NE00000123', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
+('NE00000123', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
 ('NE00000124', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
-('NE00000125', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
+('NE00000125', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
 ('NE00000126', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
-('NE00000127', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
+('NE00000127', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
 ('NE00000128', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
-('NE00000129', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
+('NE00000129', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
 ('NE00000130', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
-('NE00000131', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
+('NE00000131', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
 ('NE00000132', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:04'),
-('NE00000133', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:05'),
+('NE00000133', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:05'),
 ('NE00000134', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:05'),
-('NE00000135', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:05'),
+('NE00000135', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:05'),
 ('NE00000136', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 17:58:05'),
-('NE00000137', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:33'),
+('NE00000137', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:33'),
 ('NE00000138', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:33'),
-('NE00000139', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:33'),
+('NE00000139', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:33'),
 ('NE00000140', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:33'),
-('NE00000141', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:33'),
+('NE00000141', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:33'),
 ('NE00000142', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
-('NE00000143', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
+('NE00000143', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
 ('NE00000144', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
-('NE00000145', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
+('NE00000145', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
 ('NE00000146', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
-('NE00000147', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
+('NE00000147', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
 ('NE00000148', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
-('NE00000149', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
+('NE00000149', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
 ('NE00000150', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
-('NE00000151', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
+('NE00000151', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
 ('NE00000152', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:01:34'),
-('NE00000153', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:12'),
+('NE00000153', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:12'),
 ('NE00000154', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:12'),
-('NE00000155', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
+('NE00000155', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
 ('NE00000156', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
-('NE00000157', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
+('NE00000157', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
 ('NE00000158', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
-('NE00000159', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
+('NE00000159', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
 ('NE00000160', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
-('NE00000161', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
+('NE00000161', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
 ('NE00000162', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
-('NE00000163', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
+('NE00000163', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
 ('NE00000164', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
-('NE00000165', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
+('NE00000165', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
 ('NE00000166', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:13'),
-('NE00000167', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:14'),
+('NE00000167', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:14'),
 ('NE00000168', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:03:14'),
-('NE00000169', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:23'),
+('NE00000169', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:23'),
 ('NE00000170', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
-('NE00000171', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
+('NE00000171', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
 ('NE00000172', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
-('NE00000173', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
+('NE00000173', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
 ('NE00000174', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
-('NE00000175', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
+('NE00000175', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
 ('NE00000176', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:24'),
-('NE00000177', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:25'),
-('NE00000178', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:25');
+('NE00000177', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:25'),
+('NE00000178', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-02 18:04:25'),
+('NE00000179', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 08:47:57'),
+('NE00000180', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 08:47:57'),
+('NE00000181', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-03 11:31:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 08:56:44'),
+('NE00000182', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 08:56:44'),
+('NE00000183', 'TN001', '3172346877989832', 'mdd.kartika@gmail.com', 'Yuni', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 11:33:49', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 11:33:35'),
+('NE00000184', 'TN018', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 11:51:46', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 11:33:49'),
+('NE00000185', 'TN034', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REQ-SUB0001', 'TERKIRIM', NULL, '2026-08-03 11:55:18', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 11:51:56'),
+('NE00000186', 'TN034', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REQ-SUB0001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 11:51:56'),
+('NE00000187', 'TN034', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REQ-SUB0002', 'TERKIRIM', NULL, '2026-08-03 12:09:36', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 12:09:27'),
+('NE00000188', 'TN034', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REQ-SUB0002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 12:09:27'),
+('NE00000189', 'TN034', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REQ-SUB0001', 'TERKIRIM', NULL, '2026-08-03 12:50:13', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 12:50:07'),
+('NE00000190', 'TN034', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REQ-SUB0001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 12:50:07'),
+('NE00000191', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 13:21:55', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:21:30'),
+('NE00000192', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:21:30'),
+('NE00000193', 'TN001', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 13:22:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:22:02'),
+('NE00000194', 'TN018', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 13:22:31', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:22:16'),
+('NE00000195', 'TN034', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REQ-SUB0001', 'TERKIRIM', NULL, '2026-08-03 13:22:44', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:22:38'),
+('NE00000196', 'TN034', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REQ-SUB0001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:22:38'),
+('NE00000197', 'TN035', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 14:28:52', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:48:06'),
+('NE00000198', 'TN034', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REQ-SUB0002', 'TERKIRIM', NULL, '2026-08-03 13:52:37', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:52:24'),
+('NE00000199', 'TN034', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REQ-SUB0002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:52:24'),
+('NE00000200', 'TN035', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 14:28:52', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 13:53:45'),
+('NE00000201', 'TN004', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-03 14:28:45', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-03 14:28:32'),
+('NE00000202', 'TN005', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-04 20:15:16', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-04 20:14:59'),
+('NE00000203', 'TN017', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-04 20:16:40', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-04 20:16:21'),
+('NE00000204', 'TN006', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-04 20:21:30', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-04 20:20:45'),
+('NE00000205', 'TN003', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-04 20:21:21', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-04 20:20:45'),
+('NE00000206', 'TN019', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-04 20:20:45'),
+('NE00000207', 'TN014', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', NULL, NULL, 'TERKIRIM', NULL, '2026-08-04 20:27:44', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-04 20:20:46'),
+('NE00000208', 'TN999', '3171075704040004', NULL, '3171075704040004', NULL, NULL, 'TERKIRIM', NULL, '2026-08-04 20:27:42', 'https://fcm.googleapis.com/fcm/send/cOyJQabAniY:APA91bHvtDQZjcc3ermcgfz1CzX5BGKi1hHM0HPg3dA5_zxp-TWdmaSa7EhaP8gbl80isHfTQsrKwIpXoYgA4YjkdpNuXa8JqhCQKUrZqAuIo0MHFkugruiGZPeOfzMSSvMcsPVraS9Q', 'BDjXywWCsDQ2J-ZKtjTsyqIZwfOkMFEafirTGm7kdUcMc51g6xb86g6PZHKvVVxoGy8MHs-psaGjLLzL9Z-j3uI', '6Zh9I7hlz12LmfPrIurbLQ', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36', 0, '2026-08-04 20:27:42', NULL, '2026-08-04 20:27:42'),
+('NE00000209', 'TN010', '3171075704040005', 'meutiad6@gmail.com', 'rina', 'PENUGASAN', 'PNG-0005', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-04 21:04:58'),
+('NE00000210', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0005', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-05 01:32:50'),
+('NE00000211', 'TN016', '3171075704040004', 'mmutiaadewi@gmail.com', 'andi', 'PENUGASAN', 'PNG-0005', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-05 01:34:06'),
+('NE00000212', 'TN024', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'PENUGASAN', '2/AM/VIII/2026', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-05 01:36:49'),
+('NE00000213', 'TN031', '312131131415759', 'milkyambis@gmail.com', 'sandiaga0', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-05 01:38:35'),
+('NE00000214', 'TN025', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'LHU', '02/LHU/VIII/LAB-2026', 'TERKIRIM', NULL, '2026-08-05 01:42:27', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-05 01:41:29');
+INSERT INTO `notifikasi_email` (`id_notifikasi_email`, `id_tipe_notifikasi`, `nik_penerima`, `email_tujuan`, `nama_penerima`, `referensi_tipe`, `referensi_id`, `status_pengiriman`, `pesan_error`, `dikirim_pada`, `push_endpoint`, `push_p256dh`, `push_auth`, `push_user_agent`, `push_aktif`, `push_subscription_pada`, `push_terkirim_pada`, `dibuat_pada`) VALUES
+('NE00000215', 'TN025', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'LHU', '02/LHU/VIII/LAB-2026', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-05 01:41:29'),
+('NE00000216', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:42'),
+('NE00000217', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:42'),
+('NE00000218', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:42'),
+('NE00000219', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:42'),
+('NE00000220', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:42'),
+('NE00000221', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:42'),
+('NE00000222', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:42'),
+('NE00000223', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:42'),
+('NE00000224', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:43'),
+('NE00000225', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 03:59:43'),
+('NE00000226', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:50'),
+('NE00000227', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:51'),
+('NE00000228', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:51'),
+('NE00000229', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:51'),
+('NE00000230', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:51'),
+('NE00000231', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:51'),
+('NE00000232', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:51'),
+('NE00000233', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:51'),
+('NE00000234', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:52'),
+('NE00000235', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:07:52'),
+('NE00000236', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:01'),
+('NE00000237', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:01'),
+('NE00000238', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:01'),
+('NE00000239', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:01'),
+('NE00000240', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:01'),
+('NE00000241', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:01'),
+('NE00000242', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:01'),
+('NE00000243', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:01'),
+('NE00000244', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:02'),
+('NE00000245', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-06 04:10:02'),
+('NE00000246', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:11'),
+('NE00000247', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:11'),
+('NE00000248', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:11'),
+('NE00000249', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:11'),
+('NE00000250', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:11'),
+('NE00000251', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:11'),
+('NE00000252', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:11'),
+('NE00000253', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:11'),
+('NE00000254', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:12'),
+('NE00000255', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:09:12'),
+('NE00000256', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:18:33'),
+('NE00000257', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:18:33'),
+('NE00000258', 'TN001', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-001', 'TERKIRIM', NULL, '2026-08-07 14:27:27', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:27:13'),
+('NE00000259', 'TN018', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-001', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:27:27'),
+('NE00000260', 'TN009', '3171075704040002', '2211523024_meutia@student.unand.ac.id', 'admin', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:30:41'),
+('NE00000261', 'TN009', '4587654345678998', 'pakiki@gmail.com', 'dewi.mdd', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:30:41'),
+('NE00000262', 'TN001', '3172346877989832', 'warga@gmail.com', 'warga', 'FPPL', 'REG-002', 'TERKIRIM', NULL, '2026-08-07 14:31:24', NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:30:55'),
+('NE00000263', 'TN018', '3171075704040009', 'kyrinasg91@gmail.com', 'sari', 'FPPL', 'REG-002', 'MENUNGGU', NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, '2026-08-07 14:31:24');
 
 -- --------------------------------------------------------
 
@@ -924,7 +1124,9 @@ INSERT INTO `parameter_metode` (`id_metode_parameter`, `id_parameter`, `id_metod
 ('MP0061', 'PR0005', 'M12', 20000, 'UJU', 1, 1, 1),
 ('MP9001', 'PR0006', 'M06', 0, NULL, 0, 0, 1),
 ('MP9002', 'PR0013', 'M04', 0, '3/IK-M/LAB (spektrofotometri)', 1, 0, 1),
-('MP9003', 'PR0005', 'M04', 30000, 'SNI 6989.80-2011', 1, 0, 1);
+('MP9003', 'PR0005', 'M04', 30000, 'SNI 6989.80-2011', 1, 0, 1),
+('MP9004', 'PR0033', 'M09', 13000, 'SNI 06-6989.54-2005', 0, 1, 1),
+('MP9005', 'PR0011', 'M04', 15000, 'SNI 06-6989.30-2005', 0, 1, 1);
 
 -- --------------------------------------------------------
 
@@ -997,6 +1199,13 @@ CREATE TABLE `pelanggan` (
   `pic` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+--
+-- Dumping data for table `pelanggan`
+--
+
+INSERT INTO `pelanggan` (`id_pelanggan`, `nik`, `nama_instansi`, `no_telp`, `alamat`, `email_kontak`, `pic`) VALUES
+('PL-001', '3172346877989832', 'PT Rani Tirta Bersih', '0857812563108', 'Jalan M Hatta', 'warga@gmail.com', 'warga');
+
 -- --------------------------------------------------------
 
 --
@@ -1045,7 +1254,10 @@ INSERT INTO `penugasan` (`id_penugasan`, `id_user_analis`, `assigned_by`, `assig
 ('PNG-0001', '3171075704040005', '3171075704040004', '2026-07-10 06:40:41', 'INTERNAL', 'Selesai', ''),
 ('PNG-0002', '3171075704040005', '3171075704040004', '2026-07-10 08:23:58', 'INTERNAL', 'Selesai', ''),
 ('PNG-0003', '3171075704040005', '3171075704040004', '2026-07-16 09:04:12', 'INTERNAL', 'Selesai', ''),
-('PNG-0004', '3171075704040005', '3171075704040004', '2026-07-16 15:42:44', 'INTERNAL', 'Aktif', '');
+('PNG-0004', '3171075704040005', '3171075704040004', '2026-07-16 15:42:44', 'INTERNAL', 'Aktif', ''),
+('PNG-0005', '3171075704040005', '3171075704040004', '2026-08-04 21:04:58', 'INTERNAL', 'Selesai', ''),
+('PNG-0006', '3171075704040004', '3171075704040004', '2026-08-04 21:05:13', 'SUBKONTRAK', 'Selesai', NULL),
+('PNG-0007', '3171075704040004', '3171075704040004', '2026-08-04 21:05:32', 'SUBKONTRAK', 'Selesai', NULL);
 
 -- --------------------------------------------------------
 
@@ -1076,7 +1288,11 @@ INSERT INTO `penugasan_detail` (`id_penugasan_detail`, `id_penugasan`, `id_metod
 ('PD-00007', 'PNG-0002', 'MP0041', 'Disetujui', '2026-07-13', NULL),
 ('PD-00008', 'PNG-0003', 'MP0011', 'Disetujui', '2026-07-21', NULL),
 ('PD-00009', 'PNG-0004', 'MP0004', 'Ditugaskan', '2026-07-22', NULL),
-('PD-00010', 'PNG-0004', 'MP0015', 'Ditugaskan', '2026-07-22', NULL);
+('PD-00010', 'PNG-0004', 'MP0015', 'Ditugaskan', '2026-07-22', NULL),
+('PD-00011', 'PNG-0005', 'MP0041', 'Disetujui', '2026-08-06', NULL),
+('PD-00012', 'PNG-0005', 'MP0018', 'Disetujui', '2026-08-05', NULL),
+('PD-00013', 'PNG-0006', 'MP9005', 'Disetujui', '2026-08-04', NULL),
+('PD-00014', 'PNG-0007', 'MP9004', 'Disetujui', '2026-08-04', NULL);
 
 -- --------------------------------------------------------
 
@@ -1087,6 +1303,22 @@ INSERT INTO `penugasan_detail` (`id_penugasan_detail`, `id_penugasan`, `id_metod
 CREATE TABLE `penugasan_item` (
   `id_penugasan_detail` varchar(10) NOT NULL,
   `no_sampel` varchar(25) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `permintaan_subkontrak`
+--
+
+CREATE TABLE `permintaan_subkontrak` (
+  `id_permintaan_subkontrak` varchar(16) NOT NULL,
+  `id_registrasi` varchar(10) NOT NULL,
+  `id_fppl_parameter_metode` varchar(15) NOT NULL,
+  `id_parameter` varchar(10) NOT NULL,
+  `status_permintaan` enum('MENUNGGU_ADMIN','SELESAI','DITOLAK') NOT NULL DEFAULT 'MENUNGGU_ADMIN',
+  `diajukan_pada` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `diproses_pada` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
@@ -2010,7 +2242,7 @@ CREATE TABLE `user` (
 
 INSERT INTO `user` (`nik`, `id_role`, `username`, `email`, `password`, `refresh_token_hash`, `refresh_token_expires_at`, `created_at`, `is_active`, `reset_password_token_hash`, `reset_password_expires_at`) VALUES
 ('0987654321098765', 'RL-001', 'test', 'tets@lablingkungan.go.id', '$2b$10$dREzopzpb4BoTi9yndUFjOIL9tklzrILtRPdjrEG1sob7/Gzbk3Aq', NULL, NULL, '2026-05-07 11:39:47', 1, NULL, NULL),
-('1146658392983864', 'RL-001', 'rani', 'rekamanpjj@gmail.com', '$2b$10$HB4wC8O1F2B7qga8Ze05J.v/LfiUtcyffYzSh9OM1SCJN.7wKezzu', '6345361216115d377a4216f8542d32500bab5f46f7cad6ac5afb28946209d0de', '2026-07-23 19:43:47', '2026-05-19 09:24:33', 1, NULL, NULL),
+('1146658392983864', 'RL-001', 'rani', 'rekamanpjj@gmail.com', '$2b$10$HB4wC8O1F2B7qga8Ze05J.v/LfiUtcyffYzSh9OM1SCJN.7wKezzu', 'd981a685af46dc1f0a168fd89b3efbccdca7b5ae0fd280f3e5607050a3d1ffa9', '2026-08-14 19:06:30', '2026-05-19 09:24:33', 1, NULL, NULL),
 ('1234567890123456', 'RL-001', 'User Pelanggan', 'pelanggan@example.com', '$2b$10$bj2FHZHRo0J4Td1GtFvW2OFVSURWTnAVIWlrU7JN0b2Nw1C.s8L1K', NULL, NULL, '2026-03-09 21:18:41', 1, NULL, NULL),
 ('1878787878787879', 'RL-001', 'dewi', 'dewi@gmail.com', '$2b$10$yuVDJb5yX4GU8asn1eba3u7mZOiIqiNXTtoehNZ8TQPGzrSWq52Pe', NULL, NULL, '2026-05-19 10:19:12', 1, NULL, NULL),
 ('312131131415759', 'RL-006', 'sandiaga0', 'milkyambis@gmail.com', '$2b$10$SXYYQwcJ/HmzWjG3p3PZ9eHPjEQRLPp5HpQtc1ppSwZ0klxv0uTJS', NULL, NULL, '2026-05-02 16:25:12', 1, NULL, NULL),
@@ -2021,11 +2253,11 @@ INSERT INTO `user` (`nik`, `id_role`, `username`, `email`, `password`, `refresh_
 ('3171075704040006', 'RL-005', 'dedi', 'dewi.mdd@gmail.com', '$2b$10$2nsvwKfw8NdtsKRF1dpmTektksPgT.V1lx9DnhSp5vcLUd7r8nE3a', NULL, NULL, '2025-12-01 00:00:00', 1, NULL, NULL),
 ('3171075704040009', 'RL-003', 'sari', 'kyrinasg91@gmail.com', '$2b$10$SXYYQwcJ/HmzWjG3p3PZ9eHPjEQRLPp5HpQtc1ppSwZ0klxv0uTJS', NULL, NULL, '2025-12-01 00:00:00', 1, NULL, NULL),
 ('3171803823927329', 'RL-001', 'jayanti', 'mdd.kartika@gmail.com', '$2b$10$ai77B7IapcQ/9CRVF9FxLeH.PJDCxb7/9f8UbsEOCNObtHWXcCG1S', NULL, NULL, '2026-07-16 08:27:16', 1, NULL, NULL),
-('3172346877989832', 'RL-001', 'warga', 'warga@gmail.com', '$2b$10$NE1Zqbu253vk2bbj/Uh5.Ocfbds/3utkmIjHirbUngJW5CVE9bLPu', '5e6f0fda4c12324e070b676f4d9068a49df978ee85e0261711b0a2b1ffd6b8d2', '2026-07-23 19:45:18', '2026-07-16 14:33:53', 1, NULL, NULL),
+('3172346877989832', 'RL-001', 'warga', 'warga@gmail.com', '$2b$10$NE1Zqbu253vk2bbj/Uh5.Ocfbds/3utkmIjHirbUngJW5CVE9bLPu', 'a6f5d23bcbbc6352ad2468b244848648e5d0fba18245cb6a4e18e96cd55b5724', '2026-08-14 19:06:55', '2026-07-16 14:33:53', 1, NULL, NULL),
 ('3271000000000001', 'RL-001', 'usera', 'a@a.com', 'a', NULL, NULL, '2026-08-02 17:30:29', 1, NULL, NULL),
 ('3271000000000002', 'RL-001', 'userb', 'b@b.com', 'b', NULL, NULL, '2026-08-02 17:30:29', 1, NULL, NULL),
 ('4587654345678998', 'RL-002', 'dewi.mdd', 'pakiki@gmail.com', '$2b$10$Z2NEYPlOZ7WftsRevCefAen6nrOkzn3F/G3p5aCyjdYk7MNE6HLqm', NULL, NULL, '2026-05-15 15:11:46', 1, NULL, NULL),
-('5895555555555555', 'RL-001', 'ikaw', 'ikaw@gmail.com', '$2b$10$lU/ipvN7GJRpALM6cnBIMO3QopEmFsRIm08lceyrEefoQvWChirdW', NULL, NULL, '2026-05-28 16:41:50', 1, NULL, NULL),
+('5895555555555555', 'RL-001', 'ikaw', 'ikaw@gmail.com', '$2b$10$lU/ipvN7GJRpALM6cnBIMO3QopEmFsRIm08lceyrEefoQvWChirdW', 'e39f243bedcf2f1d30825c5a7cf53a0dedf56affec547c4a30cdc290b42c65de', '2026-08-10 09:49:17', '2026-05-28 16:41:50', 1, NULL, NULL),
 ('8904803284023840', 'RL-001', 'zidah', 'zidah@gmail.com', '$2b$10$82TW713bx3RBpuG1zXQPk.ljxzwowdO5c4lFEkyNj1lTBQ.R1zDBm', NULL, NULL, '2026-05-28 08:16:12', 1, NULL, NULL);
 
 --
@@ -2048,7 +2280,8 @@ ALTER TABLE `fppl`
   ADD UNIQUE KEY `uq_fppl_nomor` (`nomor_fppl`),
   ADD KEY `idx_fppl_pelanggan` (`id_pelanggan`),
   ADD KEY `idx_fppl_tarif_pengambilan` (`id_tarif_pengambilan`),
-  ADD KEY `idx_fppl_diverifikasi_oleh` (`diverifikasi_oleh`);
+  ADD KEY `idx_fppl_diverifikasi_oleh` (`diverifikasi_oleh`),
+  ADD KEY `idx_fppl_terakhir_diubah_oleh` (`terakhir_diubah_oleh`);
 
 --
 -- Indexes for table `fppl_parameter_metode`
@@ -2272,6 +2505,15 @@ ALTER TABLE `penugasan_item`
   ADD KEY `idx_penugasan_item_sampel` (`no_sampel`);
 
 --
+-- Indexes for table `permintaan_subkontrak`
+--
+ALTER TABLE `permintaan_subkontrak`
+  ADD PRIMARY KEY (`id_permintaan_subkontrak`),
+  ADD KEY `fk_permintaan_subkontrak_fppl` (`id_registrasi`),
+  ADD KEY `fk_permintaan_subkontrak_fpm` (`id_fppl_parameter_metode`),
+  ADD KEY `fk_permintaan_subkontrak_parameter` (`id_parameter`);
+
+--
 -- Indexes for table `pkt_bm`
 --
 ALTER TABLE `pkt_bm`
@@ -2376,7 +2618,8 @@ ALTER TABLE `aktivitas_sistem_log`
 --
 ALTER TABLE `fppl`
   ADD CONSTRAINT `fk_fppl_pelanggan` FOREIGN KEY (`id_pelanggan`) REFERENCES `pelanggan` (`id_pelanggan`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_fppl_tarif_pengambilan` FOREIGN KEY (`id_tarif_pengambilan`) REFERENCES `tarif_pengambilan` (`id_tarif_pengambilan`) ON DELETE SET NULL ON UPDATE CASCADE;
+  ADD CONSTRAINT `fk_fppl_tarif_pengambilan` FOREIGN KEY (`id_tarif_pengambilan`) REFERENCES `tarif_pengambilan` (`id_tarif_pengambilan`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_fppl_terakhir_diubah_oleh` FOREIGN KEY (`terakhir_diubah_oleh`) REFERENCES `user` (`nik`);
 
 --
 -- Constraints for table `fppl_parameter_metode`
@@ -2512,6 +2755,14 @@ ALTER TABLE `penugasan_detail`
 ALTER TABLE `penugasan_item`
   ADD CONSTRAINT `fk_penugasan_item_detail` FOREIGN KEY (`id_penugasan_detail`) REFERENCES `penugasan_detail` (`id_penugasan_detail`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_penugasan_item_sampel` FOREIGN KEY (`no_sampel`) REFERENCES `sampel` (`no_sampel`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `permintaan_subkontrak`
+--
+ALTER TABLE `permintaan_subkontrak`
+  ADD CONSTRAINT `fk_permintaan_subkontrak_fpm` FOREIGN KEY (`id_fppl_parameter_metode`) REFERENCES `fppl_parameter_metode` (`id_fppl_parameter_metode`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_permintaan_subkontrak_fppl` FOREIGN KEY (`id_registrasi`) REFERENCES `fppl` (`id_registrasi`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_permintaan_subkontrak_parameter` FOREIGN KEY (`id_parameter`) REFERENCES `parameter` (`id_parameter`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `pkt_bm`
