@@ -186,22 +186,35 @@ export const buildSampleReceiptForms = (requestItem) => {
       counterByType[sampleTypeName] = 0;
     }
 
+    const paramsList = getSampleParameterMethods(sample).map(pm => ({
+      id_fppl_parameter_metode: pm.id_fppl_parameter_metode || pm.idFpplParameterMetode,
+      nama_parameter: getParameterName(pm),
+      wadah: '',
+      volume_ml: '',
+      perlakuan_pengawetan: ''
+    }));
+
     for (let unitIndex = 0; unitIndex < totalSamples; unitIndex += 1) {
       counterByType[sampleTypeName] += 1;
 
       forms.push({
         id_fppl_sampel: sample.id_fppl_sampel,
+        id_registrasi: sample.id_registrasi,
+        id_jenis_sampel: sample.id_jenis_sampel,
+        id_reg_bm: sample.id_reg_bm,
         sample_group_index: groupIndex,
         sample_unit_index: unitIndex + 1,
         sample_type_counter: counterByType[sampleTypeName],
         sample_type_name: sampleTypeName,
         sample_label: `${sampleTypeName} ${counterByType[sampleTypeName]}`,
         tanggal_pengambilan_sampel: '',
-        kondisi: 'Sesuai',
+
         catatan: '',
         acuan_pengambilan_sampel: '',
+        lokasi_spesifik: '',
         koordinat: '',
         id_sampel: '',
+        parameters: JSON.parse(JSON.stringify(paramsList)),
       });
     }
   });
@@ -220,11 +233,11 @@ export const getParameterMethod = (sampleParameterMethod) =>
 
 export const getParameterName = (sampleParameterMethod) => {
   const directParameter = sampleParameterMethod?.parameter || sampleParameterMethod?.Parameter;
-  if (directParameter?.nama_parameter) return directParameter.nama_parameter;
+  if (directParameter?.nama_parameter || directParameter?.namaParameter) return directParameter.nama_parameter || directParameter.namaParameter;
 
   const parameterMethod = getParameterMethod(sampleParameterMethod);
   const pmParameter = parameterMethod?.Parameter || parameterMethod?.parameter || null;
-  return pmParameter?.nama_parameter || '-';
+  return pmParameter?.nama_parameter || pmParameter?.namaParameter || '-';
 };
 
 export const getActualSamples = (requestSample) =>

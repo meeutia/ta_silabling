@@ -124,7 +124,6 @@ listRequests = async (userNik, role, queryStatus) => {
                         'tanggal_penerbitan',
                         'file_lhu_path',
                         'qc_at',
-                        'kalab_at',
                         'status_lhu',
                         'created_at',
                         'updated_at'
@@ -209,7 +208,6 @@ listRequests = async (userNik, role, queryStatus) => {
                                 'id_reg_bm',
                                 'tanggal_pengambilan_sampel',
                                 'diterima_pada',
-                                'kondisi_sampel',
                                 'abnormalitas_sampel',
                                 'acuan_pengambilan_sampel',
                                 'lokasi_spesifik',

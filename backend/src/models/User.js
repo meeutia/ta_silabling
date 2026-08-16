@@ -21,10 +21,6 @@ class User extends Model {
       foreignKey: 'dibuat_oleh',
       as: 'aktivitas_sistem_log',
     });
-    User.hasMany(models.Lhu, {
-      foreignKey: 'file_lhu_signed_uploaded_by',
-      as: 'uploaded_signed_lhus',
-    });
   }
 
   getPrimaryKeyValue() {

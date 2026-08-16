@@ -10,7 +10,7 @@ import {
   getAcuanPengambilanSampel,
   getAbnormalitasSampel,
   getJamPenerimaanSampel,
-  getKondisiSampel,
+
   getTanggalPenerimaanSampel,
   getTanggalPengambilanSampel,
 } from './analisDetailUtils';
@@ -63,13 +63,6 @@ function getAssignmentInfoValues(detail, worksheet, resultRows) {
     worksheet.acuan_pengambilan_sampel ||
     resultRows[0]?.acuan_pengambilan_sampel ||
     resultRows[0]?.acuanPengambilanSampel ||
-    '-';
-
-  const kondisiSampel =
-    detail.kondisiSampel ||
-    detail.kondisi_sampel ||
-    resultRows[0]?.kondisi_sampel ||
-    resultRows[0]?.kondisiSampel ||
     '-';
 
   const jenisContoh =
@@ -165,7 +158,7 @@ function getAssignmentInfoValues(detail, worksheet, resultRows) {
     jamPenerimaanSampel,
     abnormalitasSampel,
     acuanPengambilanSampel,
-    kondisiSampel,
+
     jenisContoh,
     parameterPengujian,
     metodePengujian,
@@ -194,7 +187,7 @@ export function AnalisAssignmentInfoSection({
     jamPenerimaanSampel,
     abnormalitasSampel,
     acuanPengambilanSampel,
-    kondisiSampel,
+
     jenisContoh,
     parameterPengujian,
     metodePengujian,
@@ -269,11 +262,7 @@ export function AnalisAssignmentInfoSection({
                       getJamPenerimaanSampel(row) ||
                       jamPenerimaanSampel;
 
-                    const rowKondisiSampel =
-                      row.kondisiSampel ||
-                      row.kondisi_sampel ||
-                      getKondisiSampel(row) ||
-                      kondisiSampel;
+
 
                     const rowJenisContoh =
                       row.jenisSampel ||
@@ -310,9 +299,7 @@ export function AnalisAssignmentInfoSection({
                             {formatDateTimeDisplay(rowTanggalPenerimaan, rowJamPenerimaan)}
                           </InfoRow>
 
-                          <InfoRow label="Kondisi Sampel">
-                            {rowKondisiSampel}
-                          </InfoRow>
+
 
                           <InfoRow label="Jenis Contoh">
                             {rowJenisContoh}

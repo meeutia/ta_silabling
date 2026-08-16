@@ -25,6 +25,27 @@ SampelParameter.init({
     id_fppl_parameter_metode: {
         type: DataTypes.STRING(20),
         primaryKey: true
+    },
+    wadah: {
+        type: DataTypes.ENUM('HDPE', 'Botol Kaca', 'Botol Kaca Gelap', 'Jerigen', 'Plastik Food Grade'),
+        allowNull: true
+    },
+    volume_ml: {
+        type: DataTypes.SMALLINT.UNSIGNED,
+        allowNull: true
+    },
+    perlakuan_pengawetan: {
+        type: DataTypes.ENUM(
+            'Didinginkan < 6\u00b0C',
+            '+ H2SO4 sampai pH < 2',
+            '+ HNO3 sampai pH < 2',
+            '+ NaOH sampai pH > 12',
+            '+ NaOH sampai pH > 12 + Dingin',
+            '+ Na2S2O3',
+            'Saring segera',
+            'Tanpa Pengawet'
+        ),
+        allowNull: true
     }
 
 }, {

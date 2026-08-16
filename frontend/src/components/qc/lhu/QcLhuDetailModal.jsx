@@ -307,7 +307,7 @@ export function QcLhuDetailModal({
                         getJamPenerimaanSampel(sampleInfo) || getJamPenerimaanSampel(lhuInfo)
                       )}
                     />
-                    <InfoRow label="Kondisi Sampel" value={pickValue(sampleInfo.kondisiSampel, sampleInfo.kondisi_sampel, lhuInfo.kondisi_sampel)} />
+
                     <InfoRow label="Abnormalitas" value={selectedAbnormalitasText} />
                     <InfoRow label="Acuan Pengambilan Sampel" value={selectedAcuanPengambilanText} />
                   </div>

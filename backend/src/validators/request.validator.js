@@ -1,3 +1,6 @@
+const fs = require('fs');
+const multer = require('multer');
+const { WADAH_OPTIONS, PERLAKUAN_PENGAWETAN_OPTIONS } = require('../constants/pengamanan-sampel');
 const { errorResponse } = require('../utils/response');
 const {
   asTrimmedText,
@@ -476,11 +479,6 @@ const validateReceiveSamples = (req, res, next) => {
     });
     if (sampleDateError) return errorResponse(res, sampleDateError, 400);
 
-    const condition = pickRowValue(row, 'kondisi_sampel', 'kondisiSampel') || row.kondisi;
-    if (!asTrimmedText(condition)) {
-      return errorResponse(res, `Kondisi sampel ${label} wajib diisi.`, 400);
-    }
-
     const acuan = pickRowValue(row, 'acuan_pengambilan_sampel', 'acuanPengambilanSampel');
     if (!asTrimmedText(acuan)) {
       return errorResponse(res, `Acuan pengambilan sampel ${label} wajib diisi.`, 400);
@@ -502,6 +500,36 @@ const validateReceiveSamples = (req, res, next) => {
 
     if (asTrimmedText(row.abnormalitas_sampel || row.abnormalitasSampel || row.catatan || requestData.abnormalitas_sampel || requestData.abnormalitasSampel).length > 1000) {
       return errorResponse(res, `Catatan sampel ${label} maksimal 1000 karakter.`, 400);
+    }
+
+    if (row.parameters) {
+      if (!Array.isArray(row.parameters)) {
+        return errorResponse(res, `Parameters sampel ${label} harus berupa array.`, 400);
+      }
+      for (const p of row.parameters) {
+        if (!p.id_fppl_parameter_metode) {
+           return errorResponse(res, `ID Parameter Metode pada sampel ${label} wajib diisi.`, 400);
+        }
+        if (p.wadah !== undefined && p.wadah !== null && String(p.wadah).trim() !== '') {
+          if (!WADAH_OPTIONS.includes(String(p.wadah).trim())) {
+             return errorResponse(res, `Wadah pada parameter sampel ${label} tidak valid.`, 400);
+          }
+        }
+        if (p.perlakuan_pengawetan !== undefined && p.perlakuan_pengawetan !== null && String(p.perlakuan_pengawetan).trim() !== '') {
+          if (!PERLAKUAN_PENGAWETAN_OPTIONS.includes(String(p.perlakuan_pengawetan).trim())) {
+             return errorResponse(res, `Perlakuan pengawetan pada parameter sampel ${label} tidak valid.`, 400);
+          }
+        }
+        if (p.volume_ml !== undefined && p.volume_ml !== null && String(p.volume_ml).trim() !== '') {
+           const vol = Number(p.volume_ml);
+           if (!Number.isInteger(vol)) {
+             return errorResponse(res, `Volume pada parameter sampel ${label} harus berupa bilangan bulat.`, 400);
+           }
+           if (vol < 0 || vol > 65535) {
+             return errorResponse(res, `Volume pada parameter sampel ${label} harus antara 0 dan 65535.`, 400);
+           }
+        }
+      }
     }
   }
 

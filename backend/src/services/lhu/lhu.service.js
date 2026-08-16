@@ -107,7 +107,7 @@ class LhuService {
         const nomorLhuValue = lhuPlain.nomorLhu || lhuPlain.nomor_lhu || lhuNo;
         const idPktBmValue = lhuPlain.idPktBm || lhuPlain.id_pkt_bm;
         const qcByValue = lhuPlain.qcBy || lhuPlain.qc_by;
-        const kalabByValue = lhuPlain.kalabBy || lhuPlain.kalab_by;
+        const kalabByValue = null;
 
         const sampleInfos = dedupeSampleInfos(await getSampleInfosForLhu(nomorLhuValue));
         const sampleInfo = sampleInfos[0] || {};

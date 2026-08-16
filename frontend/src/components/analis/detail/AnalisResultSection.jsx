@@ -102,6 +102,15 @@ export function AnalisResultSection({
                   No Sampel
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  Wadah
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  Volume (mL)
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  Perlakuan
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                   Hasil
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
@@ -119,7 +128,7 @@ export function AnalisResultSection({
             <tbody className="divide-y divide-gray-200">
               {resultRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
                     Tidak ada sampel pada tugas ini.
                   </td>
                 </tr>
@@ -137,6 +146,15 @@ export function AnalisResultSection({
                     <tr key={row.noSampel || index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-xs font-mono font-semibold text-gray-900">
                         {row.noSampel}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-900">
+                        {row.sampel?.sampel_parameters?.find(sp => String(sp.id_fppl_parameter_metode) === String(row.id_fppl_parameter_metode))?.wadah || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-900">
+                        {row.sampel?.sampel_parameters?.find(sp => String(sp.id_fppl_parameter_metode) === String(row.id_fppl_parameter_metode))?.volume_ml ?? '-'}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-900">
+                        {row.sampel?.sampel_parameters?.find(sp => String(sp.id_fppl_parameter_metode) === String(row.id_fppl_parameter_metode))?.perlakuan_pengawetan || '-'}
                       </td>
 
                       <td className="px-4 py-3">

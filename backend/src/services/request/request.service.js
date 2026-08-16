@@ -767,7 +767,6 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                                 'id_reg_bm',
                                 'tanggal_pengambilan_sampel',
                                 'diterima_pada',
-                                'kondisi_sampel',
                                 'abnormalitas_sampel',
                                 'acuan_pengambilan_sampel',
                                 'lokasi_spesifik',
@@ -776,6 +775,18 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                             ],
                             required: false,
                             include: [
+                                {
+                                    model: SampelParameter,
+                                    as: 'sampel_parameters',
+                                    attributes: [
+                                        'no_sampel',
+                                        'id_fppl_parameter_metode',
+                                        'wadah',
+                                        'volume_ml',
+                                        'perlakuan_pengawetan'
+                                    ],
+                                    required: false
+                                },
                                 {
                                     model: PenugasanItem,
                                     as: 'penugasan_items',
@@ -845,8 +856,6 @@ validateCompositionPersisted = async ({ id_registrasi, expectedSampelCount, expe
                                         'file_lhu_signed_path',
                                         'qc_by',
                                         'qc_at',
-                                        'kalab_by',
-                                        'kalab_at',
                                         'status_lhu',
                                         'created_at',
                                         'updated_at'

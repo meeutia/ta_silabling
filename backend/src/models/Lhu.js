@@ -88,14 +88,6 @@ Lhu.init({
     type: DataTypes.DATE,
     allowNull: true,
   },
-  kalab_by: {
-    type: DataTypes.STRING(16),
-    allowNull: true,
-  },
-  kalab_at: {
-    type: DataTypes.DATE,
-    allowNull: true,
-  },
   created_at: {
     type: DataTypes.DATE,
     allowNull: false,

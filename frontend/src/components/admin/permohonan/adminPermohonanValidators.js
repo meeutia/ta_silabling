@@ -54,7 +54,7 @@ export function validateSamplingScheduleForm({ selectedRequest, scheduleForm, is
 }
 
 const REQUIRED_RECEIPT_FIELDS = [
-  ['kondisi', 'kondisi sampel'],
+
   ['acuan_pengambilan_sampel', 'acuan pengambilan sampel'],
   ['lokasi_spesifik', 'lokasi spesifik'],
   ['koordinat', 'koordinat'],

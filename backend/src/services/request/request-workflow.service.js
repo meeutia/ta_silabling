@@ -713,7 +713,6 @@ class RequestWorkflowService {
                         id_reg_bm: fpplSampelJson.id_reg_bm,
                         tanggal_pengambilan_sampel: tanggalPengambilanSampel,
                         diterima_pada: diterimaPada,
-                        kondisi_sampel: normalizeSampleCondition(pickItemValue('kondisi_sampel', 'kondisiSampel', itemRequestData.kondisi || 'Sesuai')),
                         abnormalitas_sampel: pickItemValue('abnormalitas_sampel', 'abnormalitasSampel', itemRequestData.catatan || null),
                         acuan_pengambilan_sampel: pickItemValue('acuan_pengambilan_sampel', 'acuanPengambilanSampel'),
                         lokasi_spesifik: pickItemValue('lokasi_spesifik', 'lokasiSpesifik'),
@@ -733,8 +732,36 @@ class RequestWorkflowService {
                         createdAt: receivedAt,
                         transaction,
                     });
+                    const itemParams = Array.isArray(itemRequestData.parameters) ? itemRequestData.parameters : [];
+                    const validParamIds = parameterRows.map(p => p.id_fppl_parameter_metode);
+                    
+                    for (const p of itemParams) {
+                         if (!validParamIds.includes(p.id_fppl_parameter_metode)) {
+                             throw new Error(`Parameter ${p.id_fppl_parameter_metode} tidak terdaftar pada jenis sampel ${jenisSampel}.`);
+                         }
+                    }
+
                     for (const parameter of parameterRows) {
-                        await SampelParameter.create({ no_sampel: noSampel, id_fppl_parameter_metode: parameter.id_fppl_parameter_metode }, { transaction });
+                        const matchingParam = itemParams.find(p => p.id_fppl_parameter_metode === parameter.id_fppl_parameter_metode);
+                        let wadah = null;
+                        let volume_ml = null;
+                        let perlakuan_pengawetan = null;
+                        
+                        if (matchingParam) {
+                            wadah = matchingParam.wadah || null;
+                            if (matchingParam.volume_ml !== undefined && matchingParam.volume_ml !== null && String(matchingParam.volume_ml).trim() !== '') {
+                                volume_ml = Number(matchingParam.volume_ml);
+                            }
+                            perlakuan_pengawetan = matchingParam.perlakuan_pengawetan || null;
+                        }
+
+                        await SampelParameter.create({ 
+                            no_sampel: noSampel, 
+                            id_fppl_parameter_metode: parameter.id_fppl_parameter_metode,
+                            wadah,
+                            volume_ml,
+                            perlakuan_pengawetan
+                        }, { transaction });
                     }
                     generatedSamples.push({
                         no_sampel: noSampel,

@@ -120,7 +120,7 @@ class CustomerRequestController {
             return successResponse(res, 'Berhasil rincian mengambil permohonan.', secureKnownFileFields(data));
         }
         catch (error) {
-            console.error('this.detailRequest error:', error);
+            console.error(`this.detailRequest error for id=${req.params.id}:`, error);
             const code = error.message === 'FORBIDDEN' ? 403 : 404;
             const msg = error.message === 'FORBIDDEN' ? 'Anda tidak memiliki akses ke permohonan ini.' : error.message;
             return errorResponse(res, msg, code);

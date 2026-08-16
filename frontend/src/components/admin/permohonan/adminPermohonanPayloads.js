@@ -26,10 +26,18 @@ export const buildSampleReceivePayload = (sampelFormList = []) => ({
     sample_type_counter: form.sample_type_counter ?? null,
     sample_label: emptyToNull(form.sample_label),
     tanggal_pengambilan_sampel: emptyToNull(form.tanggal_pengambilan_sampel),
-    kondisi_sampel: cleanText(form.kondisi) || 'Sesuai',
+
     abnormalitas_sampel: emptyToNull(form.catatan),
     acuan_pengambilan_sampel: emptyToNull(form.acuan_pengambilan_sampel),
     lokasi_spesifik: emptyToNull(form.lokasi_spesifik),
     koordinat: emptyToNull(form.koordinat),
+    parameters: Array.isArray(form.parameters)
+      ? form.parameters.map((p) => ({
+          id_fppl_parameter_metode: pickFirstFilled(p.id_fppl_parameter_metode),
+          wadah: emptyToNull(p.wadah),
+          volume_ml: p.volume_ml !== '' && p.volume_ml !== null && !isNaN(Number(p.volume_ml)) ? Number(p.volume_ml) : null,
+          perlakuan_pengawetan: emptyToNull(p.perlakuan_pengawetan),
+        }))
+      : [],
   })),
 });

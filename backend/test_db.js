@@ -1,0 +1,1 @@
+const sequelize = require('./src/config/database'); async function run() { const [results] = await sequelize.query('SELECT * FROM fppl_parameter_metode WHERE id_registrasi = "REG-002"'); console.log(results.length); process.exit(); } run();

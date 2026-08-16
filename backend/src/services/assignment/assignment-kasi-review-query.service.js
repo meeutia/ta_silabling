@@ -217,7 +217,7 @@ getBmParamMap = async (sample = {}) => {
             tanggalSampling: tanggalPengambilanSampel,
             tanggalJadwal: jadwal?.tanggal_jadwal || null,
             jamJadwal: jadwal?.jam_jadwal || null,
-            kondisiSampel: sample.kondisi_sampel,
+
             koordinat: sample.koordinat,
             abnormalitasSampel: sample.abnormalitas_sampel,
             acuanPengambilanSampel: sample.acuan_pengambilan_sampel || '-',

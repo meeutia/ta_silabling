@@ -249,7 +249,6 @@ class LhuPdfDataService {
                 urutanSampel: index + 1,
                 tanggalPengambilanSampel: sample.tanggalPengambilanSampel || null,
                 diterimaPada: sample.diterimaPada || null,
-                kondisiSampel: sample.kondisiSampel || null,
                 abnormalitasSampel: sample.abnormalitasSampel || null,
                 lokasiSpesifik: sample.lokasiSpesifik || null,
                 koordinat: sample.koordinat || null,
@@ -813,7 +812,7 @@ class LhuPdfDataService {
             acuanPengambilanSampel: sample.acuan_pengambilan_sampel || null,
             lokasiSpesifik: sample.lokasi_spesifik || sample.lokasi_pengambilan_sampel || null,
             koordinat: sample.koordinat || null,
-            kondisiSampel: sample.kondisi_sampel || null,
+
             statusSample: sample.status_sample || null,
             nomorLhu: sample.nomor_lhu || null,
             statusLhu: null,
@@ -1230,7 +1229,7 @@ class LhuPdfDataService {
         const firstSample = sampleInfos[0] || {};
         const sampleNos = sampleInfos.map((sample) => sample.noSampel || sample.no_sampel).filter(Boolean);
         const qcNama = await this.getPegawaiDisplayName(lhuData.qcBy || lhuData.qc_by);
-        const signer = await this.getLhuSignerSnapshot(lhuData.kalabBy || lhuData.kalab_by);
+        const signer = await this.getLhuSignerSnapshot(null);
         const kalabNama = signer.namaPegawai || null;
         const nomorFppl = firstSample.nomorFppl || firstSample.nomor_fppl || lhuData.nomorFppl || lhuData.nomor_fppl || null;
         return {

@@ -354,9 +354,7 @@ export function getJamPenerimaanSampel(row = {}) {
   );
 }
 
-export function getKondisiSampel(row = {}) {
-  return row.kondisiSampel || row.kondisi_sampel || '-';
-}
+
 
 export function getKoordinatSampel(row = {}) {
   return row.koordinat || '-';

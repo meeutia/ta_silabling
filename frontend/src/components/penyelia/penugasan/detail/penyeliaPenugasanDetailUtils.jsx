@@ -73,14 +73,6 @@ export function getAbnormalitasSampel(row = {}) {
   );
 }
 
-export function getKondisiSampel(row = {}) {
-  return (
-    row.kondisi_sampel ||
-    row.kondisiSampel ||
-    '-'
-  );
-}
-
 export function getKoordinatSampel(row = {}) {
   return (
     row.koordinat ||

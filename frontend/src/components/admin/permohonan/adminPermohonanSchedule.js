@@ -75,7 +75,6 @@ export function buildInitialSampleReceiptForms(requestItem, activeSchedule = get
   return buildSampleReceiptForms(requestItem).map((form) => ({
     ...form,
     tanggal_pengambilan_sampel: usesOfficerSampling(requestItem) ? receiptDateDefault : '',
-    kondisi: 'Sesuai',
   }));
 }
 

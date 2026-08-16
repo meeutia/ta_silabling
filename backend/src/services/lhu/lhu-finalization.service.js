@@ -175,7 +175,6 @@ class LhuFinalizationService {
             lokasiSpesifik: sample.lokasiSpesifik || sample.lokasi_spesifik || sample.lokasiPengambilanSampel || sample.lokasi_pengambilan_sampel || null,
             lokasiPengambilanSampel: sample.lokasiSpesifik || sample.lokasi_spesifik || sample.lokasiPengambilanSampel || sample.lokasi_pengambilan_sampel || null,
             koordinat: sample.koordinat || null,
-            kondisiSampel: sample.kondisiSampel || sample.kondisi_sampel || null,
             totalParameter: readiness.totalParameter || 0,
             totalSelesai: readiness.totalSelesai || 0,
             siapQc: Boolean(readiness.ready),
@@ -692,9 +691,7 @@ class LhuFinalizationService {
                 file_lhu_path: null,
                 qc_by: currentNik,
                 qc_at: issuedAt,
-                kalab_by: null,
-                kalab_at: null,
-                status_lhu: LHU_NEXT_STATUS.AFTER_QC_FINALIZE,
+                                                status_lhu: LHU_NEXT_STATUS.AFTER_QC_FINALIZE,
             };
             if (lhuInstance) {
                 await Lhu.update(lhuRequestData, { where: { nomor_lhu: oldNomorLhu }, transaction });

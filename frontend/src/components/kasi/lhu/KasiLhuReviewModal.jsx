@@ -8,7 +8,7 @@ import {
   getCatatanRevisiParts,
   getJamPenerimaanSampel,
   getInsituLabel,
-  getKondisiSampel,
+
   getKoordinatSampel,
   getLkaHasilTarget,
   getLkaHasilTargetKey,
@@ -540,7 +540,7 @@ function KasiLhuSampleInfoSection({ sampleInfo, selectedNoSampel, selectedStatus
             value={sampleInfo.jenisSampel || sampleInfo.jenis_sampel}
           />
 
-          <InfoRow label="Kondisi Sampel" value={getKondisiSampel(sampleInfo)} />
+
 
           <InfoRow label="Koordinat" value={getKoordinatSampel(sampleInfo)} />
 

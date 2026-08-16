@@ -5,6 +5,7 @@ const { Lhu, Fppl, Pelanggan } = require('../../models/Associations');
 const sequelize = require('../../config/database');
 const WorkflowLogService = require('../workflow/workflow-log.service');
 const Roles = require('../../constants/roles');
+const pdfSecurity = require('../../utils/pdf-security.util');
 
 const UPLOAD_ROOT_DIR = path.join(process.cwd(), 'uploads');
 const SIGNED_LHU_DIR = path.join(UPLOAD_ROOT_DIR, 'lhu-signed');
@@ -108,7 +109,12 @@ class LhuSignedFileService {
       const uniqueName = `signed-lhu_${crypto.randomUUID()}${ext}`;
       const finalStoredPath = path.join(SIGNED_LHU_DIR, uniqueName);
 
-      await fs.rename(uploadedFile.path, finalStoredPath);
+      try {
+        pdfSecurity.protectPdf(uploadedFile.path, finalStoredPath);
+        await fs.unlink(uploadedFile.path); // clean up the raw upload
+      } catch (e) {
+        throw new Error('Gagal mengenkripsi dan memproses dokumen PDF: ' + e.message);
+      }
 
       await lhu.update({
         file_lhu_signed_path: finalStoredPath,
@@ -190,7 +196,12 @@ class LhuSignedFileService {
       const uniqueName = `signed-lhu_${crypto.randomUUID()}${ext}`;
       const newStoredPath = path.join(SIGNED_LHU_DIR, uniqueName);
 
-      await fs.rename(uploadedFile.path, newStoredPath);
+      try {
+        pdfSecurity.protectPdf(uploadedFile.path, newStoredPath);
+        await fs.unlink(uploadedFile.path); // clean up the raw upload
+      } catch (e) {
+        throw new Error('Gagal mengenkripsi dan memproses dokumen PDF: ' + e.message);
+      }
 
       await lhu.update({
         file_lhu_signed_path: newStoredPath,
@@ -270,7 +281,7 @@ class LhuSignedFileService {
     return {
       absolutePath,
       mimeType: 'application/pdf',
-      originalName: `LHU_${nomorLhu.replace(/[^a-zA-Z0-9]/g, '_')}_signed.pdf`,
+      originalName: `${nomorLhu.replace(/[^a-zA-Z0-9]/g, '_')}_signed.pdf`,
     };
   }
 

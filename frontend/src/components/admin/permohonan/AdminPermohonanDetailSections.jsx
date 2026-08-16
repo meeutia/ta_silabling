@@ -339,12 +339,6 @@ export function SampleParameterDetailSection({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm">
                               <div className="rounded-lg bg-gray-50 p-3">
-                                <p className="text-gray-500">Kondisi Sampel</p>
-                                <p className="font-medium text-gray-900">
-                                  {actualSample.kondisi_sampel || '-'}
-                                </p>
-                              </div>
-                              <div className="rounded-lg bg-gray-50 p-3">
                                 <p className="text-gray-500">Lokasi Spesifik</p>
                                 <p className="font-medium text-gray-900 break-words">
                                   {actualSample.lokasi_spesifik || actualSample.lokasiSpesifik || '-'}
@@ -372,6 +366,7 @@ export function SampleParameterDetailSection({
 
                             <ParameterMethodTable
                               parameterMethods={parameterMethods}
+                              actualSample={actualSample}
                               useRenderedLabCapability={false}
                             />
                           </div>
@@ -385,6 +380,7 @@ export function SampleParameterDetailSection({
 
                         <ParameterMethodTable
                           parameterMethods={parameterMethods}
+                          actualSample={null}
                           useRenderedLabCapability
                         />
                       </div>
@@ -407,7 +403,7 @@ function hasDeterminedMethod(sampleParameterMethod) {
   return Boolean(methodName && methodName !== '-' && methodName.toLowerCase() !== 'belum ditentukan');
 }
 
-function ParameterMethodTable({ parameterMethods, useRenderedLabCapability = false }) {
+function ParameterMethodTable({ parameterMethods, actualSample, useRenderedLabCapability = false }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[820px] text-sm border border-gray-200 rounded-lg overflow-hidden bg-white">
@@ -417,6 +413,9 @@ function ParameterMethodTable({ parameterMethods, useRenderedLabCapability = fal
             <th className="px-3 py-2 text-left font-semibold text-gray-700">Metode</th>
             <th className="px-3 py-2 text-left font-semibold text-gray-700">Harga</th>
             <th className="px-3 py-2 text-left font-semibold text-gray-700">Kemampuan Lab</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700">Wadah</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700">Volume (mL)</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700">Perlakuan</th>
             <th className="px-3 py-2 text-left font-semibold text-gray-700">Acuan</th>
             <th className="px-3 py-2 text-left font-semibold text-gray-700">Akreditasi</th>
           </tr>
@@ -446,6 +445,15 @@ function ParameterMethodTable({ parameterMethods, useRenderedLabCapability = fal
                         ? renderLabCapabilityCell(sampleParameterMethod)
                         : getLabCapabilityLabel(sampleParameterMethod))
                       : '-'}
+                  </td>
+                  <td className="px-3 py-2 text-gray-900">
+                    {actualSample?.sampel_parameters?.find(sp => sp.id_fppl_parameter_metode === sampleParameterMethod.id_fppl_parameter_metode)?.wadah || '-'}
+                  </td>
+                  <td className="px-3 py-2 text-gray-900">
+                    {actualSample?.sampel_parameters?.find(sp => sp.id_fppl_parameter_metode === sampleParameterMethod.id_fppl_parameter_metode)?.volume_ml ?? '-'}
+                  </td>
+                  <td className="px-3 py-2 text-gray-900">
+                    {actualSample?.sampel_parameters?.find(sp => sp.id_fppl_parameter_metode === sampleParameterMethod.id_fppl_parameter_metode)?.perlakuan_pengawetan || '-'}
                   </td>
                   <td className="px-3 py-2 text-gray-900">
                     {methodDetermined ? getMethodReference(sampleParameterMethod) : '-'}

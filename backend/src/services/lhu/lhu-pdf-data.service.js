@@ -286,7 +286,7 @@ getPlain = (instance) => {
             statusLhu: header.status_lhu || null,
             fileLhuPath: header.file_lhu_path || null,
             qcBy: header.qc_by || null,
-            kalabBy: header.kalab_by || null,
+            kalabBy: null,
             nomorFppl: header.nomor_fppl || null,
             tanggalPendaftaran: header.tanggal_pendaftaran || null,
             maksudPengujian: header.maksud_pengujian || null,
@@ -334,8 +334,7 @@ getPlain = (instance) => {
                 tanggalPengambilanSampel: sample.tanggal_pengambilan_sampel || null,
                 diterima_pada: sample.diterima_pada || null,
                 diterimaPada: sample.diterima_pada || null,
-                kondisi_sampel: sample.kondisi_sampel || null,
-                kondisiSampel: sample.kondisi_sampel || null,
+
                 abnormalitas_sampel: sample.abnormalitas_sampel || null,
                 abnormalitasSampel: sample.abnormalitas_sampel || null,
                 lokasi_spesifik: sample.lokasi_spesifik || null,
@@ -681,7 +680,7 @@ getPlain = (instance) => {
         const storedDetailOrder = explicitDetailOrder.length ? explicitDetailOrder : await this.getStoredDetailOrderForLhu(nomorLhu, transaction);
         const [qc, kalab, details] = await Promise.all([
             this.getPegawaiSnapshot(header.qc_by || header.qcBy, transaction),
-            this.getLhuSignerSnapshot(header.kalab_by || header.kalabBy, transaction),
+            this.getLhuSignerSnapshot(null, transaction),
             this.getLhuDetailRowsForPdf(nomorLhu, header, sampleRows, transaction, { ...options, detailOrder: storedDetailOrder }),
         ]);
         const firstSample = sampleRows[0] || {};
@@ -725,8 +724,7 @@ getPlain = (instance) => {
             jamPenerimaan: tanggalPenerimaan ? new Date(tanggalPenerimaan).toTimeString().slice(0, 8) : null,
             tanggal_sampling: tanggalPengambilanSampel,
             tanggalSampling: tanggalPengambilanSampel,
-            kondisi_sampel: firstSample.kondisi_sampel || firstSample.kondisiSampel || null,
-            kondisiSampel: firstSample.kondisi_sampel || firstSample.kondisiSampel || null,
+
             abnormalitas_sampel: abnormalitasSampel,
             abnormalitasSampel,
             lokasi_spesifik: lokasiPengambilanSampel,

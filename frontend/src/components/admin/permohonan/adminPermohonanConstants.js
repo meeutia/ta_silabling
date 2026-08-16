@@ -68,3 +68,24 @@ export const REQUEST_TIME_OPTIONS = Array.from({ length: 17 }, (_, index) => {
   const minute = totalMinutes % 60;
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 });
+
+/** Single source of truth — harus identik dengan DB ENUM dan backend constants */
+export const WADAH_OPTIONS = [
+  'HDPE',
+  'Botol Kaca',
+  'Botol Kaca Gelap',
+  'Jerigen',
+  'Plastik Food Grade',
+];
+
+/** Single source of truth — harus identik dengan DB ENUM dan backend constants */
+export const PERLAKUAN_PENGAWETAN_OPTIONS = [
+  'Didinginkan < 6\u00b0C',
+  '+ H2SO4 sampai pH < 2',
+  '+ HNO3 sampai pH < 2',
+  '+ NaOH sampai pH > 12',
+  '+ NaOH sampai pH > 12 + Dingin',
+  '+ Na2S2O3',
+  'Saring segera',
+  'Tanpa Pengawet',
+];

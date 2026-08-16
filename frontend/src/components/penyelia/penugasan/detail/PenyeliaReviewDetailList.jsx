@@ -8,7 +8,6 @@ import {
   getAbnormalitasSampel,
   getAcuanPengambilanSampel,
   getKoordinatSampel,
-  getKondisiSampel,
   getPenyeliaResponseNote,
   getRevisionResultComparison,
   getSampleKasiPengujianRevisionNote,
@@ -203,8 +202,14 @@ function PenyeliaReviewSamplesTable({
             <th className="w-[230px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
               Acuan Pengambilan
             </th>
-            <th className="w-[190px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
-              Kondisi Sampel
+            <th className="w-[150px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+              Wadah
+            </th>
+            <th className="w-[150px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+              Volume (mL)
+            </th>
+            <th className="w-[180px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+              Perlakuan
             </th>
             <th className="w-[220px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
               Abnormalitas Sampel
@@ -234,7 +239,7 @@ function PenyeliaReviewSamplesTable({
           {(detail.samples || []).length === 0 ? (
             <tr>
               <td
-                colSpan={12}
+                colSpan={14}
                 className="px-4 py-8 text-center text-sm text-gray-500"
               >
                 Belum ada sampel pada detail ini.
@@ -280,8 +285,16 @@ function PenyeliaReviewSamplesTable({
                     {getAcuanPengambilanSampel(sample)}
                   </td>
 
-                  <td className="px-4 py-3 text-sm text-gray-700 align-top">
-                    {getKondisiSampel(sample)}
+                  <td className="px-4 py-3 text-xs text-gray-900 align-top">
+                    {sample?.sampel_parameters?.find(sp => String(sp.id_fppl_parameter_metode) === String(detail.idMetodeParameter || detail.id_metode_parameter))?.wadah || '-'}
+                  </td>
+
+                  <td className="px-4 py-3 text-xs text-gray-900 align-top">
+                    {sample?.sampel_parameters?.find(sp => String(sp.id_fppl_parameter_metode) === String(detail.idMetodeParameter || detail.id_metode_parameter))?.volume_ml ?? '-'}
+                  </td>
+
+                  <td className="px-4 py-3 text-xs text-gray-900 align-top">
+                    {sample?.sampel_parameters?.find(sp => String(sp.id_fppl_parameter_metode) === String(detail.idMetodeParameter || detail.id_metode_parameter))?.perlakuan_pengawetan || '-'}
                   </td>
 
                   <td className="px-4 py-3 text-sm text-gray-700 align-top">

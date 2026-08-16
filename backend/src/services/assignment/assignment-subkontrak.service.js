@@ -344,7 +344,6 @@ isValidResultExpression = (value) => {
                     tanggalSampling: sampel.tanggal_pengambilan_sampel || null,
                     tanggalPenerimaan: sampel.diterima_pada || null,
                     jamPenerimaan: (sampel.diterima_pada ? new Date(sampel.diterima_pada).toTimeString().slice(0, 8) : null) || null,
-                    kondisiSampel: sampel.kondisi_sampel || '-',
                     abnormalitasSampel: sampel.abnormalitas_sampel || '-',
                     acuanPengambilanSampel: sampel.acuan_pengambilan_sampel || '-',
                     koordinat: sampel.koordinat || '-',

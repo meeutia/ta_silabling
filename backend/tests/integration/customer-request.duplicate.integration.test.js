@@ -5,6 +5,7 @@ const { makeToken } = require('../fixtures/integration-helpers');
 const RequestStatus = require('../../src/constants/request-status');
 const Roles = require('../../src/constants/roles');
 const { generateId } = require('../../src/utils/id-generator');
+const { assertSafeTestDatabase } = require('../../src/utils/test-db-safety.util');
 
 describe('Customer Request Duplication Integration', () => {
     let tokenA;
@@ -21,10 +22,27 @@ describe('Customer Request Duplication Integration', () => {
     });
 
     afterEach(async () => {
-        await FpplParameterMetode.destroy({ where: {} });
-        await FpplSampel.destroy({ where: {} });
-        await Fppl.destroy({ where: {} });
-        await Pelanggan.destroy({ where: {} });
+        assertSafeTestDatabase();
+        
+        const pelangganList = await Pelanggan.findAll({ where: { nik: [nikA, nikB] } });
+        const pelangganIds = pelangganList.map(p => p.id_pelanggan);
+        
+        if (pelangganIds.length > 0) {
+            const fpplList = await Fppl.findAll({ where: { id_pelanggan: pelangganIds } });
+            const regIds = fpplList.map(f => f.id_registrasi);
+            
+            if (regIds.length > 0) {
+                await FpplParameterMetode.destroy({ where: { id_registrasi: regIds } });
+                await FpplSampel.destroy({ where: { id_registrasi: regIds } });
+                await Fppl.destroy({ where: { id_registrasi: regIds } });
+            }
+            await Pelanggan.destroy({ where: { id_pelanggan: pelangganIds } });
+        }
+    });
+
+    afterAll(async () => {
+        assertSafeTestDatabase();
+        await User.destroy({ where: { nik: [nikA, nikB] } });
     });
 
     const createPayload = (overrides = {}) => ({
@@ -245,8 +263,10 @@ describe('Customer Request Duplication Integration', () => {
         const failedStatus = statuses.find(s => s !== 201);
         expect([409, 400]).toContain(failedStatus);
         
-        // Pastikan hanya ada 1 FPPL aktif
-        const count = await Fppl.count();
+        // Pastikan hanya ada 1 FPPL aktif untuk test user
+        const pelangganList = await Pelanggan.findAll({ where: { nik: [nikA, nikB] } });
+        const pelangganIds = pelangganList.map(p => p.id_pelanggan);
+        const count = await Fppl.count({ where: { id_pelanggan: pelangganIds } });
         expect(count).toBe(1);
     });
 });

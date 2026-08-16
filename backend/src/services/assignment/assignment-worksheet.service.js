@@ -289,7 +289,7 @@ class AssignmentWorksheetService {
                 tanggal_pengambilan_sampel: sampel.tanggal_pengambilan_sampel || null,
                 tanggal_penerimaan: sampel.diterima_pada || null,
                 jam_penerimaan: (sampel.diterima_pada ? new Date(sampel.diterima_pada).toTimeString().slice(0, 8) : null) || null,
-                kondisi_sampel: sampel.kondisi_sampel || '-',
+
                 abnormalitas_sampel: sampel.abnormalitas_sampel || '-',
                 acuan_pengambilan_sampel: sampel.acuan_pengambilan_sampel || '-',
                 koordinat: sampel.koordinat || '-',
@@ -379,7 +379,7 @@ class AssignmentWorksheetService {
                 tanggalSampling: row.tanggal_pengambilan_sampel || null,
                 tanggalPenerimaan: row.tanggal_penerimaan || null,
                 jamPenerimaan: row.jam_penerimaan || null,
-                kondisiSampel: row.kondisi_sampel || '-',
+
                 koordinat: row.koordinat || '-',
                 abnormalitasSampel: row.abnormalitas_sampel || '-',
                 acuanPengambilanSampel: row.acuan_pengambilan_sampel || '-',

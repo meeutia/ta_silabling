@@ -556,18 +556,8 @@ CREATE TABLE `lhu` (
   `tanggal_penerbitan` date DEFAULT NULL,
   `file_lhu_path` varchar(255) DEFAULT NULL,
   `file_lhu_signed_path` varchar(255) DEFAULT NULL,
-  `file_lhu_signed_original_name` varchar(255) DEFAULT NULL,
-  `file_lhu_signed_mime` varchar(100) DEFAULT NULL,
-  `file_lhu_signed_size` bigint UNSIGNED DEFAULT NULL,
-  `file_lhu_signed_checksum` char(64) DEFAULT NULL,
-  `file_lhu_signed_uploaded_by` varchar(16) DEFAULT NULL,
-  `file_lhu_signed_uploaded_at` datetime DEFAULT NULL,
-  `file_lhu_signed_version` int UNSIGNED NOT NULL DEFAULT '0',
-  `file_lhu_signed_replacement_note` text,
   `qc_by` varchar(16) DEFAULT NULL,
   `qc_at` datetime DEFAULT NULL,
-  `kalab_by` varchar(16) DEFAULT NULL,
-  `kalab_at` datetime DEFAULT NULL,
   `status_lhu` enum('Draft','Menunggu QC','Disahkan','Dibatalkan') NOT NULL DEFAULT 'Draft',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -2367,10 +2357,7 @@ ALTER TABLE `lhu`
   ADD KEY `idx_lhu_pkt_bm` (`id_pkt_bm`),
   ADD KEY `idx_lhu_status_lhu` (`status_lhu`),
   ADD KEY `idx_lhu_qc_by` (`qc_by`),
-  ADD KEY `idx_lhu_kalab_by` (`kalab_by`),
-  ADD KEY `idx_lhu_id_registrasi` (`id_registrasi`),
-  ADD KEY `idx_lhu_signed_uploaded_by` (`file_lhu_signed_uploaded_by`),
-  ADD KEY `idx_lhu_signed_uploaded_at` (`file_lhu_signed_uploaded_at`);
+  ADD KEY `idx_lhu_id_registrasi` (`id_registrasi`);
 
 --
 -- Indexes for table `lka`
@@ -2668,7 +2655,7 @@ ALTER TABLE `jadwal_sampel`
 ALTER TABLE `lhu`
   ADD CONSTRAINT `fk_lhu_fppl` FOREIGN KEY (`id_registrasi`) REFERENCES `fppl` (`id_registrasi`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_lhu_pkt_bm` FOREIGN KEY (`id_pkt_bm`) REFERENCES `pkt_bm` (`id_pkt_bm`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_lhu_signed_uploaded_by` FOREIGN KEY (`file_lhu_signed_uploaded_by`) REFERENCES `user` (`nik`);
+  ADD CONSTRAINT `fk_lhu_qc_by` FOREIGN KEY (`qc_by`) REFERENCES `user` (`nik`);
 
 --
 -- Constraints for table `lka`

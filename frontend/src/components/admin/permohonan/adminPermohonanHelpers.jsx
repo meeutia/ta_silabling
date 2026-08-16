@@ -278,13 +278,22 @@ export function buildSampleReceiptForms(requestItem) {
         tanggal_pengambilan_sampel: '',
         tanggal_terima: '',
         jam_terima: '',
-        kondisi: 'Sesuai',
+
         catatan: '',
         acuan_pengambilan_sampel: '',
         lokasi_spesifik: '',
         lokasiSpesifik: '',
         koordinat: '',
         id_sampel: '',
+        parameters: getSampleParameterMethods(sample).map((pm) => ({
+          id_fppl_parameter_metode: pm.id_fppl_parameter_metode || pm.idFpplParameterMetode,
+          nama_parameter: getParameterName(pm),
+          acuan_metode: getMethodReference(pm),
+          nama_metode: getMethodName(pm),
+          wadah: '',
+          volume_ml: '',
+          perlakuan_pengawetan: ''
+        }))
       });
     }
   });
@@ -303,11 +312,11 @@ export function getParameterMethod(sampleParameterMethod) {
 
 export function getParameterName(sampleParameterMethod) {
   const directParameter = sampleParameterMethod?.parameter || sampleParameterMethod?.Parameter;
-  if (directParameter?.nama_parameter) return directParameter.nama_parameter;
+  if (directParameter?.nama_parameter || directParameter?.namaParameter) return directParameter.nama_parameter || directParameter.namaParameter;
 
   const parameterMethod = getParameterMethod(sampleParameterMethod);
   const pmParameter = parameterMethod?.Parameter || parameterMethod?.parameter || null;
-  return pmParameter?.nama_parameter || '-';
+  return pmParameter?.nama_parameter || pmParameter?.namaParameter || '-';
 }
 
 export function getActualSamples(requestSample) {

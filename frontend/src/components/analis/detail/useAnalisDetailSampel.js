@@ -11,7 +11,7 @@ import {
   getFileExtension,
   getFileNameFromPath,
   getJamPenerimaanSampel,
-  getKondisiSampel,
+
   getKoordinatSampel,
   getKasiPengujianRevisionNote,
   getPenyeliaRevisionNote,
@@ -101,9 +101,6 @@ function mapDetailResultRows(samples = [], detail = {}) {
 
     jamPenerimaan: getJamPenerimaanSampel(row),
     jam_penerimaan: getJamPenerimaanSampel(row),
-
-    kondisiSampel: getKondisiSampel(row),
-    kondisi_sampel: getKondisiSampel(row),
 
     abnormalitasSampel: getAbnormalitasSampel(row),
     abnormalitas_sampel: getAbnormalitasSampel(row),

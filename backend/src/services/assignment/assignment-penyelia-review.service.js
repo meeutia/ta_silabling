@@ -264,7 +264,7 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsReq
                 tanggal_pengambilan_sampel: sampel.tanggal_pengambilan_sampel || null,
                 tanggal_penerimaan: sampel.diterima_pada || null,
                 jam_penerimaan: (sampel.diterima_pada ? new Date(sampel.diterima_pada).toTimeString().slice(0, 8) : null) || null,
-                kondisi_sampel: sampel.kondisi_sampel || '-',
+
                 abnormalitas_sampel: sampel.abnormalitas_sampel || '',
                 acuan_pengambilan_sampel: sampel.acuan_pengambilan_sampel || '',
                 koordinat: sampel.koordinat || '-',
@@ -328,7 +328,7 @@ normalizePenyeliaRevisionItems = (catatanRevisi, hasilTargets = [], revisionsReq
                 tanggalSampling: item.tanggal_pengambilan_sampel || null,
                 tanggalPenerimaan: item.tanggal_penerimaan || null,
                 jamPenerimaan: item.jam_penerimaan || null,
-                kondisiSampel: item.kondisi_sampel || '-',
+
                 koordinat: item.koordinat || '-',
                 hasil: item.hasil || '',
                 catatanHasil: item.catatan_hasil || '',

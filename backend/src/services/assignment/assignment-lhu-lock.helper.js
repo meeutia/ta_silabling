@@ -91,9 +91,7 @@ class AssignmentLhuLockHelper {
             status_lhu: LHU_STATUS.CANCELLED,
             file_lhu_path: null,
             tanggal_penerbitan: null,
-            kalab_by: null,
-            kalab_at: null,
-        }, {
+                                }, {
             where: {
                 nomor_lhu: { [Op.in]: nomorLhus },
                 status_lhu: { [Op.ne]: LHU_STATUS.APPROVED_FINAL },

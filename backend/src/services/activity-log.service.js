@@ -525,7 +525,7 @@ class ActivityLogService {
                     createdAt: this.toDateOrNull(lhu.qc_at) || new Date(),
                 }, options);
             }
-            if (lhu.kalab_at) {
+            if (null) {
                 await this.createActivityLogIfMissing({
                     entityType: 'LHU',
                     entityId: lhu.nomor_lhu,
@@ -534,8 +534,8 @@ class ActivityLogService {
                     statusAfter: 'Disahkan',
                     source: 'QC',
                     note: 'LHU disahkan melalui alur finalisasi QC. Identitas Kepala Laboratorium tetap digunakan sebagai penandatangan dokumen.',
-                    actorNik: lhu.qc_by || lhu.kalab_by,
-                    createdAt: this.toDateOrNull(lhu.qc_at || lhu.kalab_at) || new Date(),
+                    actorNik: lhu.qc_by || null,
+                    createdAt: this.toDateOrNull(lhu.qc_at || null) || new Date(),
                 }, options);
             }
         }

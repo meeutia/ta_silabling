@@ -83,11 +83,6 @@ Sampel.init({
     type: DataTypes.STRING(100),
     allowNull: true,
   },
-  kondisi_sampel: {
-    type: DataTypes.ENUM('Sesuai', 'Tidak Sesuai'),
-    allowNull: false,
-    defaultValue: 'Sesuai',
-  },
   abnormalitas_sampel: {
     type: DataTypes.STRING(30),
     allowNull: true,
